@@ -1,1 +1,1 @@
-src += files('pipewire.c')
+src += files('pulseaudio.c')

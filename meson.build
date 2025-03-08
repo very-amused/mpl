@@ -1,6 +1,6 @@
-project('UMP', 'c')
+project('MPL', 'c')
 
 src = []
 subdir('src')
 
-executable('ump', src)
+executable('mpl', src)
