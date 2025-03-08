@@ -1,1 +1,3 @@
-src = files('main.c')
+subdir('audio')
+
+src += files('main.c')
