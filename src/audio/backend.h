@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#define BACKEND_APP_NAME "mpl"
+
 // Functions indicating success by returning an int
 // return 0 on success, nonzero on error
 
