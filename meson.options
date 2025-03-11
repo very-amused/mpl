@@ -1,0 +1,1 @@
+option('use_pulseaudio', type: 'feature', value: 'enabled')

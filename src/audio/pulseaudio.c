@@ -19,7 +19,7 @@ static int pa_deinit(void *ctx__) {
 	return 0;
 }
 
-AudioBackend *AB_PulseAudio = {
+AudioBackend AB_PulseAudio = {
 	.name = "PulseAudio",
 
 	.init = pa_init,

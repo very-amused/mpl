@@ -1,5 +1,5 @@
 #pragma once
 #include "backend.h"
 
-AudioBackend AB_PulseAudio;
+extern AudioBackend AB_PulseAudio;
 // Audiobackend AB_Pipewire; etc...
