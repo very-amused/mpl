@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "audio/backend.h"
 #include "audio/backends.h"
+#include <unistd.h>
 
 int main(int argc, char **argv) {
 	printf("This is MPL v0.0.0\n");
@@ -13,7 +14,12 @@ int main(int argc, char **argv) {
 	
 	// Initialize audio backend
 	AudioBackend ab = AB_PulseAudio;
-	AudioBackend_init(&ab);
+	if (AudioBackend_init(&ab) != 0) {
+		return 1;
+	}
+
+	sleep(10);
+
 
 	// Cleanup
 	AudioBackend_deinit(&ab);

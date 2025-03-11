@@ -16,7 +16,7 @@ typedef struct AudioBackend {
 	// Initialize the audio backend for playback.
 	int (*init)(void *ctx);
 	// Deinitialize the audio backend
-	int (*deinit)(void *ctx);
+	void (*deinit)(void *ctx);
 
 	// Private backend-specific context
 	const size_t ctx_size;
@@ -38,10 +38,7 @@ static int AudioBackend_init(AudioBackend *ab) {
 
 // Deinitialize an AudioBackend
 static int AudioBackend_deinit(AudioBackend *ab) {
-	int status = ab->deinit(ab->ctx);
-	if (status != 0) {
-		return status;
-	}
+	ab->deinit(ab->ctx);
 
 	free(ab->ctx);
 

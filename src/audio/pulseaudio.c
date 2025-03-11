@@ -14,6 +14,7 @@ typedef struct Ctx {
 	pa_proplist *props;
 	// PA connection context
 	pa_context *conn;
+	pa_context_state_t conn_state;
 
 	// Audio playback stream
 	pa_stream *stream;
@@ -21,7 +22,7 @@ typedef struct Ctx {
 
 /* PulseAudio AudioBackend methods */
 static int init(void *ctx__);
-static int deinit(void *ctx__);
+static void deinit(void *ctx__);
 
 
 /* AudioBackend implementation using PulseAudio */
@@ -119,6 +120,8 @@ static int init(void *ctx__) {
 		DEINIT();
 		return 1;
 	}
+
+	pa_threaded_mainloop_unlock(ctx->loop);
 	fprintf(stderr, "Connected to PulseAudio!\n");
 
 	// TODO: set up our playback stream
@@ -128,12 +131,21 @@ static int init(void *ctx__) {
 	return 0;
 }
 
-static int deinit(void *ctx__) {
+static void deinit(void *ctx__) {
 	Ctx *ctx = ctx__;
 
-	// TODO: teardown pa_ctx
+	/* Disconnect from PulseAudio */
 
-	return 0;
+	// Stop the main loop, halting communication over our connection
+	pa_threaded_mainloop_stop(ctx->loop);
+
+	// Disconnect from the PulseAudio server and free our context
+	pa_context_disconnect(ctx->conn);
+	pa_context_unref(ctx->conn);
+	pa_proplist_free(ctx->props);
+
+	// Free the main loop
+	pa_threaded_mainloop_free(ctx->loop);
 }
 
 static void context_state_callback(pa_context *conn, void *userdata) {
