@@ -6,6 +6,7 @@
 #include <pulse/stream.h>
 #include <pulse/error.h>
 
+// PulseAudio backend context
 typedef struct Ctx {
 	// Asynchronous event loop
 	pa_threaded_mainloop *loop;
@@ -13,8 +14,8 @@ typedef struct Ctx {
 	// PA connection properties
 	pa_proplist *props;
 	// PA connection context
-	pa_context *conn;
-	pa_context_state_t conn_state;
+	pa_context *pa_ctx;
+	pa_context_state_t pa_ctx_state;
 
 	// Audio playback stream
 	pa_stream *stream;
@@ -37,10 +38,10 @@ AudioBackend AB_PulseAudio = {
 
 /* PulseAudio callbacks */
 // Connection state change callback
-static void context_state_callback(pa_context *conn_ctx, void *userdata);
+static void pa_ctx_state_cb(pa_context *pa_ctx, void *userdata);
 
-static int init(void *ctx__) {
-	Ctx *ctx = ctx__;
+static int init(void *userdata) {
+	Ctx *ctx = userdata;
 
 	/* Set up our PulseAudio event loop and connection objects */
 
@@ -64,11 +65,11 @@ static int init(void *ctx__) {
 		DEINIT();
 		return 1;
 	}
-	ctx->conn = pa_context_new_with_proplist(
+	ctx->pa_ctx = pa_context_new_with_proplist(
 			pa_threaded_mainloop_get_api(ctx->loop),
 			BACKEND_APP_NAME,
 			ctx->props);
-	if (!ctx->conn) {
+	if (!ctx->pa_ctx) {
 		fprintf(stderr, "Error: failed to create PulseAudio connection context.\n");
 		DEINIT();
 		return 1;
@@ -76,12 +77,12 @@ static int init(void *ctx__) {
 	
 	// Set context state change callback,
 	// which will send us back a signal when we've conclusively succeeded or failed at connecting to the server
-	pa_context_set_state_callback(ctx->conn, context_state_callback, ctx);
+	pa_context_set_state_callback(ctx->pa_ctx, pa_ctx_state_cb, ctx);
 
 #undef DEINIT
 #define DEINIT() \
-	pa_context_disconnect(ctx->conn); \
-	pa_context_unref(ctx->conn); \
+	pa_context_disconnect(ctx->pa_ctx); \
+	pa_context_unref(ctx->pa_ctx); \
 	pa_threaded_mainloop_unlock(ctx->loop); \
 	pa_threaded_mainloop_free(ctx->loop)
 
@@ -89,13 +90,13 @@ static int init(void *ctx__) {
 	/* Connect to PulseAudio */
 
 	// 1. Request connection to the default PulseAudio server
-	if (pa_context_connect(ctx->conn, NULL, PA_CONTEXT_NOFLAGS, NULL) < 0) {
+	if (pa_context_connect(ctx->pa_ctx, NULL, PA_CONTEXT_NOFLAGS, NULL) < 0) {
 		fprintf(stderr, "Error: failed to connect to PulseAudio.\n");
 		DEINIT();
 		return 1;
 	}
 
-	// 2. Start the main event loop, opening communication between ctx->conn and PulseAudio
+	// 2. Start the main event loop, opening communication between ctx->pa_ctx and PulseAudio
 	if (pa_threaded_mainloop_start(ctx->loop) < 0) {
 		fprintf(stderr, "Error: failed to start PulseAudio main loop.\n");
 		DEINIT();
@@ -106,16 +107,16 @@ static int init(void *ctx__) {
 	// With our connection and event loop running, we can now get error codes/messages from PA
 #undef DEINIT
 #define DEINIT() \
-	fprintf(stderr, "PulseAudio error: %s\n", pa_strerror(pa_context_errno(ctx->conn))); \
+	fprintf(stderr, "PulseAudio error: %s\n", pa_strerror(pa_context_errno(ctx->pa_ctx))); \
 	pa_threaded_mainloop_unlock(ctx->loop); \
 	pa_threaded_mainloop_stop(ctx->loop); \
-	pa_context_disconnect(ctx->conn); \
-	pa_context_unref(ctx->conn); \
+	pa_context_disconnect(ctx->pa_ctx); \
+	pa_context_unref(ctx->pa_ctx); \
 	pa_threaded_mainloop_free(ctx->loop)
 
 	// 3. Wait until we get a signal that our connection state is ready to check
 	pa_threaded_mainloop_wait(ctx->loop);
-	if (pa_context_get_state(ctx->conn) != PA_CONTEXT_READY) {
+	if (pa_context_get_state(ctx->pa_ctx) != PA_CONTEXT_READY) {
 		fprintf(stderr, "Error: failed to connect to PulseAudio.\n");
 		DEINIT();
 		return 1;
@@ -140,18 +141,18 @@ static void deinit(void *ctx__) {
 	pa_threaded_mainloop_stop(ctx->loop);
 
 	// Disconnect from the PulseAudio server and free our context
-	pa_context_disconnect(ctx->conn);
-	pa_context_unref(ctx->conn);
+	pa_context_disconnect(ctx->pa_ctx);
+	pa_context_unref(ctx->pa_ctx);
 	pa_proplist_free(ctx->props);
 
 	// Free the main loop
 	pa_threaded_mainloop_free(ctx->loop);
 }
 
-static void context_state_callback(pa_context *conn, void *userdata) {
+static void pa_ctx_state_cb(pa_context *pa_ctx, void *userdata) {
 	Ctx *ctx = userdata;
 
-	switch (pa_context_get_state(conn)) {
+	switch (pa_context_get_state(pa_ctx)) {
 	case PA_CONTEXT_READY:
 	case PA_CONTEXT_TERMINATED:
 	case PA_CONTEXT_FAILED:

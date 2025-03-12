@@ -1,0 +1,20 @@
+#include "backend.h"
+
+// Initialize an AudioBackend for playback
+int AudioBackend_init(AudioBackend *ab) {
+	// Allocate and initialize ctx
+	ab->ctx = malloc(ab->ctx_size);
+	if (ab->ctx == NULL) {
+		fprintf(stderr, "Error: failed to allocate audio backend context.\n");
+		return 1;
+	}
+
+	return ab->init(ab->ctx);
+}
+
+// Deinitialize an AudioBackend
+void AudioBackend_deinit(AudioBackend *ab) {
+	ab->deinit(ab->ctx);
+
+	free(ab->ctx);
+}

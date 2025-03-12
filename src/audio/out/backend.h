@@ -25,22 +25,7 @@ typedef struct AudioBackend {
 
 
 // Initialize an AudioBackend for playback
-static int AudioBackend_init(AudioBackend *ab) {
-	// Allocate and initialize ctx
-	ab->ctx = malloc(ab->ctx_size);
-	if (ab->ctx == NULL) {
-		fprintf(stderr, "Error: failed to allocate audio backend context.\n");
-		return 1;
-	}
-
-	return ab->init(ab->ctx);
-}
+int AudioBackend_init(AudioBackend *ab);
 
 // Deinitialize an AudioBackend
-static int AudioBackend_deinit(AudioBackend *ab) {
-	ab->deinit(ab->ctx);
-
-	free(ab->ctx);
-
-	return 0;
-}
+void AudioBackend_deinit(AudioBackend *ab);

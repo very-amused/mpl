@@ -1,6 +1,6 @@
 #include <stdio.h>
-#include "audio/backend.h"
-#include "audio/backends.h"
+#include "audio/out/backend.h"
+#include "audio/out/backends.h"
 #include <unistd.h>
 
 int main(int argc, char **argv) {
