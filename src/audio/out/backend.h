@@ -1,4 +1,5 @@
 #pragma once
+#include "audio/track.h"
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -17,6 +18,13 @@ typedef struct AudioBackend {
 	int (*init)(void *ctx);
 	// Deinitialize the audio backend
 	void (*deinit)(void *ctx);
+
+	// Prepare for 'cold' playback of *track from a silent start.
+	// This involves setting up an audio stream with the correct sample rate, format, channels, etc.
+	int (*prepare)(void *ctx, const AudioTrack *track);
+	// Queue up a track for upcoming gapless playback off the end of the current track.
+	// Note that only one track can be queued *in the backend* at a time.
+	int (*queue)(void *ctx, const AudioTrack *track);
 
 	// Private backend-specific context
 	const size_t ctx_size;

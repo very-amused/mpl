@@ -1,10 +1,11 @@
-#include "backend.h"
 #include <pulse/def.h>
 #include <pulse/proplist.h>
 #include <pulse/thread-mainloop.h>
 #include <pulse/context.h>
 #include <pulse/stream.h>
 #include <pulse/error.h>
+
+#include "backend.h"
 
 // PulseAudio backend context
 typedef struct Ctx {
