@@ -16,7 +16,6 @@ typedef struct Ctx {
 	pa_proplist *props;
 	// PA connection context
 	pa_context *pa_ctx;
-	pa_context_state_t pa_ctx_state;
 
 	// Audio playback stream
 	pa_stream *stream;
@@ -123,12 +122,13 @@ static int init(void *userdata) {
 		return 1;
 	}
 
-	pa_threaded_mainloop_unlock(ctx->loop);
 	fprintf(stderr, "Connected to PulseAudio!\n");
 
 	// TODO: set up our playback stream
 
 #undef DEINIT
+
+	pa_threaded_mainloop_unlock(ctx->loop);
 
 	return 0;
 }
