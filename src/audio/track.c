@@ -43,7 +43,7 @@ void AudioBuffer_deinit(AudioBuffer *ab) {
 	ab->data = NULL;
 }
 
-int AudioTrack_init(AudioTrack *t, const char *url) {
+enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url) {
 	char av_err[AV_ERROR_MAX_STRING_SIZE]; // libav* library error message buffer
 
 	// Zero pointers to ensure AudioTrack_deinit is safe
@@ -55,26 +55,23 @@ int AudioTrack_init(AudioTrack *t, const char *url) {
 	// Open track source from URL
 	t->url = av_strdup(url);
 	if (!t->url) {
-		return 1;
+		return AudioTrack_BAD_ALLOC;
 	}
 	// Create av format demuxing context
 	int status = avformat_open_input(&t->avf_ctx, t->url, NULL, NULL);
 	if (status < 0) {
-		av_strerror(status, av_err, sizeof(av_err));
-		fprintf(stderr, "Failed to open %s: %s\n", t->url, av_err);
-		return 1;
+		av_perror(status);
+		return AudioTrack_IO_ERR;
 	}
 
 	// Let libavformat choose the best audio stream for decoding
 	t->stream_no = av_find_best_stream(t->avf_ctx, AVMEDIA_TYPE_AUDIO, -1, -1, &t->codec, 0);
 	if (t->stream_no < 0) {
-		av_strerror(t->stream_no, av_err, sizeof(av_err));
-		fprintf(stderr, "Failed to select audio stream for %s: %s\n", t->url, av_err);
-		return 1;
+		av_perror(t->stream_no);
+		return AudioTrack_NO_STREAM;
 	}
 	if (t->codec == NULL) {
-		fprintf(stderr, "Failed to select audio decoder for %s\n", t->url);
-		return 1;
+		return AudioTrack_NO_DECODER;
 	}
 
 	// Process track header
@@ -94,29 +91,25 @@ int AudioTrack_init(AudioTrack *t, const char *url) {
 	// Allocate playback buffer
 	t->buffer = malloc(sizeof(AudioBuffer));
 	if (t->buffer == NULL || AudioBuffer_init(t->buffer, &t->pcm) != 0) {
-		fprintf(stderr, "Failed to initialize playback buffer for %s\n", t->url);
-		return 1;
+		return AudioTrack_BUFFER_ERR;
 	}
 
 	// Initialize decoding context
 	t->avc_ctx = avcodec_alloc_context3(t->codec);
 	if (t->avc_ctx == NULL) {
-		fprintf(stderr, "Failed to allocate decoding context for %s\n", t->url);
-		return 1;
+		return AudioTrack_BAD_ALLOC;
 	}
 	status = avcodec_open2(t->avc_ctx, t->codec, NULL);
 	if (status < 0) {
-		av_strerror(status, av_err, sizeof(av_err));
-		fprintf(stderr, "Failed to initialize decoding context for %s: %s\n", t->url, av_err);
-		return 1;
+		av_perror(status);
+		return AudioTrack_CODEC_ERR;
 	}
 
 	// Allocate packet + frame memory
 	t->av_packet = av_packet_alloc();
 	t->av_frame = av_frame_alloc();
 	if (t->av_packet == NULL || t->av_frame == NULL) {
-		fprintf(stderr, "Failed to allocate packet/frame memory for %s\n", t->url);
-		return 1;
+		return AudioTrack_BAD_ALLOC;
 	}
 
 	// Drain any start padding
@@ -124,16 +117,17 @@ int AudioTrack_init(AudioTrack *t, const char *url) {
 		status = avcodec_receive_frame(t->avc_ctx, t->av_frame);
 		if (status == AVERROR(EAGAIN)) {
 			if (status = av_read_frame(t->avf_ctx, t->av_packet), status < 0) {
-				av_strerror(status, av_err, sizeof(av_err));
-				fprintf(stderr, "Failed to read packet from %s: %s\n", t->url, av_err);
-				break;
+				av_perror(status);
+				return AudioTrack_PACKET_ERR;
 			}
-			avcodec_send_packet(t->avc_ctx, t->av_packet);
+			if (status = avcodec_send_packet(t->avc_ctx, t->av_packet), status < 0) {
+				av_perror(status);
+				return AudioTrack_PACKET_ERR;
+			}
 			continue;
 		} else if (status < 0) {
-			av_strerror(status, av_err, sizeof(av_err));
-			fprintf(stderr, "Failed to read frame from %s: %s\n", t->url, av_err);
-			continue;
+			av_perror(status);
+			return AudioTrack_FRAME_ERR;
 		}
 
 		frame_no++;

@@ -58,8 +58,23 @@ typedef struct AudioTrack {
 	size_t start_padding, end_padding; // The number of sample frames at the start and end of the track used for padding. These must be discarded for gapless playback.
 } AudioTrack;
 
-int AudioTrack_init(AudioTrack *at, const char *url);
+enum AudioTrack_ERR AudioTrack_init(AudioTrack *at, const char *url);
 void AudioTrack_deinit(AudioTrack *at);
 
 // Convert a scalar in time_base units into a double precision number of seconds
 double AudioTrack_seconds(AVRational time_base, int64_t value);
+
+enum AudioTrack_ERR {
+	AudioTrack_OK,
+	AudioTrack_IO_ERR,
+	AudioTrack_NO_STREAM,
+	AudioTrack_NO_DECODER,
+	AudioTrack_BUFFER_ERR,
+	AudioTrack_BAD_ALLOC,
+	AudioTrack_CODEC_ERR,
+	AudioTrack_PACKET_ERR,
+	AudioTrack_FRAME_ERR
+};
+
+#define av_perror(c) av_strerror(c, av_err, sizeof(av_err)); \
+	fprintf(stderr, "libav error: %s\n", av_err)
