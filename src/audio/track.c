@@ -1,5 +1,5 @@
-#include "track.h"
 #include <errno.h>
+#include <stddef.h>
 #include <libavcodec/avcodec.h>
 #include <libavcodec/codec_par.h>
 #include <libavcodec/packet.h>
@@ -7,11 +7,12 @@
 #include <libavutil/error.h>
 #include <libavutil/frame.h>
 #include <libavutil/mem.h>
-#include <stddef.h>
 #include <libavutil/samplefmt.h>
 #include <libavutil/error.h>
 #include <libavformat/avformat.h>
 #include <libavcodec/codec.h>
+#include "track.h"
+#include "../error.h"
 
 int AudioBuffer_init(AudioBuffer *ab, const AudioPCM *pcm) {
 	// To start, we're going to use a fixed buffer time length of 30s.
@@ -60,14 +61,14 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url) {
 	// Create av format demuxing context
 	int status = avformat_open_input(&t->avf_ctx, t->url, NULL, NULL);
 	if (status < 0) {
-		av_perror(status);
+		av_perror(status, av_err);
 		return AudioTrack_IO_ERR;
 	}
 
 	// Let libavformat choose the best audio stream for decoding
 	t->stream_no = av_find_best_stream(t->avf_ctx, AVMEDIA_TYPE_AUDIO, -1, -1, &t->codec, 0);
 	if (t->stream_no < 0) {
-		av_perror(t->stream_no);
+		av_perror(t->stream_no, av_err);
 		return AudioTrack_NO_STREAM;
 	}
 	if (t->codec == NULL) {
@@ -101,7 +102,7 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url) {
 	}
 	status = avcodec_open2(t->avc_ctx, t->codec, NULL);
 	if (status < 0) {
-		av_perror(status);
+		av_perror(status, av_err);
 		return AudioTrack_CODEC_ERR;
 	}
 
@@ -117,16 +118,16 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url) {
 		status = avcodec_receive_frame(t->avc_ctx, t->av_frame);
 		if (status == AVERROR(EAGAIN)) {
 			if (status = av_read_frame(t->avf_ctx, t->av_packet), status < 0) {
-				av_perror(status);
+				av_perror(status, av_err);
 				return AudioTrack_PACKET_ERR;
 			}
 			if (status = avcodec_send_packet(t->avc_ctx, t->av_packet), status < 0) {
-				av_perror(status);
+				av_perror(status, av_err);
 				return AudioTrack_PACKET_ERR;
 			}
 			continue;
 		} else if (status < 0) {
-			av_perror(status);
+			av_perror(status, av_err);
 			return AudioTrack_FRAME_ERR;
 		}
 
