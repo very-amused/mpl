@@ -1,7 +1,11 @@
 #include "track.h"
+#include <errno.h>
+#include <libavcodec/avcodec.h>
 #include <libavcodec/codec_par.h>
+#include <libavcodec/packet.h>
 #include <libavutil/avutil.h>
 #include <libavutil/error.h>
+#include <libavutil/frame.h>
 #include <libavutil/mem.h>
 #include <stddef.h>
 #include <libavutil/samplefmt.h>
@@ -55,7 +59,7 @@ int AudioTrack_init(AudioTrack *t, const char *url) {
 	}
 	// Create av format demuxing context
 	int status = avformat_open_input(&t->avf_ctx, t->url, NULL, NULL);
-	if (status != 0) {
+	if (status < 0) {
 		av_strerror(status, av_err, sizeof(av_err));
 		fprintf(stderr, "Failed to open %s: %s\n", t->url, av_err);
 		return 1;
@@ -73,9 +77,19 @@ int AudioTrack_init(AudioTrack *t, const char *url) {
 		return 1;
 	}
 
-	// TODO: Process track header
+	// Process track header
 	const AVStream *stream = t->avf_ctx->streams[t->stream_no];
-	double duration = (double)(stream->duration * stream->time_base.num) / stream->time_base.den;
+	const AVCodecParameters *codec_params = stream->codecpar;
+	// Sampling info
+	t->pcm.sample_fmt = codec_params->format;
+	t->pcm.sample_rate = codec_params->sample_rate;
+	t->pcm.n_channels = codec_params->ch_layout.nb_channels;
+	// Timing info
+	t->time_base = stream->time_base;
+	t->duration = stream->duration;
+	t->duration_secs = AudioTrack_seconds(t->time_base, t->duration);
+	t->start_padding = codec_params->initial_padding;
+	t->end_padding = codec_params->trailing_padding;
 
 	// Allocate playback buffer
 	t->buffer = malloc(sizeof(AudioBuffer));
@@ -84,9 +98,56 @@ int AudioTrack_init(AudioTrack *t, const char *url) {
 		return 1;
 	}
 
+	// Initialize decoding context
+	t->avc_ctx = avcodec_alloc_context3(t->codec);
+	if (t->avc_ctx == NULL) {
+		fprintf(stderr, "Failed to allocate decoding context for %s\n", t->url);
+		return 1;
+	}
+	status = avcodec_open2(t->avc_ctx, t->codec, NULL);
+	if (status < 0) {
+		av_strerror(status, av_err, sizeof(av_err));
+		fprintf(stderr, "Failed to initialize decoding context for %s: %s\n", t->url, av_err);
+		return 1;
+	}
+
+	// Allocate packet + frame memory
+	t->av_packet = av_packet_alloc();
+	t->av_frame = av_frame_alloc();
+	if (t->av_packet == NULL || t->av_frame == NULL) {
+		fprintf(stderr, "Failed to allocate packet/frame memory for %s\n", t->url);
+		return 1;
+	}
+
+	// Drain any start padding
+	for (size_t frame_no = 0; frame_no < t->start_padding;) {
+		status = avcodec_receive_frame(t->avc_ctx, t->av_frame);
+		if (status == AVERROR(EAGAIN)) {
+			if (status = av_read_frame(t->avf_ctx, t->av_packet), status < 0) {
+				av_strerror(status, av_err, sizeof(av_err));
+				fprintf(stderr, "Failed to read packet from %s: %s\n", t->url, av_err);
+				break;
+			}
+			avcodec_send_packet(t->avc_ctx, t->av_packet);
+			continue;
+		} else if (status < 0) {
+			av_strerror(status, av_err, sizeof(av_err));
+			fprintf(stderr, "Failed to read frame from %s: %s\n", t->url, av_err);
+			continue;
+		}
+
+		frame_no++;
+	}
+	av_packet_unref(t->av_packet);
+	av_frame_unref(t->av_frame);
+
 	return 0;
 }
 
 void AudioTrack_deinit(AudioTrack *at) {
 
+}
+
+double AudioTrack_seconds(AVRational time_base, int64_t value) {
+	return (double)(time_base.num * value) / time_base.den;
 }

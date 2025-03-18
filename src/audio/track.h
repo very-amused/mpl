@@ -1,4 +1,6 @@
 #pragma once
+#include <libavcodec/packet.h>
+#include <libavutil/frame.h>
 #include <libavutil/rational.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -9,8 +11,8 @@
 // Sampling parameters used to interpret decoded PCM frames
 typedef struct AudioPCM {
 	enum AVSampleFormat sample_fmt;
-	uint8_t n_channels;
 	uint32_t sample_rate;
+	uint8_t n_channels;
 } AudioPCM;
 
 // A ring buffer used to hold decoded PCM samples
@@ -42,14 +44,22 @@ typedef struct AudioTrack {
 	// Decoding
 	AVCodecContext *avc_ctx;
 	const AVCodec *codec;
+	AVPacket *av_packet;
+	AVFrame *av_frame;
 	
 	// PCM playback
 	AudioPCM pcm;
 	AudioBuffer *buffer;
 
 	// Metadata
-	AVRational time_base, duration;
+	AVRational time_base; // Base time resolution
+	int64_t duration; // Duration in {time_base} units
+	double duration_secs; // Duration in seconds
+	size_t start_padding, end_padding; // The number of sample frames at the start and end of the track used for padding. These must be discarded for gapless playback.
 } AudioTrack;
 
 int AudioTrack_init(AudioTrack *at, const char *url);
 void AudioTrack_deinit(AudioTrack *at);
+
+// Convert a scalar in time_base units into a double precision number of seconds
+double AudioTrack_seconds(AVRational time_base, int64_t value);
