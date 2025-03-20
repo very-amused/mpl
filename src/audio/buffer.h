@@ -31,8 +31,9 @@ int AudioBuffer_init(AudioBuffer *ab, const AudioPCM *pcm);
 // Deinitialize an AudioBuffer for freeing
 void AudioBuffer_deinit(AudioBuffer *ab);
 
-// Write n bytes from *src to *ab. Returns the number of bytes actually written.
+// Write n bytes from *src to *ab. Never blocks.
+// Returns the number of bytes actually written.
 size_t AudioBuffer_write(AudioBuffer *ab, unsigned char *src, size_t n);
-// Read n bytes from *ab to *dst. Returns the number of bytes actually read.
-size_t AudioBuffer_read(AudioBuffer *ab, unsigned char *dst, size_t n, const AudioPCM *pcm);
-
+// Read n bytes from *ab to *dst. Never blocks.
+// Returns the number of bytes actually read.
+size_t AudioBuffer_read(AudioBuffer *ab, unsigned char *dst, size_t n);

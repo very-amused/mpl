@@ -52,10 +52,32 @@ size_t AudioBuffer_write(AudioBuffer *ab, unsigned char *src, size_t n) {
 		count += chunk_size;
 	}
 
+	// Store new wr index
 	atomic_store(&ab->wr, wr);
 
 	return count;
 }
 
-size_t AudioBuffer_read(AudioBuffer *ab, unsigned char *dst, size_t n, const AudioPCM *pcm);
+size_t AudioBuffer_read(AudioBuffer *ab, unsigned char *dst, size_t n) {
+	size_t count = 0; // # of bytes read
+
+	const int wr = atomic_load(&ab->wr);
+	int rd = atomic_load(&ab->rd);
+
+	while (count < n && rd != wr) {
+		// Write chunk
+		int chunk_size = rd < wr ? wr - rd : ab->line_size - rd;
+		memcpy(&dst[count], &ab->data[rd], chunk_size);
+
+		// Increment read idx and count
+		rd++;
+		rd %= 10;
+		count += chunk_size;
+	}
+
+	// Store new rd index
+	atomic_store(&ab->rd, rd);
+
+	return count;
+}
 
