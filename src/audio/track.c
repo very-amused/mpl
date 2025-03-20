@@ -33,6 +33,11 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url) {
 	}
 
 	// Let libavformat choose the best audio stream for decoding
+	status = avformat_find_stream_info(t->avf_ctx, NULL);
+	if (status < 0) {
+		av_perror(status, av_err);
+		return AudioTrack_NO_STREAM;
+	}
 	t->stream_no = av_find_best_stream(t->avf_ctx, AVMEDIA_TYPE_AUDIO, -1, -1, &t->codec, 0);
 	if (t->stream_no < 0) {
 		av_perror(t->stream_no, av_err);
