@@ -65,7 +65,7 @@ size_t AudioBuffer_read(AudioBuffer *ab, unsigned char *dst, size_t n) {
 	int rd = atomic_load(&ab->rd);
 
 	while (count < n && rd != wr) {
-		// Write chunk
+		// Read chunk
 		int chunk_size = rd < wr ? wr - rd : ab->line_size - rd;
 		memcpy(&dst[count], &ab->data[rd], chunk_size);
 

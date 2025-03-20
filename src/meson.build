@@ -1,3 +1,3 @@
 subdir('audio')
 
-src += files('main.c')
+src += files('main.c', 'track.c')

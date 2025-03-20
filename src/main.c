@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "audio/out/backend.h"
 #include "audio/out/backends.h"
+#include "track.h"
 #include <unistd.h>
 
 int main(int argc, char **argv) {
@@ -11,6 +12,9 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 	char *file = argv[1];
+
+	// Initialize track
+	Track track;
 	
 	// Initialize audio backend
 	AudioBackend ab = AB_PulseAudio;

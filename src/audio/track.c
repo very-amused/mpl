@@ -25,13 +25,8 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url) {
 	t->codec = NULL;
 	t->buffer = NULL;
 
-	// Open track source from URL
-	t->url = av_strdup(url);
-	if (!t->url) {
-		return AudioTrack_BAD_ALLOC;
-	}
 	// Create av format demuxing context
-	int status = avformat_open_input(&t->avf_ctx, t->url, NULL, NULL);
+	int status = avformat_open_input(&t->avf_ctx, url, NULL, NULL);
 	if (status < 0) {
 		av_perror(status, av_err);
 		return AudioTrack_IO_ERR;
@@ -123,9 +118,6 @@ void AudioTrack_deinit(AudioTrack *t) {
 	t->buffer = NULL;
 
 	avformat_close_input(&t->avf_ctx);
-
-	free(t->url);
-	t->url = NULL;
 }
 
 double AudioTrack_seconds(AVRational time_base, int64_t value) {
