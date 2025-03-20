@@ -10,6 +10,10 @@ deps += dependency('libavutil', version : '>=58.0.0')
 src = []
 include = ['src']
 
+# Environment
+env = environment()
+env.set('DEBUG', 1)
+
 subdir('src')
 
 executable('mpl', src, include_directories : include, dependencies : deps)
