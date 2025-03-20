@@ -12,7 +12,6 @@ include = ['src']
 
 # Environment
 env = environment()
-env.set('DEBUG', 1)
 
 subdir('src')
 

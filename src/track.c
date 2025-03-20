@@ -1,6 +1,4 @@
 #include "track.h"
-#include "audio/track.h"
-#include "error.h"
 #include <string.h>
 
 void Track_init(Track *t, const char *url, const size_t url_len) {
@@ -22,4 +20,6 @@ void Track_init(Track *t, const char *url, const size_t url_len) {
 }
 void Track_deinit(Track *t) {
 	free(t->url);
+	t->url = NULL;
+	t->url_len = 0;
 }
