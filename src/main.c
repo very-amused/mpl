@@ -11,10 +11,19 @@ int main(int argc, char **argv) {
 		fprintf(stderr, "usage: mpl {file}\n");
 		return 1;
 	}
+	// Form URL from file argv
 	char *file = argv[1];
+	static const char LIBAV_PROTO_FILE[] = "file:";
+	static const size_t LIBAV_PROTO_FILE_LEN = sizeof(LIBAV_PROTO_FILE)-1;
+	const size_t url_len = LIBAV_PROTO_FILE_LEN + strlen(file);
+	char *url = malloc((url_len + 1) * sizeof(char));
+	snprintf(url, url_len, "%s%s", LIBAV_PROTO_FILE, file);
 
 	// Initialize track
 	Track track;
+	Track_init(&track, url, url_len);
+	// TODO: initialize AudioTrack
+
 	
 	// Initialize audio backend
 	AudioBackend ab = AB_PulseAudio;
@@ -27,6 +36,7 @@ int main(int argc, char **argv) {
 
 	// Cleanup
 	AudioBackend_deinit(&ab);
+	Track_deinit(&track);
 
 	return 0;
 }
