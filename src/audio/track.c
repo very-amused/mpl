@@ -113,7 +113,7 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url) {
 		return AudioTrack_BAD_ALLOC;
 	}
 
-	// Drain any start padding
+	// Drain any padding samples at the start
 	for (size_t frame_no = 0; frame_no < t->start_padding;) {
 		status = avcodec_receive_frame(t->avc_ctx, t->av_frame);
 		if (status == AVERROR(EAGAIN)) {
@@ -139,8 +139,21 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url) {
 	return 0;
 }
 
-void AudioTrack_deinit(AudioTrack *at) {
+void AudioTrack_deinit(AudioTrack *t) {
+	av_packet_free(&t->av_packet);
+	av_frame_free(&t->av_frame);
 
+	avcodec_free_context(&t->avc_ctx);
+
+	AudioBuffer_deinit(t->buffer);
+	free(t->buffer);
+	t->buffer = NULL;
+
+	avformat_close_input(&t->avf_ctx);
+
+	free(t->url);
+	t->url = NULL;
+	
 }
 
 double AudioTrack_seconds(AVRational time_base, int64_t value) {
