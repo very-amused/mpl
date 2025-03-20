@@ -114,25 +114,26 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url) {
 	}
 
 	// Drain any padding samples at the start
-	for (size_t frame_no = 0; frame_no < t->start_padding;) {
-		status = avcodec_receive_frame(t->avc_ctx, t->av_frame);
-		if (status == AVERROR(EAGAIN)) {
-			if (status = av_read_frame(t->avf_ctx, t->av_packet), status < 0) {
-				av_perror(status, av_err);
-				return AudioTrack_PACKET_ERR;
-			}
-			if (status = avcodec_send_packet(t->avc_ctx, t->av_packet), status < 0) {
-				av_perror(status, av_err);
-				return AudioTrack_PACKET_ERR;
-			}
-			continue;
-		} else if (status < 0) {
+	while (t->start_padding > 0) {
+		status = av_read_frame(t->avf_ctx, t->av_packet); // Despite its name, av_read_frame reads packets
+		if (status < 0) {
 			av_perror(status, av_err);
-			return AudioTrack_FRAME_ERR;
+			return AudioTrack_PACKET_ERR;
+		}
+		status = avcodec_send_packet(t->avc_ctx, t->av_packet);
+		if (status < 0) {
+			av_perror(status, av_err);
+			return AudioTrack_PACKET_ERR;
 		}
 
-		frame_no++;
+		do {
+			status = avcodec_receive_frame(t->avc_ctx, t->av_frame);
+		} while (status >= 0);
+		if (t->start_padding > 0 && status != AVERROR(EAGAIN)) {
+			return AudioTrack_FRAME_ERR;
+		}
 	}
+	while (avcodec_receive_frame(t->avc_ctx, t->av_frame) >= 0) {} // Just in case, drain any remaining frames from the packet's buffer
 	av_packet_unref(t->av_packet);
 	av_frame_unref(t->av_frame);
 
@@ -153,7 +154,6 @@ void AudioTrack_deinit(AudioTrack *t) {
 
 	free(t->url);
 	t->url = NULL;
-	
 }
 
 double AudioTrack_seconds(AVRational time_base, int64_t value) {

@@ -34,6 +34,11 @@ int AudioBuffer_init(AudioBuffer *ab, const AudioPCM *pcm);
 // Deinitialize an AudioBuffer for freeing
 void AudioBuffer_deinit(AudioBuffer *ab);
 
+// Write n bytes to the AudioBuffer
+size_t AudioBuffer_write(unsigned char *ab, size_t n, const AudioPCM *pcm);
+// Read n bytes from the AudioBuffer
+size_t AudioBuffer_read(unsigned char *ab, size_t n, const AudioPCM *pcm);
+
 // Decoding and playback state for a single track
 typedef struct AudioTrack {
 	// Demuxing
