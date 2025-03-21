@@ -1,6 +1,12 @@
 #pragma once
 #include <stddef.h>
 
+#define av_perror(e, buf) av_strerror(e, buf, sizeof(buf)); \
+	fprintf(stderr, "libav error: %s\n", buf)
+
+#define ENUM_KEY(NAME) case NAME: return #NAME;
+#define ENUM_VAL(NAME) NAME,
+
 // ref: https://kubyshkin.name/posts/c-language-enums-tips-and-tricks/
 #define AUDIOTRACK_ERR_ENUM(VARIANT) \
 	VARIANT(AudioTrack_OK) \
@@ -16,19 +22,32 @@
 
 // Errors returned by an AudioTrack_* method
 enum AudioTrack_ERR {
-#define ENUM_VAL(NAME) NAME,
 	AUDIOTRACK_ERR_ENUM(ENUM_VAL)
-#undef ENUM_VAL
 };
 
 static inline const char *AudioTrack_ERR_name(enum AudioTrack_ERR err) {
-#define ENUM_KEY(NAME) case NAME: return #NAME;
 	switch (err) {
 		AUDIOTRACK_ERR_ENUM(ENUM_KEY)
 	}
-#undef AUDIOTRACK_ERR_ENUM
 	return NULL;
 }
+#undef AUDIOTRACK_ERR_ENUM
 
-#define av_perror(e, buf) av_strerror(e, buf, sizeof(buf)); \
-	fprintf(stderr, "libav error: %s\n", buf)
+// TODO: define more backend errors
+#define AUDIOBACKEND_ERR_ENUM(VARIANT) \
+	VARIANT(AudioBackend_OK) \
+	VARIANT(AudioBackend_FB_WRITE_ERR)
+
+enum AudioBackend_ERR {
+	AUDIOBACKEND_ERR_ENUM(ENUM_VAL)
+};
+
+static inline const char *AudioBackend_ERR_name(enum AudioBackend_ERR err) {
+	switch (err) {
+		AUDIOBACKEND_ERR_ENUM(ENUM_KEY)
+	}
+}
+#undef AUDIOBACKEND_ERR_ENUM
+
+#undef ENUM_VAL
+#undef ENUM_KEY

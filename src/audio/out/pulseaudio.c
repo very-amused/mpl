@@ -10,7 +10,9 @@
 
 #include "audio/buffer.h"
 #include "audio/pcm.h"
+#include "audio/track.h"
 #include "backend.h"
+#include "error.h"
 
 // PulseAudio backend context
 typedef struct Ctx {
@@ -22,16 +24,19 @@ typedef struct Ctx {
 
 	// Audio playback stream
 	pa_stream *stream;
+	pa_stream *next_stream;
 	// PA can't accept planar samples afaict, so we need to know if we need to interlace them.
 	AudioPCM PCM;
 
-	// Current audio playback buffer
-	AudioBuffer *const *playback_buffer;
+	// Playback buffer for current and next audio track
+	AudioBuffer *playback_buffer;
+	AudioBuffer *next_buffer;
 } Ctx;
 
 /* PulseAudio AudioBackend methods */
 static int init(void *ctx__, const AudioPCM *pcm);
 static void deinit(void *ctx__);
+static int prepare(void *ctx__, AudioTrack *track);
 
 /* AudioBackend implementation using PulseAudio */
 AudioBackend AB_PulseAudio = {
@@ -39,6 +44,7 @@ AudioBackend AB_PulseAudio = {
 
 	.init = init,
 	.deinit = deinit,
+	.prepare = prepare,
 
 	.ctx_size = sizeof(Ctx)
 };
@@ -53,6 +59,9 @@ static void pa_stream_state_cb_(pa_stream *stream, void *userdata);
 
 static int init(void *userdata, const AudioPCM *pcm) {
 	Ctx *ctx = userdata;
+
+	ctx->stream = NULL;
+	ctx->next_stream = NULL;
 
 	/* Set up our PulseAudio event loop and connection objects */
 
@@ -128,19 +137,6 @@ static int init(void *userdata, const AudioPCM *pcm) {
 
 	fprintf(stderr, "Connected to PulseAudio!\n");
 
-	// Set up our playback stream
-	pa_sample_spec sample_spec = AudioPCM_pulseaudio_spec(pcm);
-	pa_channel_map channel_map = AudioPCM_pulseaudio_channel_map(pcm);
-	ctx->stream = pa_stream_new(ctx->pa_ctx, BACKEND_APP_NAME, &sample_spec, &channel_map);
-	if (!ctx->stream) {
-		fprintf(stderr, "Error: failed to create PulseAudio stream.\n");
-		DEINIT();
-		return 1;
-	}
-
-	// Set up callbacks
-	pa_stream_set_write_callback(ctx->stream, pa_stream_write_cb_, ctx); // Write audio data for playback
-	pa_stream_set_state_callback(ctx->stream, pa_stream_state_cb_, ctx);
 
 	// TODO: Connect stream
 
@@ -168,6 +164,90 @@ static void deinit(void *ctx__) {
 	pa_threaded_mainloop_free(ctx->loop);
 }
 
+static int prepare(void *ctx__, AudioTrack *t) {
+	Ctx *ctx = ctx__;
+
+	pa_threaded_mainloop_lock(ctx->loop);
+
+#define DEINIT() \
+	fprintf(stderr, "PulseAudio error: %s\n", pa_strerror(pa_context_errno(ctx->pa_ctx))); \
+	pa_threaded_mainloop_unlock(ctx->loop);
+
+
+	// If a stream exists, the caller must use queue() instead
+	if (ctx->stream && pa_stream_get_state(ctx->stream) != PA_STREAM_TERMINATED) {
+		fprintf(stderr, "Warning: don't not use AudioBackend_prepare() to hot queue, prefer AudioBackend_queue() instead.\n");
+		pa_threaded_mainloop_unlock(ctx->loop);
+		return 1;
+	}
+
+	// Set up our playback stream
+	const AudioPCM *pcm = &t->pcm;
+	pa_sample_spec sample_spec = AudioPCM_pulseaudio_spec(pcm);
+	pa_channel_map channel_map = AudioPCM_pulseaudio_channel_map(pcm);
+	ctx->stream = pa_stream_new(ctx->pa_ctx, BACKEND_APP_NAME, &sample_spec, &channel_map);
+	if (!ctx->stream) {
+		fprintf(stderr, "Error: failed to create PulseAudio stream.\n");
+		pa_threaded_mainloop_unlock(ctx->loop);;
+		return 1;
+	}
+
+	// Set up callbacks
+	pa_stream_set_state_callback(ctx->stream, pa_stream_state_cb_, ctx);
+	pa_stream_set_write_callback(ctx->stream, pa_stream_write_cb_, ctx); // Write audio data for playback
+
+#undef DEINIT
+#define DEINIT() \
+	fprintf(stderr, "PulseAudio error: %s\n", pa_strerror(pa_context_errno(ctx->pa_ctx))); \
+	pa_stream_disconnect(ctx->stream); \
+	pa_stream_unref(ctx->stream); \
+	pa_threaded_mainloop_unlock(ctx->loop)
+
+	// Connect the stream
+	pa_buffer_attr buf_attr = AudioPCM_pulseaudio_buffer_attr(pcm);
+	int status = pa_stream_connect_playback(
+			ctx->stream,
+			NULL,
+			&buf_attr,
+			PA_STREAM_START_CORKED & PA_STREAM_START_UNMUTED,
+			NULL, NULL);
+	static const char ERR_CONNECT_STREAM[] = "Error: failed to connect PulseAudio stream.\n";
+	if (status != 0) {
+		fprintf(stderr, ERR_CONNECT_STREAM);
+		DEINIT();
+		return 1;
+	}
+
+	// Check stream state after connecting
+	pa_threaded_mainloop_wait(ctx->loop);
+	if (pa_stream_get_state(ctx->stream) != PA_STREAM_READY) {
+		fprintf(stderr, ERR_CONNECT_STREAM);
+		DEINIT();
+		return 1;
+	}
+
+	// Connect playback buffer to framebuffer and fill framebuffer
+	ctx->playback_buffer = t->buffer;
+	unsigned char *tb; // Transfer buffer
+	size_t tb_size = (size_t)-1;
+	if (pa_stream_begin_write(ctx->stream, (void **)&tb, &tb_size) != 0) {
+		fprintf(stderr, "Warning: failed to populate PulseAudio framebuffer.\n");
+		goto end;
+	}
+	tb_size = AudioBuffer_read(ctx->playback_buffer, tb, tb_size);
+	if (pa_stream_write(ctx->stream, tb, tb_size, NULL, 0, PA_SEEK_RELATIVE) != 0) {
+		fprintf(stderr, "Error: %s", AudioBackend_ERR_name(AudioBackend_FB_WRITE_ERR));
+		goto end;
+	}
+
+#undef DEINIT
+end:
+	pa_threaded_mainloop_unlock(ctx->loop);
+
+
+	return 0;
+}
+
 static void pa_ctx_state_cb_(pa_context *pa_ctx, void *userdata) {
 	Ctx *ctx = userdata;
 
@@ -189,7 +269,7 @@ static void pa_stream_write_cb_(pa_stream *stream, size_t n_bytes, void *userdat
 	Ctx *ctx = userdata;
 
 	// Pull data from playback buffer
-	AudioBuffer *cur_buffer = *ctx->playback_buffer;
+	AudioBuffer *cur_buffer = ctx->playback_buffer;
 	if (!cur_buffer) {
 		pa_stream_cork(stream, 1, NULL, NULL);
 	}

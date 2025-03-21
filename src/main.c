@@ -37,6 +37,8 @@ int main(int argc, char **argv) {
 				url, AudioTrack_ERR_name(at_err));
 		return 1;
 	}
+
+	// TODO: Buffer 5 seconds of audio data
 	
 	// Initialize audio backend
 	AudioBackend ab = AB_PulseAudio;

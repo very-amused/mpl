@@ -21,10 +21,10 @@ typedef struct AudioBackend {
 
 	// Prepare for 'cold' playback of *track from a silent start.
 	// This involves setting up an audio stream with the correct sample rate, format, channels, etc.
-	int (*prepare)(void *ctx, const AudioTrack *track);
+	int (*prepare)(void *ctx, AudioTrack *track);
 	// Queue up a track for upcoming gapless playback off the end of the current track.
 	// Note that only one track can be queued *in the backend* at a time.
-	int (*queue)(void *ctx, const AudioTrack *track);
+	int (*queue)(void *ctx, AudioTrack *track);
 
 	// Private backend-specific context
 	const size_t ctx_size;

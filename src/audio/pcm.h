@@ -13,7 +13,11 @@ typedef struct AudioPCM {
 #ifdef AO_PULSEAUDIO
 #include <pulse/sample.h>
 #include <pulse/channelmap.h>
+#include <pulse/def.h>
+
+#define MPL_PA_BUF_MS 100
 
 pa_sample_spec AudioPCM_pulseaudio_spec(const AudioPCM *pcm);
 pa_channel_map AudioPCM_pulseaudio_channel_map(const AudioPCM *pcm);
+pa_buffer_attr AudioPCM_pulseaudio_buffer_attr(const AudioPCM *pcm);
 #endif

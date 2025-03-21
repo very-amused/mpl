@@ -1,10 +1,12 @@
 #include "pcm.h"
 
 #include <libavutil/samplefmt.h>
+#include <stdint.h>
 
 #ifdef AO_PULSEAUDIO
 #include <pulse/sample.h>
 #include <pulse/channelmap.h>
+#include <pulse/def.h>
 
 pa_sample_spec AudioPCM_pulseaudio_spec(const AudioPCM *pcm) {
 	pa_sample_spec ss;
@@ -49,5 +51,22 @@ pa_channel_map AudioPCM_pulseaudio_channel_map(const AudioPCM *pcm) {
 	// FIXME FIXME FIXME
 
 	return cm;
+}
+
+pa_buffer_attr AudioPCM_pulseaudio_buffer_attr(const AudioPCM *pcm) {
+	const uint32_t buf_size = av_samples_get_buffer_size(
+			NULL,
+			pcm->n_channels,
+			pcm->sample_rate * (MPL_PA_BUF_MS / 1000.0),
+			pcm->sample_fmt,
+			0);
+	pa_buffer_attr buf_attr = {
+		.maxlength = -1,
+		.tlength = buf_size,
+		.prebuf = 0, // Disable prebuffering threshold. Stream must manually be corked to start
+		.fragsize = -1,
+		.minreq = -1
+	};
+	return buf_attr;
 }
 #endif
