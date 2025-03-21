@@ -11,11 +11,18 @@ src = []
 include = ['src']
 
 # Preprocessor defines
-cpp_defines = []
+cflags = []
 if get_option('pulseaudio').enabled()
-	cpp_defines += '-DAO_PULSEAUDIO'
+	cflags += '-DAO_PULSEAUDIO'
+endif
+
+# Debug options
+if get_option('buildtype') == 'debug'
+	cflags += '-O0'
+	cflags += '-fsanitize=address'
+	cflags += '-fno-omit-frame-pointer'
 endif
 
 subdir('src')
 
-executable('mpl', src, include_directories : include, dependencies : deps, c_args: cpp_defines)
+executable('mpl', src, include_directories : include, dependencies : deps, c_args : cflags, link_args: cflags)

@@ -41,14 +41,17 @@ size_t AudioBuffer_write(AudioBuffer *ab, unsigned char *src, size_t n) {
 	int wr = atomic_load(&ab->wr);
 	const int rd = atomic_load(&ab->rd);
 
-	while (count < n && (wr+1) % 10 != rd) {
+	while (count < n && (wr+1) % ab->line_size != rd) {
 		// Write chunk
 		int chunk_size = wr >= rd ? ab->line_size - wr : (rd-1) - wr;
+		if (chunk_size > n) {
+			chunk_size = n;
+		}
 		memcpy(&ab->data[wr], &src[count], chunk_size);
 
 		// Increment write idx and count
 		wr++;
-		wr %= 10;
+		wr %= ab->line_size;
 		count += chunk_size;
 	}
 

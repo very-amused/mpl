@@ -17,6 +17,8 @@
 #include <libavutil/error.h>
 #include <libavformat/avformat.h>
 #include <libavcodec/codec.h>
+#include <stdlib.h>
+#include <string.h>
 
 
 enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url) {
@@ -155,27 +157,65 @@ static enum AudioTrack_ERR AudioTrack_buffer_packet(AudioTrack *t, size_t *n_byt
 		return AudioTrack_PACKET_ERR;
 	}
 
-	// Buffer each frame we decode
 	const bool is_planar = av_sample_fmt_is_planar(t->pcm.sample_fmt);
+	unsigned char *interleave_buf = NULL; // Intermediate buffer used to interleave planar samples before they're written to the playback buffer
+	unsigned int interleave_buf_size = 0;
+
+	// Buffer each frame we decode
 	status = avcodec_receive_frame(t->avc_ctx, t->av_frame);
 	for (; status >= 0; status = avcodec_receive_frame(t->avc_ctx, t->av_frame)) {
 		const AVFrame *frame = t->av_frame;
+		size_t frame_size = frame->nb_samples * t->pcm.n_channels * sample_size;
 		if (is_planar) {
-			// oh shit
-		}
+			// Interleave samples
+			av_fast_malloc(&interleave_buf, &interleave_buf_size, frame_size);
+
+			int interleave_idx = 0;
+			for (size_t samp = 0; samp < frame->nb_samples; samp++) {
+				for (size_t ch = 0; ch < t->pcm.n_channels; ch++) {
+					static const size_t n_data = sizeof(frame->data) / sizeof(frame->data[0]);
+					unsigned char *line = ch < n_data ? frame->data[ch] : frame->extended_data[ch];
+					unsigned char *sample = &line[samp];
+					memcpy(&interleave_buf[interleave_idx], sample, sample_size);
+					interleave_idx += sample_size;
+				}
+			}
+
+			// Buffer interleaved result
+			size_t n = 0;
+			while (n < frame_size) { // FIXME, use semaphore instead of spinning
+				n += AudioBuffer_write(t->buffer, &interleave_buf[n], frame_size - n);
+			}
+			*n_bytes += n;
+		} else {
+			// Samples are already interleaved, this is easy
+			size_t n = 0;
+			while (n < frame_size) { // FIXME
+				n += AudioBuffer_write(t->buffer, &frame->data[0][n], frame_size - n);
+			}
+			*n_bytes += n;
+		} 
 	}
+	av_freep(&interleave_buf);
 
 	return AudioTrack_OK;
 }
 
 enum AudioTrack_ERR AudioTrack_buffer_ms(AudioTrack *t, enum AudioSeek dir, const uint32_t ms) {
 	// Compute the number of bytes we want to buffer
-	size_t n_bytes = AudioPCM_buffer_size(&t->pcm, ms);
-	const size_t sample_size = av_get_bytes_per_sample(t->pcm.sample_fmt);
+	const size_t n_bytes = AudioPCM_buffer_size(&t->pcm, ms);
 
 	// Read packets, convert them to frames, and write them to the buffer
 	size_t n = 0; // # of bytes written
-	while (n < sample_size) {
+	while (n < n_bytes) {
+		size_t packet_n;
+		enum AudioTrack_ERR err = AudioTrack_buffer_packet(t, &packet_n);
+		if (err == AudioTrack_EOF) {
+			return err;
+		} else if (err != AudioTrack_OK) {
+			return err;
+		}
+		n += packet_n;
 	}
 
 	return AudioTrack_OK;
