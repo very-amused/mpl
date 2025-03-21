@@ -15,7 +15,7 @@ typedef struct AudioBackend {
 	const char *name; // Backend name
 
 	// Initialize the audio backend for playback.
-	int (*init)(void *ctx);
+	int (*init)(void *ctx, const AudioPCM pcm);
 	// Deinitialize the audio backend
 	void (*deinit)(void *ctx);
 
@@ -33,7 +33,6 @@ typedef struct AudioBackend {
 
 
 // Initialize an AudioBackend for playback
-int AudioBackend_init(AudioBackend *ab);
-
+int AudioBackend_init(AudioBackend *ab, const AudioPCM pcm);
 // Deinitialize an AudioBackend
 void AudioBackend_deinit(AudioBackend *ab);

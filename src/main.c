@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
 	
 	// Initialize audio backend
 	AudioBackend ab = AB_PulseAudio;
-	if (AudioBackend_init(&ab) != 0) {
+	if (AudioBackend_init(&ab, track.audio->pcm) != 0) {
 		return 1;
 	}
 

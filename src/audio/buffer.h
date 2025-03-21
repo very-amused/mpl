@@ -1,16 +1,12 @@
 #pragma once
+#include "pcm.h"
+
 #include <stddef.h>
 #include <stdint.h>
 #include <libavutil/samplefmt.h>
 #include <stdio.h>
 #include <stdatomic.h>
 
-// Sampling parameters used to interpret decoded PCM frames
-typedef struct AudioPCM {
-	enum AVSampleFormat sample_fmt;
-	uint32_t sample_rate;
-	uint8_t n_channels;
-} AudioPCM;
 
 // A ring buffer used to hold decoded PCM samples
 typedef struct AudioBuffer {

@@ -10,9 +10,12 @@ deps += dependency('libavutil', version : '>=58.0.0')
 src = []
 include = ['src']
 
-# Environment
-env = environment()
+# Preprocessor defines
+cpp_defines = []
+if get_option('pulseaudio').enabled()
+	cpp_defines += '-DAO_PULSEAUDIO'
+endif
 
 subdir('src')
 
-executable('mpl', src, include_directories : include, dependencies : deps)
+executable('mpl', src, include_directories : include, dependencies : deps, c_args: cpp_defines)

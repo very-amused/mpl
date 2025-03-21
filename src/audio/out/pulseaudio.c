@@ -1,10 +1,13 @@
 #include <pulse/def.h>
 #include <pulse/proplist.h>
+#include <pulse/sample.h>
 #include <pulse/thread-mainloop.h>
 #include <pulse/context.h>
 #include <pulse/stream.h>
 #include <pulse/error.h>
 
+#include "audio/buffer.h"
+#include "audio/pcm.h"
 #include "backend.h"
 
 // PulseAudio backend context
@@ -12,19 +15,18 @@ typedef struct Ctx {
 	// Asynchronous event loop
 	pa_threaded_mainloop *loop;
 
-	// PA connection properties
-	pa_proplist *props;
 	// PA connection context
 	pa_context *pa_ctx;
 
 	// Audio playback stream
 	pa_stream *stream;
+	// PA can't accept planar samples afaict, so we need to know if we need to interlace them.
+	AudioPCM PCM;
 } Ctx;
 
 /* PulseAudio AudioBackend methods */
-static int init(void *ctx__);
+static int init(void *ctx__, const AudioPCM pcm);
 static void deinit(void *ctx__);
-
 
 /* AudioBackend implementation using PulseAudio */
 AudioBackend AB_PulseAudio = {
@@ -40,7 +42,7 @@ AudioBackend AB_PulseAudio = {
 // Connection state change callback
 static void pa_ctx_state_cb(pa_context *pa_ctx, void *userdata);
 
-static int init(void *userdata) {
+static int init(void *userdata, const AudioPCM pcm) {
 	Ctx *ctx = userdata;
 
 	/* Set up our PulseAudio event loop and connection objects */
@@ -59,16 +61,9 @@ static int init(void *userdata) {
 	pa_threaded_mainloop_free(ctx->loop)
 
 	// Initialize connection context
-	ctx->props = pa_proplist_new();
-	if (!ctx->props) {
-		fprintf(stderr, "Error: failed to create PulseAudio property list.\n");
-		DEINIT();
-		return 1;
-	}
-	ctx->pa_ctx = pa_context_new_with_proplist(
+	ctx->pa_ctx = pa_context_new(
 			pa_threaded_mainloop_get_api(ctx->loop),
-			BACKEND_APP_NAME,
-			ctx->props);
+			BACKEND_APP_NAME);
 	if (!ctx->pa_ctx) {
 		fprintf(stderr, "Error: failed to create PulseAudio connection context.\n");
 		DEINIT();
@@ -125,6 +120,12 @@ static int init(void *userdata) {
 	fprintf(stderr, "Connected to PulseAudio!\n");
 
 	// TODO: set up our playback stream
+	/*
+	pa_sample_spec ss;
+	ss.channels = pcm->n_channels;
+	pa_sample_format_t pa_sample_fmt;
+	pa_stream_new(ctx->pa_ctx, BACKEND_APP_NAME, pa_sample_spec{});
+	*/
 
 #undef DEINIT
 
@@ -144,7 +145,6 @@ static void deinit(void *ctx__) {
 	// Disconnect from the PulseAudio server and free our context
 	pa_context_disconnect(ctx->pa_ctx);
 	pa_context_unref(ctx->pa_ctx);
-	pa_proplist_free(ctx->props);
 
 	// Free the main loop
 	pa_threaded_mainloop_free(ctx->loop);
