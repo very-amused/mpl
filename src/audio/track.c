@@ -1,8 +1,11 @@
 #include "track.h"
 #include "../error.h"
+#include "audio/buffer.h"
+#include "audio/pcm.h"
 
 #include <errno.h>
 #include <stddef.h>
+#include <stdbool.h>
 #include <libavcodec/avcodec.h>
 #include <libavcodec/codec_par.h>
 #include <libavcodec/packet.h>
@@ -109,7 +112,7 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url) {
 	av_packet_unref(t->av_packet);
 	av_frame_unref(t->av_frame);
 
-	return 0;
+	return AudioTrack_OK;
 }
 
 void AudioTrack_deinit(AudioTrack *t) {
@@ -125,6 +128,60 @@ void AudioTrack_deinit(AudioTrack *t) {
 	avformat_close_input(&t->avf_ctx);
 }
 
+// Buffer one packet worth of frames and set n_bytes to the number of bytes buffered in doing so.
+static enum AudioTrack_ERR AudioTrack_buffer_packet(AudioTrack *t, size_t *n_bytes) {
+	char av_err[AV_ERROR_MAX_STRING_SIZE]; // libav* library error message buffer
+	const size_t sample_size = av_get_bytes_per_sample(t->pcm.sample_fmt);
+
+	*n_bytes = 0;
+
+	// Read packet
+	int status;
+	do {
+		status = av_read_frame(t->avf_ctx, t->av_packet);
+		if (status < 0) {
+			if (status == AVERROR(EOF)) {
+				return AudioTrack_EOF;
+			}
+			av_perror(status, av_err);
+			return AudioTrack_PACKET_ERR;
+		}
+	} while (t->av_packet->stream_index != t->stream_no);
+
+	// Decode into frames
+	status = avcodec_send_packet(t->avc_ctx, t->av_packet);
+	if (status < 0) {
+		av_perror(status, av_err);
+		return AudioTrack_PACKET_ERR;
+	}
+
+	// Buffer each frame we decode
+	const bool is_planar = av_sample_fmt_is_planar(t->pcm.sample_fmt);
+	status = avcodec_receive_frame(t->avc_ctx, t->av_frame);
+	for (; status >= 0; status = avcodec_receive_frame(t->avc_ctx, t->av_frame)) {
+		const AVFrame *frame = t->av_frame;
+		if (is_planar) {
+			// oh shit
+		}
+	}
+
+	return AudioTrack_OK;
+}
+
+enum AudioTrack_ERR AudioTrack_buffer_ms(AudioTrack *t, enum AudioSeek dir, const uint32_t ms) {
+	// Compute the number of bytes we want to buffer
+	size_t n_bytes = AudioPCM_buffer_size(&t->pcm, ms);
+	const size_t sample_size = av_get_bytes_per_sample(t->pcm.sample_fmt);
+
+	// Read packets, convert them to frames, and write them to the buffer
+	size_t n = 0; // # of bytes written
+	while (n < sample_size) {
+	}
+
+	return AudioTrack_OK;
+}
+
 double AudioTrack_seconds(AVRational time_base, int64_t value) {
 	return (double)(time_base.num * value) / time_base.den;
 }
+

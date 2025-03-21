@@ -10,6 +10,7 @@
 // ref: https://kubyshkin.name/posts/c-language-enums-tips-and-tricks/
 #define AUDIOTRACK_ERR_ENUM(VARIANT) \
 	VARIANT(AudioTrack_OK) \
+	VARIANT(AudioTrack_EOF) \
 	VARIANT(AudioTrack_NOT_FOUND) \
 	VARIANT(AudioTrack_IO_ERR) \
 	VARIANT(AudioTrack_NO_STREAM) \
@@ -46,6 +47,7 @@ static inline const char *AudioBackend_ERR_name(enum AudioBackend_ERR err) {
 	switch (err) {
 		AUDIOBACKEND_ERR_ENUM(ENUM_KEY)
 	}
+	return NULL;
 }
 #undef AUDIOBACKEND_ERR_ENUM
 

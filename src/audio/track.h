@@ -1,4 +1,5 @@
 #pragma once
+#include "audio/seek.h"
 #include "buffer.h"
 
 #include <libavcodec/packet.h>
@@ -35,6 +36,9 @@ typedef struct AudioTrack {
 
 enum AudioTrack_ERR AudioTrack_init(AudioTrack *at, const char *url);
 void AudioTrack_deinit(AudioTrack *at);
+
+// Buffer track data. AudioSeek_Relative will buffer onto the end of the Track's current AudioBuffer.
+enum AudioTrack_ERR AudioTrack_buffer_ms(AudioTrack *at, enum AudioSeek dir, const uint32_t ms);
 
 // Convert a scalar in time_base units into a double precision number of seconds
 double AudioTrack_seconds(AVRational time_base, int64_t value);

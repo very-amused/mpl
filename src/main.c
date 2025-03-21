@@ -1,5 +1,6 @@
 #include "audio/out/backend.h"
 #include "audio/out/backends.h"
+#include "audio/seek.h"
 #include "audio/track.h"
 #include "track.h"
 #include "error.h"
@@ -39,6 +40,12 @@ int main(int argc, char **argv) {
 	}
 
 	// TODO: Buffer 5 seconds of audio data
+	at_err = AudioTrack_buffer_ms(track.audio, AudioSeek_Relative, 5000);
+	if (at_err != AudioTrack_OK) {
+		fprintf(stderr, "Failed to fill initial buffer for track %s, %s\n",
+				url, AudioTrack_ERR_name(at_err));
+		return 1;
+	}
 	
 	// Initialize audio backend
 	AudioBackend ab = AB_PulseAudio;

@@ -10,6 +10,9 @@ typedef struct AudioPCM {
 	uint8_t n_channels;
 } AudioPCM;
 
+// Get the buffer size, in bytes, for a buffer holding {ms} milliseconds of PCM data.
+uint32_t AudioPCM_buffer_size(const AudioPCM *pcm, const uint32_t ms);
+
 #ifdef AO_PULSEAUDIO
 #include <pulse/sample.h>
 #include <pulse/channelmap.h>
