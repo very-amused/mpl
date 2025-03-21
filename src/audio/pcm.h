@@ -10,8 +10,10 @@ typedef struct AudioPCM {
 	uint8_t n_channels;
 } AudioPCM;
 
-#ifdef HAS_AO_PULSEAUDIO
+#ifdef AO_PULSEAUDIO
 #include <pulse/sample.h>
+#include <pulse/channelmap.h>
 
-pa_sample_spec AudioPCM_pulseaudio_spec(const AudioPCM pcm);
+pa_sample_spec AudioPCM_pulseaudio_spec(const AudioPCM *pcm);
+pa_channel_map AudioPCM_pulseaudio_channel_map(const AudioPCM *pcm);
 #endif

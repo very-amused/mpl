@@ -25,12 +25,12 @@ int main(int argc, char **argv) {
 	// Initialize track
 	Track track;
 	Track_init(&track, url, url_len);
-	// TODO: initialize AudioTrack
 	track.audio = malloc(sizeof(AudioTrack));
 	if (!track.audio) {
 		fprintf(stderr, "Failed to allocate AudioTrack\n");
 		return 1;
 	}
+	// Initialize track audio
 	enum AudioTrack_ERR at_err = AudioTrack_init(track.audio, url);
 	if (at_err != AudioTrack_OK) {
 		fprintf(stderr, "Failed to initialize audio buffering for track %s, %s\n",
@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
 	
 	// Initialize audio backend
 	AudioBackend ab = AB_PulseAudio;
-	if (AudioBackend_init(&ab, track.audio->pcm) != 0) {
+	if (AudioBackend_init(&ab, &track.audio->pcm) != 0) {
 		return 1;
 	}
 

@@ -4,16 +4,17 @@
 
 #ifdef AO_PULSEAUDIO
 #include <pulse/sample.h>
+#include <pulse/channelmap.h>
 
-pa_sample_spec AudioPCM_pulseaudio_spec(const AudioPCM pcm) {
+pa_sample_spec AudioPCM_pulseaudio_spec(const AudioPCM *pcm) {
 	pa_sample_spec ss;
 	pa_sample_spec_init(&ss);
 
 	// Set channels
-	ss.channels = pcm.n_channels;
+	ss.channels = pcm->n_channels;
 
 	// Set sample format
-	switch (pcm.sample_fmt) {
+	switch (pcm->sample_fmt) {
 		case AV_SAMPLE_FMT_U8:
 		case AV_SAMPLE_FMT_U8P:
 			ss.format = PA_SAMPLE_U8;
@@ -36,8 +37,17 @@ pa_sample_spec AudioPCM_pulseaudio_spec(const AudioPCM pcm) {
 	}
 
 	// Set sample rate
-	ss.rate = pcm.sample_rate;
+	ss.rate = pcm->sample_rate;
 
 	return ss;
+}
+
+pa_channel_map AudioPCM_pulseaudio_channel_map(const AudioPCM *pcm) {
+	pa_channel_map cm;
+	pa_channel_map_init_stereo(&cm);
+
+	// FIXME FIXME FIXME
+
+	return cm;
 }
 #endif
