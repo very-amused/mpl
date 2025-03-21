@@ -26,6 +26,11 @@ typedef struct AudioBackend {
 	// Note that only one track can be queued *in the backend* at a time.
 	int (*queue)(void *ctx, AudioTrack *track);
 
+	// Play/pause the current AudioTrack (prepared using prepare() or queue()).
+	// If p == 1, the track is played. If p == 0, the track is paused.
+	// Returns 0/1 to indicate the track's current play/paused state, or negative on error.
+	int (*play)(void *ctx, int p);
+
 	// Private backend-specific context
 	const size_t ctx_size;
 	void *ctx;
