@@ -186,14 +186,6 @@ static enum AudioTrack_ERR AudioTrack_buffer_packet(AudioTrack *t, size_t *n_byt
 
 			// Buffer interleaved result
 			frame_data = interleave_buf;
-			size_t n = 0;
-			while (n < frame_size) {
-				n += AudioBuffer_write(t->buffer, &frame_data[n], frame_size - n);
-				if (n < frame_size) {
-					sem_wait(&t->buffer->rd_sem);
-				}
-			}
-			*n_bytes += n;
 		} else {
 			// Our result is already interleaved
 			frame_data = frame->data[0];
