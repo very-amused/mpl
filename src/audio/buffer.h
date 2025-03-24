@@ -6,6 +6,7 @@
 #include <libavutil/samplefmt.h>
 #include <stdio.h>
 #include <stdatomic.h>
+#include <semaphore.h>
 
 
 // A ring buffer used to hold decoded PCM samples
@@ -14,6 +15,9 @@ typedef struct AudioBuffer {
 
 	unsigned char *data;
 	atomic_int rd, wr; // Read/write indices relative to line_size
+
+	// Semaphores providing read/write notifications to minimize spinning
+	sem_t rd_sem, wr_sem;
 } AudioBuffer;
 
 // Initialize an AudioBuffer for use

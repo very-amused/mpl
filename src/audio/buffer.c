@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdatomic.h>
+#include <semaphore.h>
 
 int AudioBuffer_init(AudioBuffer *buf, const AudioPCM *pcm) {
 	// To start, we're going to use a fixed buffer time length of 30s.
@@ -28,6 +29,10 @@ int AudioBuffer_init(AudioBuffer *buf, const AudioPCM *pcm) {
 	}
 	buf->rd = 0;
 	buf->wr = 0;
+
+	// Initialize semaphores
+	sem_init(&buf->rd_sem, 0, 1);
+	sem_init(&buf->wr_sem, 0, 1);
 
 	return 0;
 }
@@ -63,6 +68,8 @@ size_t AudioBuffer_write(AudioBuffer *buf, unsigned char *src, size_t n) {
 
 	// Store new wr index
 	atomic_store(&buf->wr, wr);
+	// Notify any parties waiting on a write
+	sem_post(&buf->wr_sem);
 
 	return count;
 }
@@ -92,6 +99,8 @@ size_t AudioBuffer_read(AudioBuffer *buf, unsigned char *dst, size_t n) {
 
 	// Store new rd index
 	atomic_store(&buf->rd, rd);
+	// Notify any parties waiting on a read
+	sem_post(&buf->rd_sem);
 
 	return count;
 }

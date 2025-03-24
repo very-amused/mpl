@@ -4,6 +4,7 @@
 #include "audio/pcm.h"
 
 #include <errno.h>
+#include <semaphore.h>
 #include <stddef.h>
 #include <stdbool.h>
 #include <libavcodec/avcodec.h>
@@ -166,6 +167,8 @@ static enum AudioTrack_ERR AudioTrack_buffer_packet(AudioTrack *t, size_t *n_byt
 	for (; status >= 0; status = avcodec_receive_frame(t->avc_ctx, t->av_frame)) {
 		const AVFrame *frame = t->av_frame;
 		size_t frame_size = frame->nb_samples * t->pcm.n_channels * sample_size;
+
+		unsigned char *frame_data = NULL;
 		if (is_planar) {
 			// Interleave samples
 			av_fast_malloc(&interleave_buf, &interleave_buf_size, frame_size);
@@ -182,19 +185,28 @@ static enum AudioTrack_ERR AudioTrack_buffer_packet(AudioTrack *t, size_t *n_byt
 			}
 
 			// Buffer interleaved result
+			frame_data = interleave_buf;
 			size_t n = 0;
-			while (n < frame_size) { // FIXME, use semaphore instead of spinning
-				n += AudioBuffer_write(t->buffer, &interleave_buf[n], frame_size - n);
+			while (n < frame_size) {
+				n += AudioBuffer_write(t->buffer, &frame_data[n], frame_size - n);
+				if (n < frame_size) {
+					sem_wait(&t->buffer->rd_sem);
+				}
 			}
 			*n_bytes += n;
 		} else {
-			// Samples are already interleaved, this is easy
-			size_t n = 0;
-			while (n < frame_size) { // FIXME
-				n += AudioBuffer_write(t->buffer, &frame->data[0][n], frame_size - n);
-			}
-			*n_bytes += n;
+			// Our result is already interleaved
+			frame_data = frame->data[0];
 		}
+
+		size_t n = 0;
+		while (n < frame_size) {
+			n += AudioBuffer_write(t->buffer, &frame_data[n], frame_size - n);
+			if (n < frame_size) {
+				sem_wait(&t->buffer->rd_sem);
+			}
+		}
+		*n_bytes += n;
 	}
 	av_freep(&interleave_buf);
 
