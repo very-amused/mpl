@@ -170,12 +170,12 @@ static enum AudioTrack_ERR AudioTrack_buffer_packet(AudioTrack *t, size_t *n_byt
 			// Interleave samples
 			av_fast_malloc(&interleave_buf, &interleave_buf_size, frame_size);
 
-			int interleave_idx = 0;
+			size_t interleave_idx = 0;
 			for (size_t samp = 0; samp < frame->nb_samples; samp++) {
 				for (size_t ch = 0; ch < t->pcm.n_channels; ch++) {
 					static const size_t n_data = sizeof(frame->data) / sizeof(frame->data[0]);
 					unsigned char *line = ch < n_data ? frame->data[ch] : frame->extended_data[ch];
-					unsigned char *sample = &line[samp];
+					unsigned char *sample = &line[samp * sample_size];
 					memcpy(&interleave_buf[interleave_idx], sample, sample_size);
 					interleave_idx += sample_size;
 				}
@@ -194,7 +194,7 @@ static enum AudioTrack_ERR AudioTrack_buffer_packet(AudioTrack *t, size_t *n_byt
 				n += AudioBuffer_write(t->buffer, &frame->data[0][n], frame_size - n);
 			}
 			*n_bytes += n;
-		} 
+		}
 	}
 	av_freep(&interleave_buf);
 
