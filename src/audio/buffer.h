@@ -17,13 +17,13 @@ typedef struct AudioBuffer {
 } AudioBuffer;
 
 // Initialize an AudioBuffer for use
-int AudioBuffer_init(AudioBuffer *ab, const AudioPCM *pcm);
+int AudioBuffer_init(AudioBuffer *buf, const AudioPCM *pcm);
 // Deinitialize an AudioBuffer for freeing
-void AudioBuffer_deinit(AudioBuffer *ab);
+void AudioBuffer_deinit(AudioBuffer *buf);
 
 // Write n bytes from *src to *ab. Never blocks.
 // Returns the number of bytes actually written.
-size_t AudioBuffer_write(AudioBuffer *ab, unsigned char *src, size_t n);
+size_t AudioBuffer_write(AudioBuffer *buf, unsigned char *src, size_t n);
 // Read n bytes from *ab to *dst. Never blocks.
 // Returns the number of bytes actually read.
-size_t AudioBuffer_read(AudioBuffer *ab, unsigned char *dst, size_t n);
+size_t AudioBuffer_read(AudioBuffer *buf, unsigned char *dst, size_t n);

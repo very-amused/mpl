@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
 	AudioBackend_prepare(&ab, track.audio);
 	AudioBackend_play(&ab, 0);
 
-	sleep(10);
+	sleep(30);
 
 	// Cleanup
 	AudioBackend_deinit(&ab);

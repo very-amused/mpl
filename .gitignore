@@ -8,3 +8,4 @@ compile_commands.json
 *.a
 build
 test/*.mp3
+test/*.flac

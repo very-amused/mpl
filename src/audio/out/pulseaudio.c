@@ -67,8 +67,8 @@ static void pa_stream_success_cb_(pa_stream *stream, int success, void *userdata
 static int init(void *userdata, const AudioPCM *pcm) {
 	Ctx *ctx = userdata;
 
-	ctx->stream = NULL;
-	ctx->next_stream = NULL;
+	ctx->stream = ctx->next_stream = NULL;
+	ctx->playback_buffer = ctx->next_buffer = NULL;
 
 	/* Set up our PulseAudio event loop and connection objects */
 
@@ -291,13 +291,21 @@ static void pa_ctx_state_cb_(pa_context *pa_ctx, void *userdata) {
 static void pa_stream_write_cb_(pa_stream *stream, size_t n_bytes, void *userdata) {
 	Ctx *ctx = userdata;
 
-	// Pull data from playback buffer
-	AudioBuffer *cur_buffer = ctx->playback_buffer;
-	if (!cur_buffer) {
-		pa_stream_cork(stream, 1, NULL, NULL);
+	if (!(ctx->stream && ctx->playback_buffer)) {
+		return;
 	}
 
 	// Allocate destination buffer in PA server memory to minimize copying
+	void *tb; // Transfer buffer
+	size_t tb_size = n_bytes;
+	if (pa_stream_begin_write(ctx->stream, &tb, &tb_size) != 0 || tb == NULL) {
+		fprintf(stderr, "Warning: failed to populated PulseAudio framebuffer.\n");
+		return;
+	}
+	tb_size = AudioBuffer_read(ctx->playback_buffer, tb, tb_size);
+	if (pa_stream_write(ctx->stream, tb, tb_size, NULL, 0, PA_SEEK_RELATIVE) != 0) {
+		fprintf(stderr, "Error in write callback\n");
+	}
 }
 
 static void pa_stream_state_cb_(pa_stream *stream, void *userdata) {
