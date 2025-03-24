@@ -57,7 +57,11 @@ int main(int argc, char **argv) {
 	AudioBackend_prepare(&ab, track.audio);
 	AudioBackend_play(&ab, 0);
 
-	sleep(30);
+	// Keep buffering data
+	while (at_err == AudioTrack_OK) {
+		at_err = AudioTrack_buffer_ms(track.audio, AudioSeek_Relative, 5000);
+	}
+
 
 	// Cleanup
 	AudioBackend_deinit(&ab);

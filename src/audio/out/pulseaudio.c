@@ -241,9 +241,7 @@ static int prepare(void *ctx__, AudioTrack *t) {
 		fprintf(stderr, "Warning: failed to populate PulseAudio framebuffer.\n");
 		goto end;
 	}
-	fprintf(stderr, "got tb_size of %zu\n", tb_size);
 	tb_size = AudioBuffer_read(ctx->playback_buffer, tb, tb_size);
-	fprintf(stderr, "shrunk to %zu\n", tb_size);
 	if (pa_stream_write(ctx->stream, tb, tb_size, NULL, 0, PA_SEEK_RELATIVE) != 0) {
 		fprintf(stderr, "Error: %s\n", AudioBackend_ERR_name(AudioBackend_FB_WRITE_ERR));
 		goto end;
