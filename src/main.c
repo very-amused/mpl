@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
 	}
 
 	// Play the track
-	Audiobackend_prepare(&ab, track.audio);
+	AudioBackend_prepare(&ab, track.audio);
 	AudioBackend_play(&ab, 0);
 
 	sleep(10);

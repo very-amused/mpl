@@ -44,7 +44,7 @@ void AudioBackend_deinit(AudioBackend *ab);
 
 // Prepare for 'cold' playback of *track from a silent start.
 // This involves setting up an audio stream with the correct sample rate, format, channels, etc.
-int Audiobackend_prepare(AudioBackend *ab, AudioTrack *track);
+int AudioBackend_prepare(AudioBackend *ab, AudioTrack *track);
 
 // Play/pause the current AudioTrack (prepared using prepare() or queue()).
 // If pause == 1, the track state is set to paused. Otherwise, the track state is set to playing.

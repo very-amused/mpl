@@ -20,7 +20,7 @@ void AudioBackend_deinit(AudioBackend *ab) {
 	free(ab->ctx);
 }
 
-int Audiobackend_prepare(AudioBackend *ab, AudioTrack *track) {
+int AudioBackend_prepare(AudioBackend *ab, AudioTrack *track) {
 	return ab->prepare(ab->ctx, track);
 }
 

@@ -1,88 +1,91 @@
 #include "buffer.h"
 #include <libavutil/mem.h>
+#include <libavutil/samplefmt.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdatomic.h>
 
-int AudioBuffer_init(AudioBuffer *ab, const AudioPCM *pcm) {
+int AudioBuffer_init(AudioBuffer *buf, const AudioPCM *pcm) {
 	// To start, we're going to use a fixed buffer time length of 30s.
 	// Later, we'll use track header info to decide how big the initial buffer allocation is.
 	static const size_t TIME_LEN = 30;
 
 	// Compute line and buffer sizes
-	ab->buf_size = av_samples_get_buffer_size(
-			&ab->line_size,
+	buf->size = av_samples_get_buffer_size(
+			NULL,
 			pcm->n_channels,
 			(pcm->sample_rate * TIME_LEN) + 1, // Add an extra sample for ring buffer alignment
 			pcm->sample_fmt, 0);
-	if (ab->buf_size < 0) {
+	if (buf->size < 0) {
 		return 1;
 	}
 
 	// Allocate buffer and set r/w indices
-	ab->data = av_malloc(ab->buf_size);
-	if (!ab->data) {
+	buf->data = malloc(buf->size);
+	if (!buf->data) {
 		return 1;
 	}
-	ab->rd = ab->wr = 0;
+	buf->rd = 0;
+	buf->wr = 0;
 
-	return 0;	
+	return 0;
 }
 
-void AudioBuffer_deinit(AudioBuffer *ab) {
-	av_free(ab->data);
-	ab->data = NULL;
+void AudioBuffer_deinit(AudioBuffer *buf) {
+	av_free(buf->data);
+	buf->data = NULL;
 }
 
 
-size_t AudioBuffer_write(AudioBuffer *ab, unsigned char *src, size_t n) {
+size_t AudioBuffer_write(AudioBuffer *buf, unsigned char *src, size_t n) {
 	size_t count = 0; // # of bytes written
 
-	int wr = atomic_load(&ab->wr);
-	const int rd = atomic_load(&ab->rd);
+	int wr = atomic_load(&buf->wr);
+	const int rd = atomic_load(&buf->rd);
 
-	while (count < n && (wr+1) % ab->line_size != rd) {
+	while (count < n && (wr+1) % buf->size != rd) {
 		// Write chunk
-		int chunk_size = wr >= rd ? ab->line_size - wr : (rd-1) - wr;
+		int chunk_size = wr >= rd ? buf->size - wr : (rd-1) - wr;
 		if (chunk_size > n) {
 			chunk_size = n;
 		}
-		memcpy(&ab->data[wr], &src[count], chunk_size);
+		memcpy(&buf->data[wr], &src[count], chunk_size);
 
 		// Increment write idx and count
 		wr += chunk_size;
-		wr %= ab->line_size;
+		wr %= buf->size;
 		count += chunk_size;
 	}
 
 	// Store new wr index
-	atomic_store(&ab->wr, wr);
+	atomic_store(&buf->wr, wr);
 
 	return count;
 }
 
-size_t AudioBuffer_read(AudioBuffer *ab, unsigned char *dst, size_t n) {
+size_t AudioBuffer_read(AudioBuffer *buf, unsigned char *dst, size_t n) {
 	size_t count = 0; // # of bytes read
 
-	const int wr = atomic_load(&ab->wr);
-	int rd = atomic_load(&ab->rd);
+	const int wr = atomic_load(&buf->wr);
+	int rd = atomic_load(&buf->rd);
 
 	while (count < n && rd != wr) {
 		// Read chunk
-		int chunk_size = rd < wr ? wr - rd : ab->line_size - rd;
+		int chunk_size = rd < wr ? wr - rd : buf->size - rd;
 		if (chunk_size > n) {
 			chunk_size = n;
 		}
-		memcpy(&dst[count], &ab->data[rd], chunk_size);
+		memcpy(&dst[count], &buf->data[rd], chunk_size);
 
 		// Increment read idx and count
 		rd += chunk_size;
-		rd %= ab->line_size;
+		rd %= buf->size;
 		count += chunk_size;
 	}
 
 	// Store new rd index
-	atomic_store(&ab->rd, rd);
+	atomic_store(&buf->rd, rd);
 
 	return count;
 }

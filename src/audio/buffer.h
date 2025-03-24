@@ -10,13 +10,7 @@
 
 // A ring buffer used to hold decoded PCM samples
 typedef struct AudioBuffer {
-	// The raw byte size of the buffer.
-	ssize_t buf_size;
-	// The 'line size' of the buffer. if is_planar is true,
-	// this is the size of one channel's worth of consecutive samples.
-	// Otherwise, this is equal to buf_size and all channels' worth of interleaved samples.
-	// NOTE: The buffer wraps mod line_size, NOT mod buf_size.
-	int line_size;
+	size_t size; // Total size of the buffer in bytes
 
 	unsigned char *data;
 	atomic_int rd, wr; // Read/write indices relative to line_size
