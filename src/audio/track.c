@@ -201,6 +201,8 @@ static enum AudioTrack_ERR AudioTrack_buffer_packet(AudioTrack *t, size_t *n_byt
 		*n_bytes += n;
 	}
 	av_freep(&interleave_buf);
+	av_frame_unref(t->av_frame);
+	av_packet_unref(t->av_packet);
 
 	return AudioTrack_OK;
 }
