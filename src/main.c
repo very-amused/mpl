@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 
-	// TODO: Buffer 5 seconds of audio data
+	// Buffer 5 seconds of audio data
 	at_err = AudioTrack_buffer_ms(track.audio, AudioSeek_Relative, 5000);
 	if (at_err != AudioTrack_OK) {
 		fprintf(stderr, "Failed to fill initial buffer for track %s, %s\n",
@@ -53,8 +53,11 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 
-	sleep(10);
+	// Play the track
+	Audiobackend_prepare(&ab, track.audio);
+	AudioBackend_play(&ab, 0);
 
+	sleep(10);
 
 	// Cleanup
 	AudioBackend_deinit(&ab);

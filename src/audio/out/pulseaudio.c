@@ -6,6 +6,7 @@
 #include <pulse/context.h>
 #include <pulse/stream.h>
 #include <pulse/error.h>
+#include <stdbool.h>
 #include <stddef.h>
 
 #include "audio/buffer.h"
@@ -37,6 +38,7 @@ typedef struct Ctx {
 static int init(void *ctx__, const AudioPCM *pcm);
 static void deinit(void *ctx__);
 static int prepare(void *ctx__, AudioTrack *track);
+static int play(void *ctx__, bool pause);
 
 /* AudioBackend implementation using PulseAudio */
 AudioBackend AB_PulseAudio = {
@@ -44,7 +46,10 @@ AudioBackend AB_PulseAudio = {
 
 	.init = init,
 	.deinit = deinit,
+
 	.prepare = prepare,
+
+	.play = play,
 
 	.ctx_size = sizeof(Ctx)
 };
@@ -56,6 +61,8 @@ static void pa_ctx_state_cb_(pa_context *pa_ctx, void *userdata);
 static void pa_stream_write_cb_(pa_stream *stream, size_t n_bytes, void *userdata);
 // Audio stream state change callback
 static void pa_stream_state_cb_(pa_stream *stream, void *userdata);
+// Operation completion callback
+static void pa_stream_success_cb_(pa_stream *stream, int success, void *userdata);
 
 static int init(void *userdata, const AudioPCM *pcm) {
 	Ctx *ctx = userdata;
@@ -228,15 +235,15 @@ static int prepare(void *ctx__, AudioTrack *t) {
 
 	// Connect playback buffer to framebuffer and fill framebuffer
 	ctx->playback_buffer = t->buffer;
-	unsigned char *tb; // Transfer buffer
+	void *tb; // Transfer buffer
 	size_t tb_size = (size_t)-1;
-	if (pa_stream_begin_write(ctx->stream, (void **)&tb, &tb_size) != 0) {
+	if (pa_stream_begin_write(ctx->stream, &tb, &tb_size) != 0) {
 		fprintf(stderr, "Warning: failed to populate PulseAudio framebuffer.\n");
 		goto end;
 	}
 	tb_size = AudioBuffer_read(ctx->playback_buffer, tb, tb_size);
 	if (pa_stream_write(ctx->stream, tb, tb_size, NULL, 0, PA_SEEK_RELATIVE) != 0) {
-		fprintf(stderr, "Error: %s", AudioBackend_ERR_name(AudioBackend_FB_WRITE_ERR));
+		fprintf(stderr, "Error: %s\n", AudioBackend_ERR_name(AudioBackend_FB_WRITE_ERR));
 		goto end;
 	}
 
@@ -246,6 +253,20 @@ end:
 
 
 	return 0;
+}
+
+static int play(void *ctx__, bool pause) {
+	Ctx *ctx = ctx__;
+
+	pa_threaded_mainloop_lock(ctx->loop);
+
+	pa_stream_cork(ctx->stream, pause, pa_stream_success_cb_, ctx);
+	pa_threaded_mainloop_wait(ctx->loop);
+	const bool is_corked = pa_stream_is_corked(ctx->stream);
+
+	pa_threaded_mainloop_unlock(ctx->loop);
+
+	return pause ? is_corked : !is_corked;
 }
 
 static void pa_ctx_state_cb_(pa_context *pa_ctx, void *userdata) {
@@ -275,8 +296,6 @@ static void pa_stream_write_cb_(pa_stream *stream, size_t n_bytes, void *userdat
 	}
 
 	// Allocate destination buffer in PA server memory to minimize copying
-	unsigned char *dst;
-	pa_stream_begin_write(stream, (void **)&dst, &n_bytes);
 }
 
 static void pa_stream_state_cb_(pa_stream *stream, void *userdata) {
@@ -293,4 +312,10 @@ static void pa_stream_state_cb_(pa_stream *stream, void *userdata) {
 	case PA_STREAM_CREATING:
 		break;
 	}
+}
+
+static void pa_stream_success_cb_(pa_stream *stream, int success, void *userdata) {
+	Ctx *ctx = userdata;
+
+	pa_threaded_mainloop_signal(ctx->loop, 0);
 }

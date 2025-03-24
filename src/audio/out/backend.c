@@ -19,3 +19,11 @@ void AudioBackend_deinit(AudioBackend *ab) {
 
 	free(ab->ctx);
 }
+
+int Audiobackend_prepare(AudioBackend *ab, AudioTrack *track) {
+	return ab->prepare(ab->ctx, track);
+}
+
+int AudioBackend_play(AudioBackend *ab, bool pause) {
+	return ab->play(ab->ctx, pause);
+}

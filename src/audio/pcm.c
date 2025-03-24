@@ -2,6 +2,7 @@
 
 #include <libavutil/samplefmt.h>
 #include <stdint.h>
+#include <stdio.h>
 
 uint32_t AudioPCM_buffer_size(const AudioPCM *pcm, const uint32_t ms) {
 	return av_samples_get_buffer_size(

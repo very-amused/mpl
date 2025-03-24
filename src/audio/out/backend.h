@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 #define BACKEND_APP_NAME "mpl"
 
@@ -27,9 +28,8 @@ typedef struct AudioBackend {
 	int (*queue)(void *ctx, AudioTrack *track);
 
 	// Play/pause the current AudioTrack (prepared using prepare() or queue()).
-	// If p == 1, the track is played. If p == 0, the track is paused.
-	// Returns 0/1 to indicate the track's current play/paused state, or negative on error.
-	int (*play)(void *ctx, int p);
+	// If pause == 1, the track state is set to paused. Otherwise, the track state is set to playing.
+	int (*play)(void *ctx, bool pause);
 
 	// Private backend-specific context
 	const size_t ctx_size;
@@ -41,3 +41,11 @@ typedef struct AudioBackend {
 int AudioBackend_init(AudioBackend *ab, const AudioPCM *pcm);
 // Deinitialize an AudioBackend
 void AudioBackend_deinit(AudioBackend *ab);
+
+// Prepare for 'cold' playback of *track from a silent start.
+// This involves setting up an audio stream with the correct sample rate, format, channels, etc.
+int Audiobackend_prepare(AudioBackend *ab, AudioTrack *track);
+
+// Play/pause the current AudioTrack (prepared using prepare() or queue()).
+// If pause == 1, the track state is set to paused. Otherwise, the track state is set to playing.
+int AudioBackend_play(AudioBackend *ab, bool pause);

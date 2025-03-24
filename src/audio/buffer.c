@@ -50,7 +50,7 @@ size_t AudioBuffer_write(AudioBuffer *ab, unsigned char *src, size_t n) {
 		memcpy(&ab->data[wr], &src[count], chunk_size);
 
 		// Increment write idx and count
-		wr++;
+		wr += chunk_size;
 		wr %= ab->line_size;
 		count += chunk_size;
 	}
@@ -70,11 +70,14 @@ size_t AudioBuffer_read(AudioBuffer *ab, unsigned char *dst, size_t n) {
 	while (count < n && rd != wr) {
 		// Read chunk
 		int chunk_size = rd < wr ? wr - rd : ab->line_size - rd;
+		if (chunk_size > n) {
+			chunk_size = n;
+		}
 		memcpy(&dst[count], &ab->data[rd], chunk_size);
 
 		// Increment read idx and count
-		rd++;
-		rd %= 10;
+		rd += chunk_size;
+		rd %= ab->line_size;
 		count += chunk_size;
 	}
 
