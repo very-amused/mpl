@@ -1,6 +1,8 @@
 #pragma once
 #include "audio/out/backend.h"
+#include "lock.h"
 #include "track.h"
+#include <bits/pthreadtypes.h>
 
 typedef struct QueueNode QueueNode;
 typedef struct QueueNode {
@@ -16,6 +18,8 @@ typedef struct Queue {
 	QueueNode *tail; // Bottom of the queue (last playable track). tail->next == head
 
 	AudioBackend *backend;
+
+	QueueLock *lock;
 } Queue;
 
 // Initialize an empty queue.
@@ -24,6 +28,7 @@ int Queue_init(Queue *q);
 void Queue_deinit(Queue *q);
 
 // Clear all tracks in a queue
+// NOTE: locks the queue
 void Queue_clear(Queue *q);
 
 // Connect the queue to the system's audio output.
