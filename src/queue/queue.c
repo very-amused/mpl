@@ -6,6 +6,12 @@
 
 #include <pthread.h>
 
+struct QueueNode {
+	Track *track;
+	QueueNode *prev;
+	QueueNode *next;
+};
+
 // Initialize an empty queue
 int Queue_init(Queue *q) {
 	q->head = malloc(sizeof(QueueNode));
@@ -29,6 +35,73 @@ void Queue_deinit(Queue *q) {
 
 	// Free the queue's lock
 	free(q->lock);
+}
+
+int Queue_append(Queue *q, Track *t) {
+	// Wrap the track in a QueueNode
+	QueueNode *node = malloc(sizeof(QueueNode));
+	node->track = t; // This takes ownership of *t
+
+	if (QueueLock_lock(q->lock) != 0) {
+		return 1;
+	}
+
+	// Position node between tail and head
+	node->prev = q->tail;
+	node->next = q->head;
+	// Link node in its position
+	node->prev->next = node;
+	node->next->prev = node;
+	q->tail = node;
+
+	return QueueLock_unlock(q->lock);
+}
+int Queue_prepend(Queue *q, Track *t) {
+	QueueNode *node = malloc(sizeof(QueueNode));
+	node->track = t;
+
+	if (QueueLock_lock(q->lock) != 0) {
+		return 1;
+	}
+
+	// Position node between head and first track
+	QueueNode *const first = q->head->next;
+	node->prev = q->head;
+	node->next = q->head->next;
+	// Link node in its position
+	node->prev->next = node;
+	node->next->prev = node;
+	q->head->next = node;
+
+	return QueueLock_unlock(q->lock);
+}
+int Queue_insert(Queue *q, Track *t, bool before) {
+	QueueNode *node = malloc(sizeof(QueueNode));
+	node->track = t;
+
+	if (QueueLock_lock(q->lock) != 0) {
+		return 1;
+	}
+
+	if (before) {
+		// Position node between cur->prev and cur
+		QueueNode *const cur = q->cur;
+		node->prev = cur->prev;
+		node->next = cur;
+		// Link node in its position
+		node->prev->next = node;
+		node->next->prev = node;
+	} else {
+		// Position node between cur and cur->next
+		QueueNode *const cur = q->cur;
+		node->prev = cur;
+		node->next = cur->next;
+		// Link node in its position
+		node->prev->next = node;
+		node->next->prev = node;
+	}
+
+	return QueueLock_unlock(q->lock);
 }
 
 void Queue_clear(Queue *q) {

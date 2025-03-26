@@ -3,13 +3,9 @@
 #include "lock.h"
 #include "track.h"
 #include <bits/pthreadtypes.h>
+#include <stdbool.h>
 
 typedef struct QueueNode QueueNode;
-typedef struct QueueNode {
-	Track *track;
-	QueueNode *prev;
-	QueueNode *next;
-} QueueNode;
 
 // A queue performing non-blocking track management
 typedef struct Queue {
@@ -27,6 +23,18 @@ int Queue_init(Queue *q);
 // Deinitialize a queue and disconnect audio output.
 void Queue_deinit(Queue *q);
 
+// Append track *t to the end of the queue
+// NOTE: takes ownership of *t
+// NOTE: locks the queue
+int Queue_append(Queue *q, Track *t);
+// Prepend track *t  to the beginning of the queue
+// NOTE: takes ownership of *t
+// NOTE: locks the queue
+int Queue_prepend(Queue *q, Track *t);
+// Insert track *t  either ahead of or before the current track in the queue
+// NOTE: takes ownership of *t
+// NOTE: locks the queue
+int Queue_insert(Queue *q, Track *t, bool before);
 // Clear all tracks in a queue
 // NOTE: locks the queue
 void Queue_clear(Queue *q);
