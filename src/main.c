@@ -49,7 +49,6 @@ int main(int argc, char **argv) {
 	if (at_err != AudioTrack_OK) {
 		fprintf(stderr, "Failed to fill initial buffer for track %s, %s\n",
 				url, AudioTrack_ERR_name(at_err));
-		AudioTrack_deinit(track.audio);
 		free(track.audio);
 		Track_deinit(&track);
 		free(url);
@@ -59,7 +58,6 @@ int main(int argc, char **argv) {
 	// Initialize audio backend
 	AudioBackend ab = AB_PulseAudio;
 	if (AudioBackend_init(&ab, &track.audio->pcm) != 0) {
-		AudioTrack_deinit(track.audio);
 		free(track.audio);
 		Track_deinit(&track);
 		free(url);
@@ -78,7 +76,6 @@ int main(int argc, char **argv) {
 
 	// Cleanup
 	AudioBackend_deinit(&ab);
-	AudioTrack_deinit(track.audio);
 	Track_deinit(&track);
 	free(url);
 
