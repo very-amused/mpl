@@ -23,7 +23,9 @@ int AudioBuffer_init(AudioBuffer *buf, const AudioPCM *pcm) {
 	}
 
 	// Allocate buffer and set r/w indices
-	buf->data = malloc(buf->size);
+	// NOTE: we zero this so an accidental read of unintialized data is silent,
+	// instead of loud and often surprising white noise
+	buf->data = av_mallocz(buf->size);
 	if (!buf->data) {
 		return 1;
 	}

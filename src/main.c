@@ -65,7 +65,9 @@ int main(int argc, char **argv) {
 
 	// Cleanup
 	AudioBackend_deinit(&ab);
+	AudioTrack_deinit(track.audio);
 	Track_deinit(&track);
+	free(url);
 
 	return 0;
 }

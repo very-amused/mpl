@@ -25,4 +25,6 @@ typedef struct Track {
 } Track;
 
 void Track_init(Track *t, const char *url, const size_t url_len);
+
+// Does not deinitialize t->audio
 void Track_deinit(Track *t);
