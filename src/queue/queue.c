@@ -65,7 +65,6 @@ int Queue_prepend(Queue *q, Track *t) {
 	}
 
 	// Position node between head and first track
-	QueueNode *const first = q->head->next;
 	node->prev = q->head;
 	node->next = q->head->next;
 	// Link node in its position
@@ -85,17 +84,15 @@ int Queue_insert(Queue *q, Track *t, bool before) {
 
 	if (before) {
 		// Position node between cur->prev and cur
-		QueueNode *const cur = q->cur;
-		node->prev = cur->prev;
-		node->next = cur;
+		node->prev = q->cur->prev;
+		node->next = q->cur;
 		// Link node in its position
 		node->prev->next = node;
 		node->next->prev = node;
 	} else {
 		// Position node between cur and cur->next
-		QueueNode *const cur = q->cur;
-		node->prev = cur;
-		node->next = cur->next;
+		node->prev = q->cur;
+		node->next = q->cur->next;
 		// Link node in its position
 		node->prev->next = node;
 		node->next->prev = node;
