@@ -1,8 +1,11 @@
 #include "queue.h"
 #include "audio/out/backend.h"
 #include "audio/out/backends.h"
+#include "audio/track.h"
 #include "lock.h"
+#include "state.h"
 #include "track.h"
+#include "error.h"
 
 #include <pthread.h>
 
@@ -23,6 +26,9 @@ int Queue_init(Queue *q) {
 
 	// Initialize queue locking
 	QueueLock_init(&q->lock);
+
+	// Initialize state enums
+	q->playback_state = Queue_STOPPED;
 
 	return 0;
 }
@@ -54,11 +60,14 @@ int Queue_append(Queue *q, Track *t) {
 	node->next->prev = node;
 	q->tail = node;
 
-	if (q->cur == q->head) {
-		q->cur = node;
+	if (QueueLock_unlock(q->lock) != 0) {
+		return 1;
 	}
 
-	return QueueLock_unlock(q->lock);
+	if (q->cur == q->head) {
+		return Queue_select(q, node);
+	}
+	return 0;
 }
 int Queue_prepend(Queue *q, Track *t) {
 	QueueNode *node = malloc(sizeof(QueueNode));
@@ -80,7 +89,14 @@ int Queue_prepend(Queue *q, Track *t) {
 		q->cur = node;
 	}
 
-	return QueueLock_unlock(q->lock);
+	if (QueueLock_unlock(q->lock) != 0) {
+		return 1;
+	}
+
+	if (q->cur == q->head) {
+		return Queue_select(q, node);
+	}
+	return 0;
 }
 int Queue_insert(Queue *q, Track *t, bool before) {
 	QueueNode *node = malloc(sizeof(QueueNode));
@@ -106,11 +122,14 @@ int Queue_insert(Queue *q, Track *t, bool before) {
 		node->next->prev = node;
 	}
 
-	if (q->cur == q->head) {
-		q->cur = node;
+	if (QueueLock_unlock(q->lock) != 0) {
+		return 1;
 	}
 
-	return QueueLock_unlock(q->lock);
+	if (q->cur == q->head) {
+		return Queue_select(q, node);
+	}
+	return 0;
 }
 
 int Queue_clear(Queue *q) {
@@ -122,8 +141,7 @@ int Queue_clear(Queue *q) {
 	QueueNode *node = q->head->next;
 	while (node != q->head) {
 		QueueNode *const next = node->next;
-		Track_deinit(node->track);
-		free(node->track);
+		Track_free(node->track);
 		free(node);
 
 		node = next;
@@ -139,6 +157,28 @@ int Queue_select(Queue *q, QueueNode *node) {
 
 	q->cur = node;
 	// FIXME: if the queue is playing we want to enqueue and then skip with the backend. otherwise we do what's below
+
+	// Initialize track audio if needed
+	if (!node->track->audio) {
+		node->track->audio = malloc(sizeof(AudioTrack));
+		enum AudioTrack_ERR at_err = AudioTrack_init(node->track->audio, node->track->url);
+		if (at_err != AudioTrack_OK) {
+			fprintf(stderr, "Failed to initialize AudioTrack for track %s: %s\n", node->track->url, AudioTrack_ERR_name(at_err));
+			free(node->track->audio);
+			node->track->audio = NULL;
+			return 1;
+		}
+		// Buffer 2 seconds of audio data
+		at_err = AudioTrack_buffer_ms(node->track->audio, AudioSeek_Relative, 5000);
+		if (at_err != AudioTrack_OK) {
+			fprintf(stderr, "Failed to initialize AudioTrack for track %s: %s\n", node->track->url, AudioTrack_ERR_name(at_err));
+			AudioTrack_deinit(node->track->audio);
+			free(node->track->audio);
+			node->track->audio = NULL;
+			return 1;
+		}
+	}
+	// Prepare track to start playback on a new audio stream
 	int status = AudioBackend_prepare(q->backend, node->track->audio);
 	if (status != 0) {
 		QueueLock_unlock(q->lock);
@@ -146,6 +186,21 @@ int Queue_select(Queue *q, QueueNode *node) {
 	}
 
 	return QueueLock_unlock(q->lock);
+}
+
+int Queue_play(Queue *q, bool pause) {
+	int status = AudioBackend_play(q->backend, pause);
+	if (status != 0) {
+		return status;
+	}
+	q->playback_state = pause ? Queue_PAUSED : Queue_PLAYING;
+	return 0;
+}
+
+// Get playback state from the queue and its AudioBackend
+enum Queue_PLAYBACK_STATE Queue_get_playback_state(const Queue *q) {
+	// TODO
+	return Queue_PLAYING;
 }
 
 int Queue_connect_audio(Queue *q, AudioBackend *ab) {

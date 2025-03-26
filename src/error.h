@@ -50,6 +50,3 @@ static inline const char *AudioBackend_ERR_name(enum AudioBackend_ERR err) {
 	return NULL;
 }
 #undef AUDIOBACKEND_ERR_ENUM
-
-#undef ENUM_VAL
-#undef ENUM_KEY

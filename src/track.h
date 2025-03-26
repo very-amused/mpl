@@ -24,7 +24,7 @@ typedef struct Track {
 	AudioTrack *audio;
 } Track;
 
-void Track_init(Track *t, const char *url, const size_t url_len);
+// Does not allocate t->audio
+Track *Track_new(const char *url, const size_t url_len);
 
-// Does not deinitialize t->audio
-void Track_deinit(Track *t);
+void Track_free(Track *t);

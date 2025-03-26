@@ -1,9 +1,5 @@
-#include "audio/out/backend.h"
-#include "audio/out/backends.h"
-#include "audio/seek.h"
-#include "audio/track.h"
+#include "queue/queue.h"
 #include "track.h"
-#include "error.h"
 
 #include <unistd.h>
 #include <stdio.h>
@@ -23,60 +19,16 @@ int main(int argc, char **argv) {
 	char *url = malloc((url_len + 1) * sizeof(char));
 	snprintf(url, url_len, "%s%s", LIBAV_PROTO_FILE, file);
 
-	// Initialize track
-	Track track;
-	Track_init(&track, url, url_len);
-	track.audio = malloc(sizeof(AudioTrack));
-	if (!track.audio) {
-		fprintf(stderr, "Failed to allocate AudioTrack\n");
-		Track_deinit(&track);
-		free(url);
-		return 1;
-	}
-	// Initialize track audio
-	enum AudioTrack_ERR at_err = AudioTrack_init(track.audio, url);
-	if (at_err != AudioTrack_OK) {
-		fprintf(stderr, "Failed to initialize audio buffering for track %s, %s\n",
-				url, AudioTrack_ERR_name(at_err));
-		free(track.audio);
-		Track_deinit(&track);
-		free(url);
-		return 1;
-	}
+	// Initialize queue w/ track
+	Queue queue;
+	Queue_init(&queue);
+	Queue_connect_audio(&queue, NULL);
+	Queue_append(&queue, Track_new(url, url_len)); // Takes ownership of *track
 
-	// Buffer 5 seconds of audio data
-	at_err = AudioTrack_buffer_ms(track.audio, AudioSeek_Relative, 5000);
-	if (at_err != AudioTrack_OK) {
-		fprintf(stderr, "Failed to fill initial buffer for track %s, %s\n",
-				url, AudioTrack_ERR_name(at_err));
-		free(track.audio);
-		Track_deinit(&track);
-		free(url);
-		return 1;
-	}
-	
-	// Initialize audio backend
-	AudioBackend ab = AB_PulseAudio;
-	if (AudioBackend_init(&ab) != 0) {
-		free(track.audio);
-		Track_deinit(&track);
-		free(url);
-		return 1;
-	}
-
-	// Play the track
-	AudioBackend_prepare(&ab, track.audio);
-	AudioBackend_play(&ab, 0);
-
-	// Keep buffering data
-	while (at_err == AudioTrack_OK) {
-		at_err = AudioTrack_buffer_ms(track.audio, AudioSeek_Relative, 5000);
-	}
-
+	Queue_play(&queue, 0);
 
 	// Cleanup
-	AudioBackend_deinit(&ab);
-	Track_deinit(&track);
+	Queue_deinit(&queue);
 	free(url);
 
 	return 0;

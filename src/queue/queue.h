@@ -1,6 +1,7 @@
 #pragma once
 #include "audio/out/backend.h"
 #include "lock.h"
+#include "state.h"
 #include "track.h"
 #include <bits/pthreadtypes.h>
 #include <stdbool.h>
@@ -16,12 +17,18 @@ typedef struct Queue {
 	AudioBackend *backend;
 
 	QueueLock *lock;
+
+	enum Queue_PLAYBACK_STATE playback_state;
 } Queue;
 
 // Initialize an empty queue.
 int Queue_init(Queue *q);
 // Deinitialize a queue and disconnect audio output.
 void Queue_deinit(Queue *q);
+
+// Clear all tracks in a queue
+// NOTE: locks the queue
+int Queue_clear(Queue *q);
 
 // Append track *t to the end of the queue
 // NOTE: takes ownership of *t
@@ -35,13 +42,15 @@ int Queue_prepend(Queue *q, Track *t);
 // NOTE: takes ownership of *t
 // NOTE: locks the queue
 int Queue_insert(Queue *q, Track *t, bool before);
-// Clear all tracks in a queue
-// NOTE: locks the queue
-int Queue_clear(Queue *q);
 
 // Select a track to be q->cur. Handles playback
 // NOTE: locks the queue
 int Queue_select(Queue *q, QueueNode *node);
+// Play or pause the currently selected track.
+int	Queue_play(Queue *q, bool pause);
+
+// Get playback state from the queue and its AudioBackend
+enum Queue_PLAYBACK_STATE Queue_get_playback_state(const Queue *q);
 
 // Connect the queue to the system's audio output.
 // If ab == NULL, a 'best' audio backend for the system will be automatically determined. This strategy is recommended
