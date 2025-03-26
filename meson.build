@@ -8,7 +8,7 @@ deps += dependency('libavutil', version : '>=58.0.0')
 
 # Source and header files
 src = []
-include = ['src']
+include = include_directories('src')
 
 # Preprocessor defines
 cflags = []
@@ -25,4 +25,7 @@ endif
 
 subdir('src')
 
-executable('mpl', src, include_directories : include, dependencies : deps, c_args : cflags, link_args: cflags)
+executable('mpl', src,
+	include_directories : include,
+	dependencies : deps,
+	c_args : cflags, link_args: cflags)
