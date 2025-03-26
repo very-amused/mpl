@@ -37,10 +37,14 @@ int Queue_prepend(Queue *q, Track *t);
 int Queue_insert(Queue *q, Track *t, bool before);
 // Clear all tracks in a queue
 // NOTE: locks the queue
-void Queue_clear(Queue *q);
+int Queue_clear(Queue *q);
+
+// Select a track to be q->cur. Handles playback
+// NOTE: locks the queue
+int Queue_select(Queue *q, QueueNode *node);
 
 // Connect the queue to the system's audio output.
 // If ab == NULL, a 'best' audio backend for the system will be automatically determined. This strategy is recommended
 int Queue_connect_audio(Queue *q, AudioBackend *ab);
 // Disconnect the queue from the system's audio output.
-int Queue_disconnect_audio(Queue *q);
+void Queue_disconnect_audio(Queue *q);

@@ -54,6 +54,10 @@ int Queue_append(Queue *q, Track *t) {
 	node->next->prev = node;
 	q->tail = node;
 
+	if (q->cur == q->head) {
+		q->cur = node;
+	}
+
 	return QueueLock_unlock(q->lock);
 }
 int Queue_prepend(Queue *q, Track *t) {
@@ -71,6 +75,10 @@ int Queue_prepend(Queue *q, Track *t) {
 	node->prev->next = node;
 	node->next->prev = node;
 	q->head->next = node;
+
+	if (q->cur == q->head) {
+		q->cur = node;
+	}
 
 	return QueueLock_unlock(q->lock);
 }
@@ -98,12 +106,18 @@ int Queue_insert(Queue *q, Track *t, bool before) {
 		node->next->prev = node;
 	}
 
+	if (q->cur == q->head) {
+		q->cur = node;
+	}
+
 	return QueueLock_unlock(q->lock);
 }
 
-void Queue_clear(Queue *q) {
+int Queue_clear(Queue *q) {
 	// TODO: AudioBackend_stop(q->backend);
-	QueueLock_lock(q->lock);
+	if (QueueLock_lock(q->lock) != 0) {
+		return 1;
+	}
 
 	QueueNode *node = q->head->next;
 	while (node != q->head) {
@@ -115,7 +129,23 @@ void Queue_clear(Queue *q) {
 		node = next;
 	}
 
-	QueueLock_unlock(q->lock);
+	return QueueLock_unlock(q->lock);
+}
+
+int Queue_select(Queue *q, QueueNode *node) {
+	if (QueueLock_lock(q->lock) != 0) {
+		return 1;
+	}
+
+	q->cur = node;
+	// FIXME: if the queue is playing we want to enqueue and then skip with the backend. otherwise we do what's below
+	int status = AudioBackend_prepare(q->backend, node->track->audio);
+	if (status != 0) {
+		QueueLock_unlock(q->lock);
+		return status;
+	}
+
+	return QueueLock_unlock(q->lock);
 }
 
 int Queue_connect_audio(Queue *q, AudioBackend *ab) {
@@ -124,14 +154,15 @@ int Queue_connect_audio(Queue *q, AudioBackend *ab) {
 		q->backend = ab;
 	} else {
 		// TODO: Choose the best backend available using runtime detection
+		// For now we just use pulseaudio
 		q->backend = &AB_PulseAudio;
 	}
 
-	// FIXME: Initialize the backend
-
-	return 1;
+	// Initialize the backend
+	return AudioBackend_init(q->backend);
 }
+
 // Disconnect the queue from the system's audio backend. Frees q->backend
-int Queue_disconnect_audio(Queue *q) {
-	return 1;
+void Queue_disconnect_audio(Queue *q) {
+	AudioBackend_deinit(q->backend);
 }
