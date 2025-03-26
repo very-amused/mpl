@@ -1,6 +1,6 @@
 #include "queue.h"
 #include "audio/out/backend.h"
-#include "audio/track.h"
+#include "audio/out/backends.h"
 #include "lock.h"
 #include "track.h"
 
@@ -118,7 +118,16 @@ void Queue_clear(Queue *q) {
 	QueueLock_unlock(q->lock);
 }
 
-// Connect the queue to the system's audio backend. Allocates q->backend
-int Queue_connect_audio(Queue *q, AudioBackend *ab);
+int Queue_connect_audio(Queue *q, AudioBackend *ab) {
+	// Set q->backend to a defined AudioBackend
+	if (ab) {
+		q->backend = ab;
+	} else {
+		// TODO: Choose the best backend available using runtime detection
+		q->backend = &AB_PulseAudio;
+	}
+
+	// FIXME: Initialize the backend
+}
 // Disconnect the queue from the system's audio backend. Frees q->backend
 int Queue_disconnect_audio(Queue *q);
