@@ -2,7 +2,7 @@
 #include "audio/pcm.h"
 
 // Initialize an AudioBackend for playback
-int AudioBackend_init(AudioBackend *ab, const AudioPCM *pcm) {
+int AudioBackend_init(AudioBackend *ab) {
 	// Allocate and initialize ctx
 	ab->ctx = malloc(ab->ctx_size);
 	if (ab->ctx == NULL) {
@@ -10,7 +10,7 @@ int AudioBackend_init(AudioBackend *ab, const AudioPCM *pcm) {
 		return 1;
 	}
 
-	return ab->init(ab->ctx, pcm);
+	return ab->init(ab->ctx);
 }
 
 // Deinitialize an AudioBackend

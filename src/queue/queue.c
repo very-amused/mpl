@@ -128,6 +128,10 @@ int Queue_connect_audio(Queue *q, AudioBackend *ab) {
 	}
 
 	// FIXME: Initialize the backend
+
+	return 1;
 }
 // Disconnect the queue from the system's audio backend. Frees q->backend
-int Queue_disconnect_audio(Queue *q);
+int Queue_disconnect_audio(Queue *q) {
+	return 1;
+}

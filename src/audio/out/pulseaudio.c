@@ -35,7 +35,7 @@ typedef struct Ctx {
 } Ctx;
 
 /* PulseAudio AudioBackend methods */
-static int init(void *ctx__, const AudioPCM *pcm);
+static int init(void *ctx__);
 static void deinit(void *ctx__);
 static int prepare(void *ctx__, AudioTrack *track);
 static int play(void *ctx__, bool pause);
@@ -64,7 +64,7 @@ static void pa_stream_state_cb_(pa_stream *stream, void *userdata);
 // Operation completion callback
 static void pa_stream_success_cb_(pa_stream *stream, int success, void *userdata);
 
-static int init(void *userdata, const AudioPCM *pcm) {
+static int init(void *userdata) {
 	Ctx *ctx = userdata;
 
 	ctx->stream = ctx->next_stream = NULL;
@@ -143,9 +143,6 @@ static int init(void *userdata, const AudioPCM *pcm) {
 	}
 
 	fprintf(stderr, "Connected to PulseAudio!\n");
-
-
-	// TODO: Connect stream
 
 
 #undef DEINIT
