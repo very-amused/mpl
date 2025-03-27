@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
 	Queue queue;
 	Queue_init(&queue);
 	Queue_connect_audio(&queue, NULL);
-	Queue_append(&queue, Track_new(url, url_len)); // Takes ownership of *track
+	Queue_prepend(&queue, Track_new(url, url_len)); // Takes ownership of *track
 
 	Queue_play(&queue, 0);
 

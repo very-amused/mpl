@@ -1,6 +1,7 @@
 #include "queue.h"
 #include "audio/out/backend.h"
 #include "audio/out/backends.h"
+#include "audio/seek.h"
 #include "audio/track.h"
 #include "lock.h"
 #include "state.h"
@@ -84,10 +85,6 @@ int Queue_prepend(Queue *q, Track *t) {
 	node->prev->next = node;
 	node->next->prev = node;
 	q->head->next = node;
-
-	if (q->cur == q->head) {
-		q->cur = node;
-	}
 
 	if (QueueLock_unlock(q->lock) != 0) {
 		return 1;
@@ -194,6 +191,12 @@ int Queue_play(Queue *q, bool pause) {
 		return status;
 	}
 	q->playback_state = pause ? Queue_PAUSED : Queue_PLAYING;
+
+	// TODO: start a nonblocking buffer loop
+	enum AudioTrack_ERR at_err = AudioTrack_buffer_ms(q->cur->track->audio, AudioSeek_Relative, 5000);
+	while (at_err == AudioTrack_OK) {
+		at_err = AudioTrack_buffer_ms(q->cur->track->audio, AudioSeek_Relative, 2000);
+	}
 	return 0;
 }
 

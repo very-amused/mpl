@@ -263,7 +263,7 @@ static int play(void *ctx__, bool pause) {
 
 	pa_threaded_mainloop_unlock(ctx->loop);
 
-	return pause ? is_corked : !is_corked;
+	return pause ? !is_corked : is_corked;
 }
 
 static void pa_ctx_state_cb_(pa_context *pa_ctx, void *userdata) {
