@@ -26,7 +26,6 @@ int main(int argc, char **argv) {
 	Queue_prepend(&queue, Track_new(url, url_len)); // Takes ownership of *track
 
 	Queue_play(&queue, 0);
-	sleep(10);
 
 	// Cleanup
 	Queue_deinit(&queue);

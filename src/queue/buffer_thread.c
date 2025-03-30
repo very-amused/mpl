@@ -25,9 +25,9 @@ BufferThread *BufferThread_new() {
 	bt->thread = NULL;
 
 	// Initialize semaphores
-	sem_init(&bt->pause, 0, 1);
-	sem_init(&bt->cancel, 0, 1);
-	sem_init(&bt->done, 0, 1);
+	sem_init(&bt->pause, 0, 0);
+	sem_init(&bt->cancel, 0, 0);
+	sem_init(&bt->done, 0, 0);
 
 	return bt;
 }
@@ -51,25 +51,29 @@ static void *BufferThread_routine(void *args) {
 	enum AudioTrack_ERR at_err;
 buffer_loop:
 	do {
-		if (sem_trywait(&bt->cancel) == 0) {
+		int cancelval, pauseval;
+		sem_getvalue(&bt->pause, &pauseval);
+		sem_getvalue(&bt->cancel, &cancelval);
+		if (cancelval) {
 			fprintf(stderr, "canceled\n");
 			pthread_exit(NULL);
-		} else if (sem_trywait(&bt->pause) == 0) {
+		} else if (pauseval) {
 			fprintf(stderr, "paused\n");
 			sem_post(&bt->done);
 			sem_wait(&bt->pause);
 		}
 
 		at_err = AudioTrack_buffer_packet(bt->track, NULL);
-		fprintf(stderr, "Buffering packet\n");
+		static int packetno = 0;
+		packetno++;
+		fprintf(stderr, "Buffering packet %d\n", packetno);
 	} while (at_err == AudioTrack_OK);
-
-	printf("done\n");
 
 	if (!bt->next_track) {
 		// Self-detach
 		pthread_detach(*bt->thread);
 		free(bt->thread);
+		sem_post(&bt->done);
 		pthread_exit(NULL);
 	}
 
@@ -97,6 +101,6 @@ int BufferThread_start(BufferThread *bt, AudioTrack *track, AudioTrack *next_tra
 	bt->thread = malloc(sizeof(pthread_t));
 
 	pthread_create(bt->thread, NULL, BufferThread_routine, bt);
-	pthread_detach(*bt->thread);
+	sem_wait(&bt->done);
 	return 0;
 }

@@ -10,6 +10,7 @@
 #include "error.h"
 
 #include <pthread.h>
+#include <semaphore.h>
 
 struct QueueNode {
 	Track *track;
