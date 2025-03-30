@@ -1,4 +1,5 @@
 #pragma once
+#include "audio/track.h"
 
 // A thread that handles a nonblocking buffer loop
 typedef struct BufferThread BufferThread;
@@ -7,3 +8,7 @@ typedef struct BufferThread BufferThread;
 BufferThread *BufferThread_new();
 // Join, deinitialize, and free a BufferThread
 void BufferThread_free(BufferThread *bt);
+
+// Start a BufferThread to buffer track *t in the background.
+// Returns 0 on success, nonzero on error
+int BufferThread_start(BufferThread *bt, AudioTrack *track, AudioTrack *next_track);

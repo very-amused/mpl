@@ -37,8 +37,11 @@ typedef struct AudioTrack {
 enum AudioTrack_ERR AudioTrack_init(AudioTrack *at, const char *url);
 void AudioTrack_deinit(AudioTrack *at);
 
+// Buffer one packet worth of frames and set n_bytes (if not NULL) to the number of bytes buffered in doing so.
+enum AudioTrack_ERR AudioTrack_buffer_packet(AudioTrack *at, size_t *n_bytes);
 // Buffer track data. AudioSeek_Relative will buffer onto the end of the Track's current AudioBuffer.
 enum AudioTrack_ERR AudioTrack_buffer_ms(AudioTrack *at, enum AudioSeek dir, const uint32_t ms);
+
 
 // Convert a scalar in time_base units into a double precision number of seconds
 double AudioTrack_seconds(AVRational time_base, int64_t value);

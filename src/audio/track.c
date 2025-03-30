@@ -131,12 +131,13 @@ void AudioTrack_deinit(AudioTrack *t) {
 	avformat_close_input(&t->avf_ctx);
 }
 
-// Buffer one packet worth of frames and set n_bytes to the number of bytes buffered in doing so.
-static enum AudioTrack_ERR AudioTrack_buffer_packet(AudioTrack *t, size_t *n_bytes) {
+enum AudioTrack_ERR AudioTrack_buffer_packet(AudioTrack *t, size_t *n_bytes) {
 	char av_err[AV_ERROR_MAX_STRING_SIZE]; // libav* library error message buffer
 	const size_t sample_size = av_get_bytes_per_sample(t->pcm.sample_fmt);
 
-	*n_bytes = 0;
+	if (n_bytes) {
+		*n_bytes = 0;
+	}
 
 	// Read packet
 	int status;
@@ -198,7 +199,9 @@ static enum AudioTrack_ERR AudioTrack_buffer_packet(AudioTrack *t, size_t *n_byt
 				sem_wait(&t->buffer->rd_sem);
 			}
 		}
-		*n_bytes += n;
+		if (n_bytes) {
+			*n_bytes += n;
+		}
 	}
 	av_freep(&interleave_buf);
 	av_frame_unref(t->av_frame);

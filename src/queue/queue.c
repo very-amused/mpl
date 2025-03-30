@@ -3,6 +3,7 @@
 #include "audio/out/backends.h"
 #include "audio/seek.h"
 #include "audio/track.h"
+#include "buffer_thread.h"
 #include "lock.h"
 #include "state.h"
 #include "track.h"
@@ -193,11 +194,14 @@ int Queue_play(Queue *q, bool pause) {
 	q->playback_state = pause ? Queue_PAUSED : Queue_PLAYING;
 
 	// TODO: start a nonblocking buffer loop
+	/*
 	enum AudioTrack_ERR at_err = AudioTrack_buffer_ms(q->cur->track->audio, AudioSeek_Relative, 5000);
 	while (at_err == AudioTrack_OK) {
 		at_err = AudioTrack_buffer_ms(q->cur->track->audio, AudioSeek_Relative, 2000);
 	}
-	return 0;
+	*/
+	BufferThread *bt = BufferThread_new();
+	return BufferThread_start(bt, q->cur->track->audio, NULL);
 }
 
 // Get playback state from the queue and its AudioBackend

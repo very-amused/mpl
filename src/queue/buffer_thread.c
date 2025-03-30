@@ -1,5 +1,7 @@
 #include "buffer_thread.h"
 #include "audio/track.h"
+#include "error.h"
+#include <errno.h>
 
 #ifdef __unix__
 #include <pthread.h>
@@ -7,22 +9,25 @@
 #endif
 
 struct BufferThread {
-	AudioTrack *playback_track;
+	AudioTrack *track;
 	AudioTrack *next_track;
 
 	pthread_t *thread;
 	sem_t pause; // Tell the thread to temporarily stop buffering. The next notification to pause will wake the thread back up
 	sem_t cancel; // Tell the thread to exit
+
+	sem_t done; // Receive confirmation that the thread has handled a message (i.e pause)
 };
 
 BufferThread *BufferThread_new() {
 	BufferThread *bt = malloc(sizeof(BufferThread));
-	bt->playback_track = bt->next_track = NULL;
+	bt->track = bt->next_track = NULL;
 	bt->thread = NULL;
 
 	// Initialize semaphores
 	sem_init(&bt->pause, 0, 1);
 	sem_init(&bt->cancel, 0, 1);
+	sem_init(&bt->done, 0, 1);
 
 	return bt;
 }
@@ -37,4 +42,61 @@ void BufferThread_free(BufferThread *bt) {
 	// We don't own the track pointers, so we do nothing with those
 
 	free(bt);
+}
+
+static void *BufferThread_routine(void *args) {
+	BufferThread *bt = args;
+
+	// Start buffering from bt->track
+	enum AudioTrack_ERR at_err;
+buffer_loop:
+	do {
+		if (sem_trywait(&bt->cancel) == 0) {
+			fprintf(stderr, "canceled\n");
+			pthread_exit(NULL);
+		} else if (sem_trywait(&bt->pause) == 0) {
+			fprintf(stderr, "paused\n");
+			sem_post(&bt->done);
+			sem_wait(&bt->pause);
+		}
+
+		at_err = AudioTrack_buffer_packet(bt->track, NULL);
+		fprintf(stderr, "Buffering packet\n");
+	} while (at_err == AudioTrack_OK);
+
+	printf("done\n");
+
+	if (!bt->next_track) {
+		// Self-detach
+		pthread_detach(*bt->thread);
+		free(bt->thread);
+		pthread_exit(NULL);
+	}
+
+	bt->track = bt->next_track;
+	bt->next_track = NULL;
+	goto buffer_loop;
+}
+
+int BufferThread_start(BufferThread *bt, AudioTrack *track, AudioTrack *next_track) {
+	// Pause the thread
+	if (bt->thread) {
+		sem_post(&bt->pause);
+		sem_wait(&bt->done);
+	}
+
+	// Load the track(s)
+	bt->track = track;
+	bt->next_track = next_track;
+
+	// Start or resume buffering
+	if (bt->thread) {
+		sem_post(&bt->pause);
+		return 0;
+	}
+	bt->thread = malloc(sizeof(pthread_t));
+
+	pthread_create(bt->thread, NULL, BufferThread_routine, bt);
+	pthread_detach(*bt->thread);
+	return 0;
 }
