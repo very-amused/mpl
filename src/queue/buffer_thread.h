@@ -7,8 +7,8 @@ typedef struct BufferThread BufferThread;
 // Allocate a new BufferThread for use
 BufferThread *BufferThread_new();
 // Join, deinitialize, and free a BufferThread
-void BufferThread_free(BufferThread *bt);
+void BufferThread_free(BufferThread *thr);
 
 // Start a BufferThread to buffer track *t in the background.
 // Returns 0 on success, nonzero on error
-int BufferThread_start(BufferThread *bt, AudioTrack *track, AudioTrack *next_track);
+int BufferThread_start(BufferThread *thr, AudioTrack *track, AudioTrack *next_track);

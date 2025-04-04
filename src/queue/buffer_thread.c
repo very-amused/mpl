@@ -2,6 +2,8 @@
 #include "audio/track.h"
 #include "error.h"
 #include <errno.h>
+#include <stdatomic.h>
+#include <stddef.h>
 
 #ifdef __unix__
 #include <pthread.h>
@@ -9,98 +11,92 @@
 #endif
 
 struct BufferThread {
-	AudioTrack *track;
-	AudioTrack *next_track;
+	_Atomic (AudioTrack *) track;
+	_Atomic (AudioTrack *) next_track;
 
 	pthread_t *thread;
-	sem_t pause; // Tell the thread to temporarily stop buffering. The next notification to pause will wake the thread back up
+	sem_t pause; // Tell the thread to temporarily stop buffering.
+	sem_t play; // Tell a paused thread to resume buffering
 	sem_t cancel; // Tell the thread to exit
-
-	sem_t done; // Receive confirmation that the thread has handled a message (i.e pause)
 };
 
 BufferThread *BufferThread_new() {
-	BufferThread *bt = malloc(sizeof(BufferThread));
-	bt->track = bt->next_track = NULL;
-	bt->thread = NULL;
+	BufferThread *thr = malloc(sizeof(BufferThread));
+	thr->track = thr->next_track = NULL;
+	thr->thread = NULL;
 
 	// Initialize semaphores
-	sem_init(&bt->pause, 0, 0);
-	sem_init(&bt->cancel, 0, 0);
-	sem_init(&bt->done, 0, 0);
+	sem_t *const semaphores[] = {&thr->pause, &thr->play, &thr->cancel};
+	const size_t semaphores_len = sizeof(semaphores) / sizeof(semaphores[0]);
+	for (size_t i = 0; i < semaphores_len; i++) {
+		sem_init(semaphores[i], 0, 0);
+	}
 
-	return bt;
+	return thr;
 }
-void BufferThread_free(BufferThread *bt) {
+void BufferThread_free(BufferThread *thr) {
 	// Stop thread
-	if (bt->thread) {
-		sem_post(&bt->cancel);
-		pthread_join(*bt->thread, NULL);
-		bt->thread = NULL;
+	if (thr->thread) {
+		sem_post(&thr->cancel);
+		pthread_join(*thr->thread, NULL);
 	}
 
 	// We don't own the track pointers, so we do nothing with those
 
-	free(bt);
+	free(thr);
 }
 
 static void *BufferThread_routine(void *args) {
-	BufferThread *bt = args;
+	BufferThread *thr = args;
 
-	// Start buffering from bt->track
+	// Start buffering from thr->track
 	enum AudioTrack_ERR at_err;
 buffer_loop:
 	do {
-		int cancelval, pauseval;
-		sem_getvalue(&bt->pause, &pauseval);
-		sem_getvalue(&bt->cancel, &cancelval);
-		if (cancelval) {
-			fprintf(stderr, "canceled\n");
+		if (sem_trywait(&thr->cancel) == 0) {
 			pthread_exit(NULL);
-		} else if (pauseval) {
-			fprintf(stderr, "paused\n");
-			sem_post(&bt->done);
-			sem_wait(&bt->pause);
+		}
+		int paused;
+		sem_getvalue(&thr->pause, &paused);
+		if (paused) {
+			// Keep pause at 1 until unpaused (so other threads can see we're paused)
+			sem_wait(&thr->play);
+			sem_wait(&thr->pause);
 		}
 
-		at_err = AudioTrack_buffer_packet(bt->track, NULL);
+		AudioTrack *track = atomic_load(&thr->track);
+		at_err = AudioTrack_buffer_packet(track, NULL);
 		static int packetno = 0;
 		packetno++;
 		fprintf(stderr, "Buffering packet %d\n", packetno);
 	} while (at_err == AudioTrack_OK);
 
-	if (!bt->next_track) {
-		// Self-detach
-		pthread_detach(*bt->thread);
-		free(bt->thread);
-		sem_post(&bt->done);
-		pthread_exit(NULL);
-	}
+	AudioTrack *next = atomic_exchange(&thr->next_track, NULL);
 
-	bt->track = bt->next_track;
-	bt->next_track = NULL;
+	if (!next) {
+		sem_post(&thr->pause);
+	} else {
+		atomic_store(&thr->track, next);
+	}
 	goto buffer_loop;
 }
 
-int BufferThread_start(BufferThread *bt, AudioTrack *track, AudioTrack *next_track) {
-	// Pause the thread
-	if (bt->thread) {
-		sem_post(&bt->pause);
-		sem_wait(&bt->done);
-	}
-
-	// Load the track(s)
-	bt->track = track;
-	bt->next_track = next_track;
+int BufferThread_start(BufferThread *thr, AudioTrack *track, AudioTrack *next_track) {
+	// Load track(s)
+	atomic_store(&thr->track, track);
+	atomic_store(&thr->next_track, next_track);
 
 	// Start or resume buffering
-	if (bt->thread) {
-		sem_post(&bt->pause);
+	if (thr->thread) {
+		int paused;
+		sem_getvalue(&thr->pause, &paused);
+		if (paused) {
+			sem_post(&thr->play);
+		}
 		return 0;
 	}
-	bt->thread = malloc(sizeof(pthread_t));
+	thr->thread = malloc(sizeof(pthread_t));
 
-	pthread_create(bt->thread, NULL, BufferThread_routine, bt);
-	sem_wait(&bt->done);
+	pthread_create(thr->thread, NULL, BufferThread_routine, thr);
 	return 0;
 }

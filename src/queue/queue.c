@@ -33,6 +33,9 @@ int Queue_init(Queue *q) {
 	// Initialize state enums
 	q->playback_state = Queue_STOPPED;
 
+	// Initialize buffer thread
+	q->buffer_thread = BufferThread_new();
+
 	return 0;
 }
 // Deinitialize a queue and disconnect audio output.
@@ -194,15 +197,14 @@ int Queue_play(Queue *q, bool pause) {
 	}
 	q->playback_state = pause ? Queue_PAUSED : Queue_PLAYING;
 
-	// TODO: start a nonblocking buffer loop
-	/*
-	enum AudioTrack_ERR at_err = AudioTrack_buffer_ms(q->cur->track->audio, AudioSeek_Relative, 5000);
-	while (at_err == AudioTrack_OK) {
-		at_err = AudioTrack_buffer_ms(q->cur->track->audio, AudioSeek_Relative, 2000);
+	// Start a nonblocking buffer loop
+	AudioTrack *cur_audio = q->cur != q->head ? q->cur->track->audio : NULL;
+	AudioTrack *next_audio = q->cur->next != q->head ? q->cur->next->track->audio : NULL;
+	if (!cur_audio) {
+		// TODO: implement error code
+		return 1;
 	}
-	*/
-	BufferThread *bt = BufferThread_new();
-	return BufferThread_start(bt, q->cur->track->audio, NULL);
+	return BufferThread_start(q->buffer_thread, cur_audio, next_audio);
 }
 
 // Get playback state from the queue and its AudioBackend

@@ -27,6 +27,8 @@ int main(int argc, char **argv) {
 
 	Queue_play(&queue, 0);
 
+	sleep(60);
+
 	// Cleanup
 	Queue_deinit(&queue);
 	free(url);

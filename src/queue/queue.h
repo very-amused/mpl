@@ -3,7 +3,8 @@
 #include "lock.h"
 #include "state.h"
 #include "track.h"
-#include <bits/pthreadtypes.h>
+#include "buffer_thread.h"
+
 #include <stdbool.h>
 
 typedef struct QueueNode QueueNode;
@@ -15,6 +16,7 @@ typedef struct Queue {
 	QueueNode *tail; // Bottom of the queue (last playable track). tail->next == head
 
 	AudioBackend *backend;
+	BufferThread *buffer_thread;
 
 	QueueLock *lock;
 
