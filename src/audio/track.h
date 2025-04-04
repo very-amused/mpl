@@ -25,7 +25,7 @@ typedef struct AudioTrack {
 	
 	// PCM playback
 	AudioPCM pcm;
-	AudioBuffer *buffer;
+	RingBuffer *buffer;
 
 	// Metadata
 	AVRational time_base; // Base time resolution

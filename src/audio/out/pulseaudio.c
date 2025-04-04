@@ -30,8 +30,8 @@ typedef struct Ctx {
 	AudioPCM PCM;
 
 	// Playback buffer for current and next audio track
-	AudioBuffer *playback_buffer;
-	AudioBuffer *next_buffer;
+	RingBuffer *playback_buffer;
+	RingBuffer *next_buffer;
 } Ctx;
 
 /* PulseAudio AudioBackend methods */
