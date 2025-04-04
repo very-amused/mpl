@@ -1,5 +1,6 @@
 #include "queue/queue.h"
 #include "track.h"
+#include "timestamp.h"
 
 #include <unistd.h>
 #include <stdio.h>
@@ -27,10 +28,14 @@ int main(int argc, char **argv) {
 
 	Queue_play(&queue, 0);
 
+	char tbuf1[255];
+	char tbuf2[255];
 	while (true) {
 		const Track *tr = Queue_cur_track(&queue);
 		if (!tr) break;
-		printf("timestamp: %f\n", Track_timestamp(tr));
+		fmt_timestamp(tbuf1, sizeof(tbuf1), Track_timestamp(tr));
+		fmt_timestamp(tbuf2, sizeof(tbuf2),  tr->audio->duration_secs);
+		printf("timestamp: %s / %s\n", tbuf1, tbuf2);
 	}
 
 
