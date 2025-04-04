@@ -15,6 +15,7 @@ typedef struct RingBuffer {
 
 	unsigned char *data;
 	atomic_int rd, wr; // Read/write indices relative to line_size
+	atomic_size_t n_read; // Cumulative number of bytes read since initialization
 
 	// Semaphores providing read/write notifications to minimize spinning
 	sem_t rd_sem, wr_sem;

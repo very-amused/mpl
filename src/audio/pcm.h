@@ -12,6 +12,8 @@ typedef struct AudioPCM {
 
 // Get the buffer size, in bytes, for a buffer holding {ms} milliseconds of PCM data.
 uint32_t AudioPCM_buffer_size(const AudioPCM *pcm, const uint32_t ms);
+// Convert a number of bytes to a floating point number of seconds
+float AudioPCM_seconds(const AudioPCM *pcm, size_t n_bytes);
 
 #ifdef AO_PULSEAUDIO
 #include <pulse/sample.h>

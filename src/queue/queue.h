@@ -23,10 +23,14 @@ typedef struct Queue {
 	enum Queue_PLAYBACK_STATE playback_state;
 } Queue;
 
+
 // Initialize an empty queue.
 int Queue_init(Queue *q);
 // Deinitialize a queue and disconnect audio output.
 void Queue_deinit(Queue *q);
+
+// Get the currently playing track in the queue
+const Track *Queue_cur_track(const Queue *q);
 
 // Clear all tracks in a queue
 // NOTE: locks the queue

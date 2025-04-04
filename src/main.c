@@ -27,7 +27,12 @@ int main(int argc, char **argv) {
 
 	Queue_play(&queue, 0);
 
-	sleep(60);
+	while (true) {
+		const Track *tr = Queue_cur_track(&queue);
+		if (!tr) break;
+		printf("timestamp: %f\n", Track_timestamp(tr));
+	}
+
 
 	// Cleanup
 	Queue_deinit(&queue);

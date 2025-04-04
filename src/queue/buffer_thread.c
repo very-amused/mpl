@@ -68,7 +68,7 @@ buffer_loop:
 		at_err = AudioTrack_buffer_packet(track, NULL);
 		static int packetno = 0;
 		packetno++;
-		fprintf(stderr, "Buffering packet %d\n", packetno);
+		//fprintf(stderr, "Buffering packet %d\n", packetno);
 	} while (at_err == AudioTrack_OK);
 
 	AudioTrack *next = atomic_exchange(&thr->next_track, NULL);

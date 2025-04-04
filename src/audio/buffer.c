@@ -31,10 +31,11 @@ int AudioBuffer_init(RingBuffer *buf, const AudioPCM *pcm) {
 	}
 	buf->rd = 0;
 	buf->wr = 0;
+	buf->n_read = 0;
 
 	// Initialize semaphores
-	sem_init(&buf->rd_sem, 0, 1);
-	sem_init(&buf->wr_sem, 0, 1);
+	sem_init(&buf->rd_sem, 0, 0);
+	sem_init(&buf->wr_sem, 0, 0);
 
 	return 0;
 }
@@ -103,6 +104,8 @@ size_t AudioBuffer_read(RingBuffer *buf, unsigned char *dst, size_t n) {
 	atomic_store(&buf->rd, rd);
 	// Notify any parties waiting on a read
 	sem_post(&buf->rd_sem);
+	// Increment cumulative bytes read
+	atomic_fetch_add(&buf->n_read, count);
 
 	return count;
 }

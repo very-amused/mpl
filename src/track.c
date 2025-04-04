@@ -1,6 +1,8 @@
 #include "track.h"
+#include "audio/pcm.h"
 #include "audio/track.h"
 #include <string.h>
+#include <stdatomic.h>
 
 Track *Track_new(const char *url, const size_t url_len) {
 	Track *t = malloc(sizeof(Track));
@@ -32,4 +34,12 @@ void Track_free(Track *t) {
 		free(t->audio);
 	}
 	free(t);
+}
+
+float Track_timestamp(const Track *t) {
+	if (!t->audio) {
+		return 0;
+	}
+
+	return AudioPCM_seconds(&t->audio->pcm, atomic_load(&t->audio->buffer->n_read));
 }

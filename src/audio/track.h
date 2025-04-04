@@ -45,3 +45,5 @@ enum AudioTrack_ERR AudioTrack_buffer_ms(AudioTrack *at, enum AudioSeek dir, con
 
 // Convert a scalar in time_base units into a double precision number of seconds
 double AudioTrack_seconds(AVRational time_base, int64_t value);
+
+const float AudioTrack_timestamp(const AudioTrack *t);

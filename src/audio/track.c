@@ -233,4 +233,3 @@ enum AudioTrack_ERR AudioTrack_buffer_ms(AudioTrack *t, enum AudioSeek dir, cons
 double AudioTrack_seconds(AVRational time_base, int64_t value) {
 	return (double)(time_base.num * value) / time_base.den;
 }
-

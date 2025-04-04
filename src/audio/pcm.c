@@ -13,6 +13,12 @@ uint32_t AudioPCM_buffer_size(const AudioPCM *pcm, const uint32_t ms) {
 			0);
 }
 
+float AudioPCM_seconds(const AudioPCM *pcm, size_t n_bytes) {
+	const size_t line_size = pcm->n_channels * av_get_bytes_per_sample(pcm->sample_fmt);
+	const size_t byte_rate = line_size * pcm->sample_rate;
+	return (float)n_bytes / byte_rate;
+}
+
 #ifdef AO_PULSEAUDIO
 #include <pulse/sample.h>
 #include <pulse/channelmap.h>

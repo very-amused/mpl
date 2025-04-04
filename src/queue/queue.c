@@ -1,6 +1,7 @@
 #include "queue.h"
 #include "audio/out/backend.h"
 #include "audio/out/backends.h"
+#include "audio/pcm.h"
 #include "audio/seek.h"
 #include "audio/track.h"
 #include "buffer_thread.h"
@@ -47,6 +48,11 @@ void Queue_deinit(Queue *q) {
 
 	// Free the queue's lock
 	free(q->lock);
+}
+
+
+const Track *Queue_cur_track(const Queue *q) {
+	return q->cur != q->head ? q->cur->track : NULL;
 }
 
 int Queue_append(Queue *q, Track *t) {
@@ -205,6 +211,14 @@ int Queue_play(Queue *q, bool pause) {
 		return 1;
 	}
 	return BufferThread_start(q->buffer_thread, cur_audio, next_audio);
+}
+
+float Queue_cur_timestamp(const Queue *q) {
+	if (q->cur == q->head) {
+		return 0;
+	}
+	const AudioTrack *audio = q->cur->track->audio;
+	return AudioPCM_seconds(&audio->pcm, atomic_load(&audio->buffer->n_read));
 }
 
 // Get playback state from the queue and its AudioBackend
