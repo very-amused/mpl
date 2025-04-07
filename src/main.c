@@ -30,12 +30,12 @@ int main(int argc, char **argv) {
 
 	char tbuf1[255];
 	char tbuf2[255];
-	while (true) {
-		const Track *tr = Queue_cur_track(&queue);
-		if (!tr) break;
+	const Track *tr;
+	while (tr = Queue_cur_track(&queue), tr != NULL) {
 		fmt_timestamp(tbuf1, sizeof(tbuf1), Track_timestamp(tr));
 		fmt_timestamp(tbuf2, sizeof(tbuf2),  tr->audio->duration_secs);
 		printf("timestamp: %s / %s\n", tbuf1, tbuf2);
+		sleep(1);
 	}
 
 

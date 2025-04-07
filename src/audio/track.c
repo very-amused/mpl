@@ -92,6 +92,7 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url) {
 	}
 
 	// Drain any padding samples at the start
+	fprintf(stderr, "start_padding: %zu\n", t->start_padding);
 	while (t->start_padding > 0) {
 		status = av_read_frame(t->avf_ctx, t->av_packet); // Despite its name, av_read_frame reads packets
 		if (status < 0) {
