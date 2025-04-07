@@ -1,4 +1,5 @@
 /* MPL CLI user interface */
+/*
 #include "cli.h"
 
 #include <semaphore.h>
@@ -44,3 +45,4 @@ void MPL_CLI_free(MPL_CLI *cli) {
 	}
 	free(cli->input_thread);
 }
+*/

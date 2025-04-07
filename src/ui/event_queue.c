@@ -37,3 +37,22 @@ void EventQueue_free(EventQueue *eq) {
 	mq_close(eq->mq);
 	free(eq);
 }
+
+int EventQueue_send(EventQueue *eq, Event *evt) {
+	int status = mq_send(eq->mq, (const char *)evt, sizeof(Event), 0);
+	if (status == -1) {
+		perror("EventQueue message send");
+		free(evt);
+		return status;
+	}
+	return 0;
+}
+int EventQueue_recv(EventQueue *eq, Event *evt) {
+	int status = mq_receive(eq->mq, (char *)evt, sizeof(Event), 0);
+	if (status == -1) {
+		perror("EventQueue message receive");
+		free(evt);
+		return status;
+	}
+	return 0;
+}
