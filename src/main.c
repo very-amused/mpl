@@ -76,21 +76,6 @@ int main(int argc, char **argv) {
 	}
 quit:
 
-
-
-	/*
-	char tbuf1[255];
-	char tbuf2[255];
-	const Track *tr;
-	while (tr = Queue_cur_track(&queue), tr != NULL) {
-		fmt_timestamp(tbuf1, sizeof(tbuf1), Track_timestamp(tr));
-		fmt_timestamp(tbuf2, sizeof(tbuf2),  tr->audio->duration_secs);
-		printf("timestamp: %s / %s\n", tbuf1, tbuf2);
-		sleep(1);
-	}
-	*/
-
-
 	// Cleanup
 	Queue_deinit(&queue);
 	UserInterface_CLI_deinit(&ui);
