@@ -5,6 +5,7 @@
 #include "ui/event.h"
 #include "ui/event_queue.h"
 
+#include <stdint.h>
 #include <unistd.h>
 #include <stdio.h>
 
@@ -44,6 +45,16 @@ int main(int argc, char **argv) {
 		{
 			EventBody_Keypress key = evt.body_inline;
 			printf("Key %c was pressed\n", key);
+			break;
+		}
+		case mpl_TIMECODE:
+		{
+			EventBody_Timecode n_frames = evt.body_inline;
+			AudioPCM pcm = Queue_cur_track(&queue)->audio->pcm;
+			uint64_t timecode = n_frames / pcm.sample_rate;
+			char timecode_buf[255];
+			fmt_timestamp(timecode_buf, sizeof(timecode_buf), timecode);
+			fprintf(stderr, "Timecode %s received\n", timecode_buf);
 			break;
 		}
 		default:
