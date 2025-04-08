@@ -8,6 +8,8 @@
 #include <stdbool.h>
 #include <stdatomic.h>
 #include <stdio.h>
+#include <termios.h>
+#include <unistd.h>
 
 
 struct InputThread {
@@ -21,6 +23,12 @@ struct InputThread {
 
 void *InputThread_loop(void *thr__) {
 	InputThread *thr = thr__;
+	// Tell the terminal we want to receive input without line buffering
+	struct termios term_opts;
+	tcgetattr(STDIN_FILENO, &term_opts);
+	term_opts.c_lflag &= ~(ECHO | ICANON);
+	tcsetattr(STDIN_FILENO, TCSANOW, &term_opts);
+
 	while (true) {
 		// Handle cancel signal
 		int cancel;
