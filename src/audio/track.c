@@ -64,11 +64,11 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url) {
 	t->pcm.sample_rate = codec_params->sample_rate;
 	t->pcm.n_channels = codec_params->ch_layout.nb_channels;
 	// Timing info
-	t->time_base = stream->time_base;
-	t->duration = stream->duration;
+	const AVRational time_base = stream->time_base;
+	const int64_t duration_tb = stream->duration; // Duration in time_base units
 	mplRational duration;
-	mplRational_from_AVRational(&duration, t->time_base);
-	duration.num *= t->duration;
+	mplRational_from_AVRational(&duration, time_base);
+	duration.num *= duration_tb;
 	duration.num *= t->pcm.sample_rate;
 	mplRational_reduce(&duration);
 	if (duration.den == 1) {

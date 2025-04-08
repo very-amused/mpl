@@ -29,8 +29,6 @@ typedef struct AudioTrack {
 	RingBuffer *buffer;
 
 	// Metadata
-	AVRational time_base; // Base time resolution
-	int64_t duration; // Duration in {time_base} units
 	EventBody_Timecode duration_timecode; // Duration in sample frames
 	size_t start_padding, end_padding; // The number of sample frames at the start and end of the track used for padding. These must be discarded for gapless playback.
 } AudioTrack;
