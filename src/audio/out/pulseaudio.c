@@ -318,9 +318,9 @@ static void pa_stream_write_cb_(pa_stream *stream, size_t n_bytes, void *userdat
 		fprintf(stderr, "Error in write callback\n");
 	}
 	// Compute number of frames read, send to main as a timecode
-	const size_t n_read = atomic_load(&ctx->playback_buffer->n_read);
+	const size_t n_read = ctx->playback_buffer->n_read;
 	const size_t frame_size = ctx->playback_buffer->frame_size;
-	const EventBody_Timecode frames_read = n_read / frame_size; // TODO: n_read doesn't need to be atomic anymore
+	const EventBody_Timecode frames_read = n_read / frame_size;
 	const Event evt = {
 		.event_type = mpl_TIMECODE,
 		.body_size = sizeof(EventBody_Timecode),

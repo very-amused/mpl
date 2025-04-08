@@ -64,7 +64,7 @@ int main(int argc, char **argv) {
 			char timecode_buf[255];
 			char duration_buf[255];
 			fmt_timecode(timecode_buf, sizeof(timecode_buf), timecode, &pcm);
-			fmt_timecode(duration_buf, sizeof(duration_buf), tr->audio->duration_timecode, &pcm); // FIXME
+			fmt_timecode(duration_buf, sizeof(duration_buf), tr->audio->duration_timecode, &pcm);
 			static const char CLEAR_LINE_VT100[] = "\033[2K\r";
 			fprintf(stderr, CLEAR_LINE_VT100);
 			fprintf(stderr, "Timecode: %s/%s", timecode_buf, duration_buf);

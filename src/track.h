@@ -28,5 +28,3 @@ typedef struct Track {
 Track *Track_new(const char *url, const size_t url_len);
 
 void Track_free(Track *t);
-
-float Track_timestamp(const Track *t);

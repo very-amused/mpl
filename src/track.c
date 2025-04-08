@@ -35,11 +35,3 @@ void Track_free(Track *t) {
 	}
 	free(t);
 }
-
-float Track_timestamp(const Track *t) {
-	if (!t->audio) {
-		return 0;
-	}
-
-	return AudioPCM_seconds(&t->audio->pcm, atomic_load(&t->audio->buffer->n_read));
-}
