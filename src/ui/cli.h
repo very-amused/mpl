@@ -1,7 +1,6 @@
 #pragma once
 #include "ui/input_thread.h"
 
-
 // MPL's CLI user interface. This is the default UI used
 typedef struct UserInterface_CLI {
 	EventQueue *evt_queue;

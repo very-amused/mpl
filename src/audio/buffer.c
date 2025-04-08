@@ -18,9 +18,7 @@ int AudioBuffer_init(RingBuffer *buf, const AudioPCM *pcm) {
 			pcm->n_channels,
 			(pcm->sample_rate * TIME_LEN) + 1, // Add an extra sample for ring buffer alignment
 			pcm->sample_fmt, 0);
-	if (buf->size < 0) {
-		return 1;
-	}
+	buf->frame_size = av_get_bytes_per_sample(pcm->sample_fmt) * pcm->n_channels;
 
 	// Allocate buffer and set r/w indices
 	// NOTE: we zero this so an accidental read of unintialized data is silent,

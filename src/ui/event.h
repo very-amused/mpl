@@ -1,6 +1,7 @@
 #pragma once
 #include "error.h"
 #include <stdint.h>
+#include <stdbool.h>
 
 // MPL interface events that can be received on the main thread.
 // Some of these events will have associated body data.
@@ -30,5 +31,9 @@ typedef struct Event {
 } Event;
 
 typedef char EventBody_Keypress;
+
+// The number of audio frames that have been played in the current track.
+// Divide by the track's PCM->sample_rate to get the timecode in seconds.
+typedef uint64_t EventBody_Timecode;
 
 // TODO: implement timecode body

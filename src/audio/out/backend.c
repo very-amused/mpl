@@ -1,8 +1,9 @@
 #include "backend.h"
 #include "audio/pcm.h"
+#include "ui/event_queue.h"
 
 // Initialize an AudioBackend for playback
-int AudioBackend_init(AudioBackend *ab) {
+int AudioBackend_init(AudioBackend *ab, const EventQueue *eq) {
 	// Allocate and initialize ctx
 	ab->ctx = malloc(ab->ctx_size);
 	if (ab->ctx == NULL) {
@@ -10,7 +11,7 @@ int AudioBackend_init(AudioBackend *ab) {
 		return 1;
 	}
 
-	return ab->init(ab->ctx);
+	return ab->init(ab->ctx, eq);
 }
 
 // Deinitialize an AudioBackend

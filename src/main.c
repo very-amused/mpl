@@ -23,18 +23,18 @@ int main(int argc, char **argv) {
 	char *url = malloc((url_len + 1) * sizeof(char));
 	snprintf(url, url_len, "%s%s", LIBAV_PROTO_FILE, file);
 
-	// Initialize queue w/ track
-	Queue queue;
-	Queue_init(&queue);
-	Queue_connect_audio(&queue, NULL);
-	Queue_prepend(&queue, Track_new(url, url_len)); // Takes ownership of *track
-
-	Queue_play(&queue, 0);
-
-	// Fire up our CLI user interface
+	// Fire up CLI user interface and the main EventQueue
 	UserInterface_CLI ui;
 	UserInterface_CLI_init(&ui);
 	fprintf(stderr, "Ready to receive input\n");
+
+	// Initialize queue w/ track
+	Queue queue;
+	Queue_init(&queue);
+	Queue_connect_audio(&queue, NULL, ui.evt_queue);
+	Queue_prepend(&queue, Track_new(url, url_len)); // Takes ownership of *track
+	Queue_play(&queue, 0);
+
 
 	// Handle events on the main thread
 	Event evt;
@@ -47,7 +47,7 @@ int main(int argc, char **argv) {
 			break;
 		}
 		default:
-			fprintf(stderr, "Warning: unhandled event %s", MPL_EVENT_name(evt.event_type));
+			fprintf(stderr, "Warning: unhandled event %s\n", MPL_EVENT_name(evt.event_type));
 		}
 	}
 

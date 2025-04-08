@@ -1,5 +1,6 @@
 #pragma once
 #include "audio/track.h"
+#include "ui/event_queue.h"
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -16,7 +17,8 @@ typedef struct AudioBackend {
 	const char *name; // Backend name
 
 	// Initialize the audio backend for playback.
-	int (*init)(void *ctx);
+	// The backend will open a nonblocking, write-only connection to EventQueue *eq.
+	int (*init)(void *ctx, const EventQueue *eq);
 	// Deinitialize the audio backend
 	void (*deinit)(void *ctx);
 
@@ -38,7 +40,8 @@ typedef struct AudioBackend {
 
 
 // Initialize an AudioBackend for playback
-int AudioBackend_init(AudioBackend *ab);
+// The backend will open a nonblocking, write-only connection to EventQueue *eq.
+int AudioBackend_init(AudioBackend *ab, const EventQueue *eq);
 // Deinitialize an AudioBackend
 void AudioBackend_deinit(AudioBackend *ab);
 

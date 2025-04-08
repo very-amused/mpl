@@ -60,6 +60,6 @@ enum Queue_PLAYBACK_STATE Queue_get_playback_state(const Queue *q);
 
 // Connect the queue to the system's audio output.
 // If ab == NULL, a 'best' audio backend for the system will be automatically determined. This strategy is recommended
-int Queue_connect_audio(Queue *q, AudioBackend *ab);
+int Queue_connect_audio(Queue *q, AudioBackend *ab, const EventQueue *eq);
 // Disconnect the queue from the system's audio output.
 void Queue_disconnect_audio(Queue *q);

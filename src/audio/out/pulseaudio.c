@@ -1,3 +1,4 @@
+#include <fcntl.h>
 #include <pulse/channelmap.h>
 #include <pulse/def.h>
 #include <pulse/proplist.h>
@@ -6,6 +7,7 @@
 #include <pulse/context.h>
 #include <pulse/stream.h>
 #include <pulse/error.h>
+#include <stdatomic.h>
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -14,9 +16,14 @@
 #include "audio/track.h"
 #include "backend.h"
 #include "error.h"
+#include "ui/event.h"
+#include "ui/event_queue.h"
 
 // PulseAudio backend context
 typedef struct Ctx {
+	// Event queue for communicating w/ the main thread (UI)
+	EventQueue *evt_queue;
+
 	// Asynchronous event loop
 	pa_threaded_mainloop *loop;
 
@@ -35,7 +42,7 @@ typedef struct Ctx {
 } Ctx;
 
 /* PulseAudio AudioBackend methods */
-static int init(void *ctx__);
+static int init(void *ctx__, const EventQueue *eq);
 static void deinit(void *ctx__);
 static int prepare(void *ctx__, AudioTrack *track);
 static int play(void *ctx__, bool pause);
@@ -64,8 +71,14 @@ static void pa_stream_state_cb_(pa_stream *stream, void *userdata);
 // Operation completion callback
 static void pa_stream_success_cb_(pa_stream *stream, int success, void *userdata);
 
-static int init(void *userdata) {
+static int init(void *userdata, const EventQueue *eq) {
 	Ctx *ctx = userdata;
+
+	// Connect to event queue
+	ctx->evt_queue = EventQueue_connect(eq, O_WRONLY | O_NONBLOCK);
+	if (!ctx->evt_queue) {
+		return 1;
+	}
 
 	ctx->stream = ctx->next_stream = NULL;
 	ctx->playback_buffer = ctx->next_buffer = NULL;
@@ -301,6 +314,16 @@ static void pa_stream_write_cb_(pa_stream *stream, size_t n_bytes, void *userdat
 	if (pa_stream_write(ctx->stream, tb, tb_size, NULL, 0, PA_SEEK_RELATIVE) != 0) {
 		fprintf(stderr, "Error in write callback\n");
 	}
+	// Compute number of frames read, send to main as a timecode
+	const size_t n_read = atomic_load(&ctx->playback_buffer->n_read);
+	const size_t frame_size = ctx->playback_buffer->frame_size;
+	const EventBody_Timecode frames_read = n_read / frame_size; // TODO: n_read doesn't need to be atomic anymore
+	const Event evt = {
+		.event_type = mpl_TIMECODE,
+		.body_size = sizeof(EventBody_Timecode),
+		.body_inline = frames_read};
+	// Send timecode to the main thread
+	EventQueue_send(ctx->evt_queue, &evt);
 }
 
 static void pa_stream_state_cb_(pa_stream *stream, void *userdata) {

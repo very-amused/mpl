@@ -12,6 +12,7 @@
 // A ring buffer used to hold decoded PCM samples
 typedef struct RingBuffer {
 	size_t size; // Total size of the buffer in bytes
+	size_t frame_size; // Frame size, for convenient computation of the number of frames read
 
 	unsigned char *data;
 	atomic_int rd, wr; // Read/write indices relative to line_size
