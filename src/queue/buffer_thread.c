@@ -100,3 +100,16 @@ int BufferThread_start(BufferThread *thr, AudioTrack *track, AudioTrack *next_tr
 	pthread_create(thr->thread, NULL, BufferThread_routine, thr);
 	return 0;
 }
+
+void BufferThread_play(BufferThread *thr, bool pause) {
+	if (pause) {
+		sem_post(&thr->pause);
+		return;
+	} else {
+		int paused;
+		sem_getvalue(&thr->pause, &paused);
+		if (paused) {
+			sem_post(&thr->play);
+		}
+	}
+}

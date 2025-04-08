@@ -179,6 +179,9 @@ static void deinit(void *ctx__) {
 
 	// Free the main loop
 	pa_threaded_mainloop_free(ctx->loop);
+
+	// Disconnect the event queue
+	EventQueue_free(ctx->evt_queue);
 }
 
 static int prepare(void *ctx__, AudioTrack *t) {

@@ -1,10 +1,12 @@
 #include "queue/queue.h"
+#include "queue/state.h"
 #include "track.h"
 #include "timestamp.h"
 #include "ui/cli.h"
 #include "ui/event.h"
 #include "ui/event_queue.h"
 
+#include <ctype.h>
 #include <stdint.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -44,7 +46,14 @@ int main(int argc, char **argv) {
 		case mpl_KEYPRESS:
 		{
 			EventBody_Keypress key = evt.body_inline;
-			printf("Key %c was pressed\n", key);
+			printf("\nKey %c was pressed\n", key);
+			switch (tolower(key)) {
+			case 'p':
+				Queue_play(&queue, queue.playback_state == Queue_PLAYING);
+				break;
+			case 'q':
+				goto quit;
+			}
 			break;
 		}
 		case mpl_TIMECODE:
@@ -65,6 +74,7 @@ int main(int argc, char **argv) {
 			fprintf(stderr, "Warning: unhandled event %s\n", MPL_EVENT_name(evt.event_type));
 		}
 	}
+quit:
 
 
 
@@ -82,8 +92,8 @@ int main(int argc, char **argv) {
 
 
 	// Cleanup
-	UserInterface_CLI_deinit(&ui);
 	Queue_deinit(&queue);
+	UserInterface_CLI_deinit(&ui);
 	free(url);
 
 	return 0;

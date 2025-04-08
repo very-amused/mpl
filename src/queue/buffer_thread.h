@@ -1,6 +1,8 @@
 #pragma once
 #include "audio/track.h"
 
+#include <stdbool.h>
+
 // A thread that handles a nonblocking buffer loop
 typedef struct BufferThread BufferThread;
 
@@ -12,3 +14,6 @@ void BufferThread_free(BufferThread *thr);
 // Start a BufferThread to buffer track *t in the background.
 // Returns 0 on success, nonzero on error
 int BufferThread_start(BufferThread *thr, AudioTrack *track, AudioTrack *next_track);
+
+// Play/pause buffering
+void BufferThread_play(BufferThread *thr, bool pause);

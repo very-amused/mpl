@@ -154,6 +154,7 @@ int Queue_clear(Queue *q) {
 
 		node = next;
 	}
+	free(q->head);
 
 	return QueueLock_unlock(q->lock);
 }
@@ -202,6 +203,10 @@ int Queue_play(Queue *q, bool pause) {
 		return status;
 	}
 	q->playback_state = pause ? Queue_PAUSED : Queue_PLAYING;
+	if (pause) {
+		BufferThread_play(q->buffer_thread, pause);
+		return 0;
+	}
 
 	// Start a nonblocking buffer loop
 	AudioTrack *cur_audio = q->cur != q->head ? q->cur->track->audio : NULL;

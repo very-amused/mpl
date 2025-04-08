@@ -2,6 +2,7 @@
 #include "event_queue.h"
 #include "ui/event.h"
 
+#include <ctype.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <stdlib.h>
@@ -16,6 +17,8 @@ struct InputThread {
 	// EventQueue for sending input events
 	EventQueue *eq;
 
+	int input_fileno;
+	FILE *input;
 	pthread_t thread;
 	sem_t cancel; // Tell the thread to exit
 	_Atomic(enum InputMode) mode; // Input Mode
@@ -47,6 +50,9 @@ void *InputThread_loop(void *thr__) {
 			EventBody_Keypress input_key = getchar();
 			Event evt = {.event_type = mpl_KEYPRESS, .body_size = sizeof(EventBody_Keypress), .body_inline = input_key};
 			EventQueue_send(thr->eq, &evt);
+			if (tolower(input_key) == 'q') {
+				sem_post(&thr->cancel);
+			}
 			break;
 		}
 		case InputMode_TEXT:
@@ -72,6 +78,7 @@ void InputThread_free(InputThread *thr) {
 	// Stop thread
 	sem_post(&thr->cancel);
 	pthread_join(thr->thread, NULL);
+	free(thr);
 }
 
 void InputThread_set_mode(InputThread *thr, enum InputMode mode) {
