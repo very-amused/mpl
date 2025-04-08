@@ -57,7 +57,8 @@ int main(int argc, char **argv) {
 			char duration_buf[255];
 			fmt_timestamp(timecode_buf, sizeof(timecode_buf), timecode);
 			fmt_timestamp(duration_buf, sizeof(duration_buf), tr->audio->duration_secs);
-			fprintf(stderr, "Timecode: %s/%s \n", timecode_buf, duration_buf);
+			fprintf(stderr, "\033[2K\r");
+			fprintf(stderr, "Timecode: %s/%s", timecode_buf, duration_buf);
 			break;
 		}
 		default:
