@@ -50,11 +50,14 @@ int main(int argc, char **argv) {
 		case mpl_TIMECODE:
 		{
 			EventBody_Timecode n_frames = evt.body_inline;
-			AudioPCM pcm = Queue_cur_track(&queue)->audio->pcm;
+			const Track *tr = Queue_cur_track(&queue);
+			AudioPCM pcm = tr->audio->pcm;
 			uint64_t timecode = n_frames / pcm.sample_rate;
 			char timecode_buf[255];
+			char duration_buf[255];
 			fmt_timestamp(timecode_buf, sizeof(timecode_buf), timecode);
-			fprintf(stderr, "Timecode %s received\n", timecode_buf);
+			fmt_timestamp(duration_buf, sizeof(duration_buf), tr->audio->duration_secs);
+			fprintf(stderr, "Timecode: %s/%s \n", timecode_buf, duration_buf);
 			break;
 		}
 		default:
