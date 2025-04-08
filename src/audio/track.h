@@ -1,6 +1,7 @@
 #pragma once
 #include "audio/seek.h"
 #include "buffer.h"
+#include "ui/event.h"
 
 #include <libavcodec/packet.h>
 #include <libavutil/frame.h>
@@ -29,8 +30,8 @@ typedef struct AudioTrack {
 
 	// Metadata
 	AVRational time_base; // Base time resolution
-	int64_t duration; // Duration and current timestamp in {time_base} units
-	float duration_secs; // Duration in seconds
+	int64_t duration; // Duration in {time_base} units
+	EventBody_Timecode duration_timecode; // Duration in sample frames
 	size_t start_padding, end_padding; // The number of sample frames at the start and end of the track used for padding. These must be discarded for gapless playback.
 } AudioTrack;
 
@@ -41,9 +42,3 @@ void AudioTrack_deinit(AudioTrack *at);
 enum AudioTrack_ERR AudioTrack_buffer_packet(AudioTrack *at, size_t *n_bytes);
 // Buffer track data. AudioSeek_Relative will buffer onto the end of the Track's current AudioBuffer.
 enum AudioTrack_ERR AudioTrack_buffer_ms(AudioTrack *at, enum AudioSeek dir, const uint32_t ms);
-
-
-// Convert a scalar in time_base units into a double precision number of seconds
-double AudioTrack_seconds(AVRational time_base, int64_t value);
-
-const float AudioTrack_timestamp(const AudioTrack *t);

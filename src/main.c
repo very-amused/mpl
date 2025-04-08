@@ -1,10 +1,10 @@
 #include "queue/queue.h"
 #include "queue/state.h"
 #include "track.h"
-#include "timestamp.h"
 #include "ui/cli.h"
 #include "ui/event.h"
 #include "ui/event_queue.h"
+#include "ui/timecode.h"
 
 #include <ctype.h>
 #include <stdint.h>
@@ -58,15 +58,15 @@ int main(int argc, char **argv) {
 		}
 		case mpl_TIMECODE:
 		{
-			EventBody_Timecode n_frames = evt.body_inline;
+			EventBody_Timecode timecode = evt.body_inline;
 			const Track *tr = Queue_cur_track(&queue);
 			AudioPCM pcm = tr->audio->pcm;
-			uint64_t timecode = n_frames / pcm.sample_rate;
 			char timecode_buf[255];
 			char duration_buf[255];
-			fmt_timestamp(timecode_buf, sizeof(timecode_buf), timecode);
-			fmt_timestamp(duration_buf, sizeof(duration_buf), tr->audio->duration_secs);
-			fprintf(stderr, "\033[2K\r");
+			fmt_timecode(timecode_buf, sizeof(timecode_buf), timecode, &pcm);
+			fmt_timecode(duration_buf, sizeof(duration_buf), tr->audio->duration_timecode, &pcm); // FIXME
+			static const char CLEAR_LINE_VT100[] = "\033[2K\r";
+			fprintf(stderr, CLEAR_LINE_VT100);
 			fprintf(stderr, "Timecode: %s/%s", timecode_buf, duration_buf);
 			break;
 		}

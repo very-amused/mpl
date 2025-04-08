@@ -2,8 +2,11 @@
 #include "../error.h"
 #include "audio/buffer.h"
 #include "audio/pcm.h"
+#include "util/rational.h"
 
 #include <errno.h>
+#include <libavutil/mathematics.h>
+#include <libavutil/rational.h>
 #include <semaphore.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -63,7 +66,17 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url) {
 	// Timing info
 	t->time_base = stream->time_base;
 	t->duration = stream->duration;
-	t->duration_secs = AudioTrack_seconds(t->time_base, t->duration);
+	mplRational duration;
+	mplRational_from_AVRational(&duration, t->time_base);
+	duration.num *= t->duration;
+	duration.num *= t->pcm.sample_rate;
+	mplRational_reduce(&duration);
+	if (duration.den == 1) {
+		t->duration_timecode = duration.num;
+	} else {
+		fprintf(stderr, "Warning: Unable to compute duration timecode without loss of precision.\n");
+		t->duration_timecode = mplRational_d(&duration);
+	}
 	t->start_padding = codec_params->initial_padding;
 	t->end_padding = codec_params->trailing_padding;
 
@@ -229,8 +242,4 @@ enum AudioTrack_ERR AudioTrack_buffer_ms(AudioTrack *t, enum AudioSeek dir, cons
 	}
 
 	return AudioTrack_OK;
-}
-
-double AudioTrack_seconds(AVRational time_base, int64_t value) {
-	return (double)(time_base.num * value) / time_base.den;
 }
