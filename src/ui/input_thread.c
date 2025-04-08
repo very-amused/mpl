@@ -26,6 +26,7 @@ void *InputThread_loop(void *thr__) {
 	// Tell the terminal we want to receive input without line buffering
 	struct termios term_opts;
 	tcgetattr(STDIN_FILENO, &term_opts);
+	const struct termios orig_term_opts = term_opts;
 	term_opts.c_lflag &= ~(ECHO | ICANON);
 	tcsetattr(STDIN_FILENO, TCSANOW, &term_opts);
 
@@ -34,6 +35,7 @@ void *InputThread_loop(void *thr__) {
 		int cancel;
 		sem_getvalue(&thr->cancel, &cancel);
 		if (cancel) {
+			tcsetattr(STDIN_FILENO, TCSANOW, &orig_term_opts);
 			pthread_exit(NULL);
 		}
 
