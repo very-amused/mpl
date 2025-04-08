@@ -1,13 +1,12 @@
 #pragma once
 #include "error.h"
+#include <stdint.h>
 
 // MPL interface events that can be received on the main thread.
 // Some of these events will have associated body data.
 #define MPL_EVENT_ENUM(VARIANT) \
-	VARIANT(mpl_PLAY) \
-	VARIANT(mpl_PAUSE) \
-	VARIANT(mpl_STOP) \
-	VARIANT(mpl_TIMECODE) \ 
+	VARIANT(mpl_KEYPRESS) \
+	VARIANT(mpl_TIMECODE)
 
 enum MPL_EVENT {
 	MPL_EVENT_ENUM(ENUM_VAL)
@@ -26,7 +25,10 @@ static inline const char *MPL_EVENT_name(enum MPL_EVENT evt) {
 typedef struct Event {
 	enum MPL_EVENT event_type;
 	size_t body_size;
-	void *body;
+	void *body; // pointer body used to pass types > 8 bytes
+	uint64_t body_inline; // inline body used to pass types <= 8 bytes
 } Event;
+
+typedef char EventBody_Keypress;
 
 // TODO: implement timecode body

@@ -1,6 +1,9 @@
 #include "queue/queue.h"
 #include "track.h"
 #include "timestamp.h"
+#include "ui/cli.h"
+#include "ui/event.h"
+#include "ui/event_queue.h"
 
 #include <unistd.h>
 #include <stdio.h>
@@ -28,6 +31,29 @@ int main(int argc, char **argv) {
 
 	Queue_play(&queue, 0);
 
+	// Fire up our CLI user interface
+	UserInterface_CLI ui;
+	UserInterface_CLI_init(&ui);
+	fprintf(stderr, "Ready to receive input\n");
+
+	// Handle events on the main thread
+	Event evt;
+	while (EventQueue_recv(ui.evt_queue, &evt) == 0) {
+		switch (evt.event_type) {
+		case mpl_KEYPRESS:
+		{
+			EventBody_Keypress key = evt.body_inline;
+			printf("Key %c was pressed\n", key);
+			break;
+		}
+		default:
+			fprintf(stderr, "Warning: unhandled event %s", MPL_EVENT_name(evt.event_type));
+		}
+	}
+
+
+
+	/*
 	char tbuf1[255];
 	char tbuf2[255];
 	const Track *tr;
@@ -37,9 +63,11 @@ int main(int argc, char **argv) {
 		printf("timestamp: %s / %s\n", tbuf1, tbuf2);
 		sleep(1);
 	}
+	*/
 
 
 	// Cleanup
+	UserInterface_CLI_deinit(&ui);
 	Queue_deinit(&queue);
 	free(url);
 
