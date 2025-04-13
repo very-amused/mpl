@@ -237,9 +237,9 @@ int Queue_connect_audio(Queue *q, AudioBackend *ab, const EventQueue *eq) {
 	if (ab) {
 		q->backend = ab;
 	} else {
-		// TODO: Choose the best backend available using runtime detection
-		// For now we just use pulseaudio
+#ifdef AO_PULSEAUDIO
 		q->backend = &AB_PulseAudio;
+#endif
 	}
 
 	// Initialize the backend

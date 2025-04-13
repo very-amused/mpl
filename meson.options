@@ -1,1 +1,2 @@
-option('pulseaudio', type: 'feature', value: 'enabled')
+option('pulseaudio', type: 'feature', value: 'auto')
+option('pipewire', type: 'feature', value: 'auto')
