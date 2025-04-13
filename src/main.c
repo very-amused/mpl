@@ -12,7 +12,7 @@
 #include <stdio.h>
 
 int main(int argc, char **argv) {
-	printf("This is MPL v0.0.0\n");
+	printf("This is MPL v%s\n", MPL_VERSION);
 
 	if (argc < 2) {
 		fprintf(stderr, "usage: mpl {file}\n");

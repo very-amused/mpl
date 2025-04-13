@@ -1,10 +1,12 @@
-project('MPL', 'c', meson_version : '>=1.6.0')
+project('MPL', 'c', version: '0.0.1', meson_version : '>=1.6.0')
 
 # Dependencies
 deps = []
+# ffmpeg
 deps += dependency('libavcodec', version : '>=60.0.0')
 deps += dependency('libavformat', version : '>=60.0.0')
 deps += dependency('libavutil', version : '>=58.0.0')
+# audio output
 pulseaudio = dependency('libpulse', version : '>=16.0.0', required : get_option('pulseaudio'))
 pipewire = dependency('libpipewire-0.3', required : get_option('pipewire'))
 deps += pulseaudio
@@ -16,6 +18,7 @@ include = include_directories('src')
 
 # Preprocessor defines
 cflags = []
+cflags += '-DMPL_VERSION="@0@"'.format(meson.project_version())
 if pulseaudio.found()
 	cflags += '-DAO_PULSEAUDIO'
 endif
