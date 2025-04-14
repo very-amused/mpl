@@ -223,7 +223,7 @@ float Queue_cur_timestamp(const Queue *q) {
 		return 0;
 	}
 	const AudioTrack *audio = q->cur->track->audio;
-	return AudioPCM_seconds(&audio->pcm, atomic_load(&audio->buffer->n_read));
+	return AudioPCM_seconds(&audio->pcm, audio->buffer->n_read);
 }
 
 // Get playback state from the queue and its AudioBackend

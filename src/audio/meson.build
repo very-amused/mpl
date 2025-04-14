@@ -9,5 +9,6 @@ if pipewire.found()
 	src_audio += files('out/pipewire.c')
 endif
 
-slib_audio = static_library('audio.a', src_audio, include_directories : include, c_args : cflags, link_args : cflags)
+slib_audio = static_library('audio.a', src_audio, include_directories : include, c_args : cflags, link_args : cflags,
+	dependencies : [pulseaudio, pipewire])
 deps += declare_dependency(include_directories : include, link_with : slib_audio, sources : src_audio)

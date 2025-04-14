@@ -8,7 +8,7 @@ deps += dependency('libavformat', version : '>=60.0.0')
 deps += dependency('libavutil', version : '>=58.0.0')
 # audio output
 pulseaudio = dependency('libpulse', version : '>=16.0.0', required : get_option('pulseaudio'))
-pipewire = dependency('libpipewire-0.3', required : get_option('pipewire'))
+pipewire = dependency('libpipewire-0.3', version : '>=0.3.0', required : get_option('pipewire'))
 deps += pulseaudio
 deps += pipewire
 

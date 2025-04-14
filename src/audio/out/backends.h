@@ -2,4 +2,4 @@
 #include "backend.h"
 
 extern AudioBackend AB_PulseAudio;
-// Audiobackend AB_Pipewire; etc...
+extern AudioBackend AB_Pipewire;
