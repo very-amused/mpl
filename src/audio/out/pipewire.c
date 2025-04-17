@@ -1,4 +1,5 @@
 #include <fcntl.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <pipewire/pipewire.h>
 #include <pipewire/thread-loop.h>
@@ -14,9 +15,13 @@
 #include "backend.h"
 #include "error.h"
 #include "pipewire/core.h"
+#include "pipewire/keys.h"
+#include "pipewire/properties.h"
 #include "spa/param/audio/raw-utils.h"
 #include "spa/param/param.h"
 #include "spa/pod/pod.h"
+#include "spa/utils/defs.h"
+#include "spa/utils/dict.h"
 #include "ui/event.h"
 #include "ui/event_queue.h"
 
@@ -61,6 +66,13 @@ AudioBackend AB_Pipewire = {
 
 	.ctx_size = sizeof(Ctx)
 };
+
+/* PipeWire callbacks. */
+// Audio data write callback
+// In pipewire, writes are performed by dequeueing a buffer from a stream,
+// filling it with n frames (n is an integer, no partial frames),
+// and then requeueing it.
+static void pw_stream_write_cb_(void *ctx__);
 
 static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq) {
 	Ctx *ctx = ctx__;
@@ -135,6 +147,15 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *tr) {
 		return AudioBackend_STREAM_EXISTS;
 	}
 
+	// Allocate stream
+	ctx->stream = pw_stream_new(ctx->pw_core, BACKEND_APP_NAME, NULL);
+	if (!ctx->stream) {
+		pw_thread_loop_unlock(ctx->loop);
+		return AudioBackend_STREAM_ERR;
+	}
+
+	// Set up callbacks
+
 	/* Configure stream params
 	(this is way more complex than it needs to be thanks to PipeWire's reliance on the Simple Pile of Abstractions (SPA)) */
 	uint8_t params_buf[1024]; // backing memory for the POD builder
@@ -147,11 +168,45 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *tr) {
 			&audio_info);
 
 
-	// TODO
-
 	return -1;
 }
 static enum AudioBackend_ERR play(void *ctx__, bool pause) {
 	// TODO
 	return -1;
+}
+
+static void pw_stream_write_cb_(void *ctx__) {
+	Ctx *ctx = ctx__;
+
+	if (!(ctx->stream && ctx->track)) {
+		return;
+	}
+
+	// Receive destination buffer from PW
+	struct pw_buffer *pw_buf = pw_stream_dequeue_buffer(ctx->stream); // Pipewire Buffer
+	struct spa_data tb = pw_buf->buffer->datas[0];
+	if (!tb.data) {
+		return;
+	}
+
+	// Compute max number of frames to write (n)
+	const size_t frame_size = ctx->track->buffer->frame_size;
+	uint32_t n_frames = tb.maxsize / frame_size;
+	if (pw_buf->requested != 0 && pw_buf->requested < n_frames) {
+		n_frames = pw_buf->requested;
+	}
+	// Read frames from track buffer
+	pw_buf->size = AudioBuffer_read(ctx->track->buffer, tb.data, n_frames * frame_size) / frame_size;
+
+	// Return transfer buffer to PW
+	pw_stream_queue_buffer(ctx->stream, pw_buf);
+
+	// Compute and send timecode to the main thread
+	const size_t n_read = ctx->track->buffer->n_read;
+	const EventBody_Timecode frames_read = n_read / frame_size;
+	const Event evt = {
+		.event_type = mpl_TIMECODE,
+		.body_size = sizeof(EventBody_Timecode),
+		.body_inline = frames_read};
+	EventQueue_send(ctx->evt_queue, &evt);
 }

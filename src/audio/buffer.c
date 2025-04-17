@@ -44,6 +44,7 @@ void AudioBuffer_deinit(RingBuffer *buf) {
 }
 
 
+
 size_t AudioBuffer_write(RingBuffer *buf, unsigned char *src, size_t n) {
 	size_t count = 0; // # of bytes written
 
@@ -75,11 +76,20 @@ size_t AudioBuffer_write(RingBuffer *buf, unsigned char *src, size_t n) {
 	return count;
 }
 
+// Return the maximum size (in bytes) of a non-blocking read aligned to buf->frame_size
+static const size_t AudioBuffer_max_read(const RingBuffer *buf, const int rd, const int wr);
+
 size_t AudioBuffer_read(RingBuffer *buf, unsigned char *dst, size_t n) {
 	size_t count = 0; // # of bytes read
 
 	const int wr = atomic_load(&buf->wr);
 	int rd = atomic_load(&buf->rd);
+
+	// Align read
+	const size_t max_read = AudioBuffer_max_read(buf, wr, rd);
+	if (max_read > n) {
+		n = max_read;
+	}
 
 	while (count < n && rd != wr) {
 		// Read chunk
@@ -103,8 +113,25 @@ size_t AudioBuffer_read(RingBuffer *buf, unsigned char *dst, size_t n) {
 	// Notify any parties waiting on a read
 	sem_post(&buf->rd_sem);
 	// Increment cumulative bytes read
-	atomic_fetch_add(&buf->n_read, count);
+	buf->n_read += count;
 
 	return count;
 }
 
+static const size_t AudioBuffer_max_read(const RingBuffer *buf, const int rd, const int wr) {
+	size_t maxrd;
+	if (wr >= rd) {
+		maxrd = wr - rd;
+	} else {
+		maxrd = buf->size - (rd - wr);
+	}
+
+	if (maxrd < buf->frame_size) {
+		return 0;
+	}
+	if (maxrd > buf->frame_size) {
+		maxrd -= (maxrd % buf->frame_size);
+	}
+	
+	return maxrd;
+}
