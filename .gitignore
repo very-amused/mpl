@@ -7,5 +7,4 @@ compile_commands.json
 *.o
 *.a
 build
-test/*.mp3
-test/*.flac
+test/*

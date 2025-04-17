@@ -177,8 +177,8 @@ int Queue_select(Queue *q, QueueNode *node) {
 			node->track->audio = NULL;
 			return 1;
 		}
-		// Buffer 2 seconds of audio data
-		at_err = AudioTrack_buffer_ms(node->track->audio, AudioSeek_Relative, 5000);
+		// Buffer 3 seconds of audio data
+		at_err = AudioTrack_buffer_ms(node->track->audio, AudioSeek_Relative, 3000);
 		if (at_err != AudioTrack_OK) {
 			fprintf(stderr, "Failed to initialize AudioTrack for track %s: %s\n", node->track->url, AudioTrack_ERR_name(at_err));
 			AudioTrack_deinit(node->track->audio);
@@ -237,9 +237,7 @@ int Queue_connect_audio(Queue *q, AudioBackend *ab, const EventQueue *eq) {
 	if (ab) {
 		q->backend = ab;
 	} else {
-#ifdef AO_PULSEAUDIO
 		q->backend = &AB_PulseAudio;
-#endif
 	}
 
 	// Initialize the backend
