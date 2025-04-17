@@ -68,11 +68,13 @@ static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq) {
 	// Initialize the Pipewire API
 	pw_init(0, NULL);
 
-	// Allocate the main loop, obtain lock for loop initialization
+	// Allocate the main loop
 	ctx->loop = pw_thread_loop_new(NULL, NULL);
 	if (!ctx->loop) {
 		return AudioBackend_BAD_ALLOC;
 	}
+
+	// Lock the event loop for initialization
 	pw_thread_loop_lock(ctx->loop);
 
 	// Initialize connection context
@@ -83,14 +85,27 @@ static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq) {
 
 		pw_thread_loop_unlock(ctx->loop);
 		deinit(ctx);
+		return AudioBackend_BAD_ALLOC
+	}
+
+	// Connect to the PW server
+	ctx->pw_core = pw_context_connect(ctx->pw_ctx, NULL, 0);
+	if (!ctx->pw_core) {
+		fprintf(stderr, "Error: failed to connect to PipeWire.\n");
+		perror("Pipewire context");
+
+		pw_thread_loop_unlock(ctx->loop);
+		deinit(ctx);
 		return AudioBackend_CONNECT_ERR;
 	}
 
-	// Set context state change callback so we get a signal back once we're connected to the server
-	// TODO: Why is the callback a struct??
 
-
-#undef DEINIT
+	// Start the main event loop, opening communication between ctx->pw_core and PipeWire
+	if (pw_thread_loop_start(ctx->loop) != 0) {
+		pw_thread_loop_unlock(ctx->loop);
+		deinit(ctx);
+		return AudioBackend_LOOP_STALL;
+	}
 
 	return 0;
 }
@@ -98,6 +113,8 @@ static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq) {
 static void deinit(void *ctx__) {
 	Ctx *ctx = ctx__;
 
+	pw_core_disconnect(ctx->pw_core);
+	pw_context_destroy(ctx->pw_ctx);
 	pw_thread_loop_destroy(ctx->loop);
 }
 
