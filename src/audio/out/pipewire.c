@@ -1,8 +1,12 @@
 #include <fcntl.h>
+#include <stdint.h>
 #include <pipewire/pipewire.h>
 #include <pipewire/thread-loop.h>
 #include <pipewire/context.h>
 #include <pipewire/stream.h>
+#include <spa/param/audio/format-utils.h>
+#include <spa/param/audio/raw.h>
+#include <spa/pod/builder.h>
 
 #include "audio/buffer.h"
 #include "audio/pcm.h"
@@ -10,7 +14,9 @@
 #include "backend.h"
 #include "error.h"
 #include "pipewire/core.h"
-#include "spa/utils/hook.h"
+#include "spa/param/audio/raw-utils.h"
+#include "spa/param/param.h"
+#include "spa/pod/pod.h"
 #include "ui/event.h"
 #include "ui/event_queue.h"
 
@@ -118,8 +124,31 @@ static void deinit(void *ctx__) {
 	pw_thread_loop_destroy(ctx->loop);
 }
 
-static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *track) {
+static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *tr) {
+	Ctx *ctx = ctx__;
+
+	pw_thread_loop_lock(ctx->loop);
+
+	// If a stream exists, the caller must use queue() instead
+	if (ctx->stream && pw_stream_get_state(ctx->stream, NULL) != PW_STREAM_STATE_UNCONNECTED) {
+		pw_thread_loop_unlock(ctx->loop);
+		return AudioBackend_STREAM_EXISTS;
+	}
+
+	/* Configure stream params
+	(this is way more complex than it needs to be thanks to PipeWire's reliance on the Simple Pile of Abstractions (SPA)) */
+	uint8_t params_buf[1024]; // backing memory for the POD builder
+	struct spa_pod_builder pod_builder = SPA_POD_BUILDER_INIT(params_buf, sizeof(params_buf));
+
+	struct spa_pod *stream_params[1];
+	const struct spa_audio_info_raw audio_info = AudioPCM_pipewire_info(&tr->pcm);
+	stream_params[0] = spa_format_audio_raw_build(&pod_builder,
+			SPA_PARAM_EnumFormat, // Declare type as an SPA_PARAM holding a 1-value format enum. Yes, my head hurts too
+			&audio_info);
+
+
 	// TODO
+
 	return -1;
 }
 static enum AudioBackend_ERR play(void *ctx__, bool pause) {

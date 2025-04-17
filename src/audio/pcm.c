@@ -80,3 +80,51 @@ pa_buffer_attr AudioPCM_pulseaudio_buffer_attr(const AudioPCM *pcm) {
 	return buf_attr;
 }
 #endif
+
+#ifdef AO_PIPEWIRE
+
+struct spa_audio_info_raw AudioPCM_pipewire_info(const AudioPCM *pcm) {
+	struct spa_audio_info_raw info;
+
+	// Set channels + channel map
+	info.channels = pcm->n_channels;
+	// FIXME FIXME FIXME
+	info.position[0] = SPA_AUDIO_CHANNEL_FL;
+	info.position[1] = SPA_AUDIO_CHANNEL_FR;
+	for (size_t i = 2; i < info.channels; i++)  {
+		info.position[i] = SPA_AUDIO_CHANNEL_UNKNOWN;
+	}
+
+	// Set sample format
+	switch (pcm->sample_fmt) {
+		case AV_SAMPLE_FMT_U8:
+		case AV_SAMPLE_FMT_U8P:
+			info.format = SPA_AUDIO_FORMAT_U8;
+			break;
+		case AV_SAMPLE_FMT_S16:
+		case AV_SAMPLE_FMT_S16P:
+			info.format = SPA_AUDIO_FORMAT_S16;
+			break;
+		case AV_SAMPLE_FMT_S32:
+		case AV_SAMPLE_FMT_S32P:
+			info.format = SPA_AUDIO_FORMAT_S32;
+			break;
+		case AV_SAMPLE_FMT_FLT:
+		case AV_SAMPLE_FMT_FLTP:
+			info.format = SPA_AUDIO_FORMAT_F32;
+			break;
+		case AV_SAMPLE_FMT_DBL:
+		case AV_SAMPLE_FMT_DBLP:
+			info.format = SPA_AUDIO_FORMAT_F64;
+			break;
+		default:
+			info.format = SPA_AUDIO_FORMAT_UNKNOWN;
+			break; // Other formats are supported by libav but not pipewire
+	}
+
+	// Set sample rate
+	info.rate = pcm->sample_rate;
+
+	return info;
+}
+#endif
