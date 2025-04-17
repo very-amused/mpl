@@ -9,6 +9,8 @@
 #include "audio/track.h"
 #include "backend.h"
 #include "error.h"
+#include "pipewire/core.h"
+#include "spa/utils/hook.h"
 #include "ui/event.h"
 #include "ui/event_queue.h"
 
@@ -22,6 +24,8 @@ typedef struct Ctx {
 
 	// PipeWire connection context
 	struct pw_context *pw_ctx;
+	// PipeWire connection core (functionally alike to PA's context)
+	struct pw_core *pw_core;
 
 	// Audio playback streams
 	struct pw_stream *stream;
@@ -51,8 +55,6 @@ AudioBackend AB_Pipewire = {
 
 	.ctx_size = sizeof(Ctx)
 };
-
-/* TODO: PipeWire callbacks. *userdata is of type *Ctx. */
 
 static int init(void *ctx__, const EventQueue *eq) {
 	Ctx *ctx = ctx__;
@@ -93,7 +95,6 @@ static int init(void *ctx__, const EventQueue *eq) {
 
 	// Set context state change callback so we get a signal back once we're connected to the server
 	// TODO: Why is the callback a struct??
-	//pw_context_add_listener(ctx->pw_ctx);
 
 
 #undef DEINIT
