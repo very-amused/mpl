@@ -42,10 +42,10 @@ typedef struct Ctx {
 } Ctx;
 
 /* PulseAudio AudioBackend methods */
-static int init(void *ctx__, const EventQueue *eq);
+static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq);
 static void deinit(void *ctx__);
-static int prepare(void *ctx__, AudioTrack *track);
-static int play(void *ctx__, bool pause);
+static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *track);
+static enum AudioBackend_ERR play(void *ctx__, bool pause);
 
 /* AudioBackend implementation using PulseAudio */
 AudioBackend AB_PulseAudio = {
@@ -71,25 +71,21 @@ static void pa_stream_state_cb_(pa_stream *stream, void *userdata);
 // Operation completion callback
 static void pa_stream_success_cb_(pa_stream *stream, int success, void *userdata);
 
-static int init(void *userdata, const EventQueue *eq) {
+static enum AudioBackend_ERR init(void *userdata, const EventQueue *eq) {
 	Ctx *ctx = userdata;
 
 	// Connect to event queue
 	ctx->evt_queue = EventQueue_connect(eq, O_WRONLY | O_NONBLOCK);
 	if (!ctx->evt_queue) {
-		return 1;
+		return AudioBackend_EVENT_QUEUE_ERR;
 	}
-
-	ctx->stream = ctx->next_stream = NULL;
-	ctx->playback_buffer = ctx->next_buffer = NULL;
 
 	/* Set up our PulseAudio event loop and connection objects */
 
 	// Allocate the main event loop, obtain lock for loop initialization
 	ctx->loop = pa_threaded_mainloop_new();
 	if (!ctx->loop) {
-		fprintf(stderr, "Error: failed to create PulseAudio main loop.\n");
-		return 1;
+		return AudioBackend_BAD_ALLOC;
 	}
 	pa_threaded_mainloop_lock(ctx->loop);
 
@@ -103,9 +99,8 @@ static int init(void *userdata, const EventQueue *eq) {
 			pa_threaded_mainloop_get_api(ctx->loop),
 			BACKEND_APP_NAME);
 	if (!ctx->pa_ctx) {
-		fprintf(stderr, "Error: failed to create PulseAudio connection context.\n");
 		DEINIT();
-		return 1;
+		return AudioBackend_CONNECT_ERR;
 	}
 	
 	// Set context state change callback,
@@ -126,14 +121,13 @@ static int init(void *userdata, const EventQueue *eq) {
 	if (pa_context_connect(ctx->pa_ctx, NULL, PA_CONTEXT_NOFLAGS, NULL) < 0) {
 		fprintf(stderr, "Error: failed to connect to PulseAudio.\n");
 		DEINIT();
-		return 1;
+		return AudioBackend_CONNECT_ERR;
 	}
 
 	// 2. Start the main event loop, opening communication between ctx->pa_ctx and PulseAudio
 	if (pa_threaded_mainloop_start(ctx->loop) < 0) {
-		fprintf(stderr, "Error: failed to start PulseAudio main loop.\n");
 		DEINIT();
-		return 1;
+		return AudioBackend_LOOP_STALL;
 	}
 
 
@@ -150,19 +144,15 @@ static int init(void *userdata, const EventQueue *eq) {
 	// 3. Wait until we get a signal that our connection state is ready to check
 	pa_threaded_mainloop_wait(ctx->loop);
 	if (pa_context_get_state(ctx->pa_ctx) != PA_CONTEXT_READY) {
-		fprintf(stderr, "Error: failed to connect to PulseAudio.\n");
 		DEINIT();
-		return 1;
+		return AudioBackend_CONNECT_ERR;
 	}
-
-	fprintf(stderr, "Connected to PulseAudio!\n");
-
 
 #undef DEINIT
 
 	pa_threaded_mainloop_unlock(ctx->loop);
 
-	return 0;
+	return AudioBackend_OK;
 }
 
 static void deinit(void *ctx__) {
@@ -184,7 +174,7 @@ static void deinit(void *ctx__) {
 	EventQueue_free(ctx->evt_queue);
 }
 
-static int prepare(void *ctx__, AudioTrack *t) {
+static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 	Ctx *ctx = ctx__;
 
 	pa_threaded_mainloop_lock(ctx->loop);
@@ -196,9 +186,8 @@ static int prepare(void *ctx__, AudioTrack *t) {
 
 	// If a stream exists, the caller must use queue() instead
 	if (ctx->stream && pa_stream_get_state(ctx->stream) != PA_STREAM_TERMINATED) {
-		fprintf(stderr, "Warning: don't not use AudioBackend_prepare() to hot queue, prefer AudioBackend_queue() instead.\n");
 		pa_threaded_mainloop_unlock(ctx->loop);
-		return 1;
+		return AudioBackend_STREAM_EXISTS;
 	}
 
 	// Set up our playback stream
@@ -207,9 +196,8 @@ static int prepare(void *ctx__, AudioTrack *t) {
 	pa_channel_map channel_map = AudioPCM_pulseaudio_channel_map(pcm);
 	ctx->stream = pa_stream_new(ctx->pa_ctx, BACKEND_APP_NAME, &sample_spec, &channel_map);
 	if (!ctx->stream) {
-		fprintf(stderr, "Error: failed to create PulseAudio stream.\n");
 		pa_threaded_mainloop_unlock(ctx->loop);;
-		return 1;
+		return AudioBackend_BAD_ALLOC;
 	}
 
 	// Set up callbacks
@@ -231,19 +219,16 @@ static int prepare(void *ctx__, AudioTrack *t) {
 			&buf_attr,
 			PA_STREAM_START_CORKED & PA_STREAM_START_UNMUTED,
 			NULL, NULL);
-	static const char ERR_CONNECT_STREAM[] = "Error: failed to connect PulseAudio stream.\n";
 	if (status != 0) {
-		fprintf(stderr, ERR_CONNECT_STREAM);
 		DEINIT();
-		return 1;
+		return AudioBackend_CONNECT_ERR;
 	}
 
 	// Check stream state after connecting
 	pa_threaded_mainloop_wait(ctx->loop);
 	if (pa_stream_get_state(ctx->stream) != PA_STREAM_READY) {
-		fprintf(stderr, ERR_CONNECT_STREAM);
 		DEINIT();
-		return 1;
+		return AudioBackend_CONNECT_ERR;
 	}
 
 	// Connect playback buffer to framebuffer and fill framebuffer
@@ -251,35 +236,32 @@ static int prepare(void *ctx__, AudioTrack *t) {
 	void *tb; // Transfer buffer
 	size_t tb_size = (size_t)-1;
 	if (pa_stream_begin_write(ctx->stream, &tb, &tb_size) != 0) {
-		fprintf(stderr, "Warning: failed to populate PulseAudio framebuffer.\n");
-		goto end;
+		DEINIT();
+		return AudioBackend_FB_WRITE_ERR;
 	}
 	tb_size = AudioBuffer_read(ctx->playback_buffer, tb, tb_size);
 	if (pa_stream_write(ctx->stream, tb, tb_size, NULL, 0, PA_SEEK_RELATIVE) != 0) {
-		fprintf(stderr, "Error: %s\n", AudioBackend_ERR_name(AudioBackend_FB_WRITE_ERR));
-		goto end;
+		DEINIT();
+		return AudioBackend_FB_WRITE_ERR;
 	}
 
-#undef DEINIT
-end:
 	pa_threaded_mainloop_unlock(ctx->loop);
 
-
-	return 0;
+	return AudioBackend_OK;
 }
 
-static int play(void *ctx__, bool pause) {
+static enum AudioBackend_ERR play(void *ctx__, bool pause) {
 	Ctx *ctx = ctx__;
 
 	pa_threaded_mainloop_lock(ctx->loop);
 
 	pa_stream_cork(ctx->stream, pause, pa_stream_success_cb_, ctx);
 	pa_threaded_mainloop_wait(ctx->loop);
-	const bool is_corked = pa_stream_is_corked(ctx->stream);
+	const bool corked = pa_stream_is_corked(ctx->stream);
 
 	pa_threaded_mainloop_unlock(ctx->loop);
 
-	return pause ? !is_corked : is_corked;
+	return (pause ^ !corked) ? AudioBackend_OK : AudioBackend_PLAY_ERR;
 }
 
 static void pa_ctx_state_cb_(pa_context *pa_ctx, void *userdata) {

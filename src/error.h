@@ -7,14 +7,18 @@
 #define ENUM_KEY(NAME) case NAME: return #NAME;
 #define ENUM_VAL(NAME) NAME,
 
+static const char DEFAULT_ERR_NAME[] = "Not implemented.";
+
 #define AUDIOBACKEND_ERR(VARIANT) \
 	VARIANT(AudioBackend_OK) \
+	VARIANT(AudioBackend_EVENT_QUEUE_ERR) \
 	VARIANT(AudioBackend_BAD_ALLOC) \
 	VARIANT(AudioBackend_CONNECT_ERR) \
-	VARIANT(AudioBackend_LOOP_ERR) \
+	VARIANT(AudioBackend_LOOP_STALL) \
 	VARIANT(AudioBackend_STREAM_ERR) \
 	VARIANT(AudioBackend_STREAM_EXISTS) \
-	VARIANT(AudioBackend_FB_WRITE_ERR)
+	VARIANT(AudioBackend_FB_WRITE_ERR) \
+	VARIANT(AudioBackend_PLAY_ERR)
 
 /* An error returned by AudioBackend_* methods.
  *
@@ -30,7 +34,7 @@ static inline const char *AudioBackend_ERR_name(enum AudioBackend_ERR err) {
 	switch (err) {
 		AUDIOBACKEND_ERR(ENUM_KEY)
 	}
-	return NULL;
+	return DEFAULT_ERR_NAME;
 }
 
 #undef AUDIOBACKEND_ERR
@@ -59,6 +63,6 @@ static inline const char *AudioTrack_ERR_name(enum AudioTrack_ERR err) {
 	switch (err) {
 		AUDIOTRACK_ERR(ENUM_KEY)
 	}
-	return NULL;
+	return DEFAULT_ERR_NAME;
 }
 #undef AUDIOTRACK_ERR

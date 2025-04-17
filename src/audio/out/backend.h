@@ -1,5 +1,6 @@
 #pragma once
 #include "audio/track.h"
+#include "error.h"
 #include "ui/event_queue.h"
 #include <stddef.h>
 #include <stdlib.h>
@@ -18,20 +19,20 @@ typedef struct AudioBackend {
 
 	// Initialize the audio backend for playback.
 	// The backend will open a nonblocking, write-only connection to EventQueue *eq.
-	int (*init)(void *ctx, const EventQueue *eq);
+	enum AudioBackend_ERR (*init)(void *ctx, const EventQueue *eq);
 	// Deinitialize the audio backend
 	void (*deinit)(void *ctx);
 
 	// Prepare for 'cold' playback of *track from a silent start.
 	// This involves setting up an audio stream with the correct sample rate, format, channels, etc.
-	int (*prepare)(void *ctx, AudioTrack *track);
+	enum AudioBackend_ERR (*prepare)(void *ctx, AudioTrack *track);
 	// Queue up a track for upcoming gapless playback off the end of the current track.
 	// Note that only one track can be queued *in the backend* at a time.
-	int (*queue)(void *ctx, AudioTrack *track);
+	enum AudioBackend_ERR (*queue)(void *ctx, AudioTrack *track);
 
 	// Play/pause the current AudioTrack (prepared using prepare() or queue()).
 	// If pause == 1, the track state is set to paused. Otherwise, the track state is set to playing.
-	int (*play)(void *ctx, bool pause);
+	enum AudioBackend_ERR (*play)(void *ctx, bool pause);
 
 	// Private backend-specific context
 	const size_t ctx_size;
@@ -41,14 +42,14 @@ typedef struct AudioBackend {
 
 // Initialize an AudioBackend for playback
 // The backend will open a nonblocking, write-only connection to EventQueue *eq.
-int AudioBackend_init(AudioBackend *ab, const EventQueue *eq);
+enum AudioBackend_ERR AudioBackend_init(AudioBackend *ab, const EventQueue *eq);
 // Deinitialize an AudioBackend
 void AudioBackend_deinit(AudioBackend *ab);
 
 // Prepare for 'cold' playback of *track from a silent start.
 // This involves setting up an audio stream with the correct sample rate, format, channels, etc.
-int AudioBackend_prepare(AudioBackend *ab, AudioTrack *track);
+enum AudioBackend_ERR AudioBackend_prepare(AudioBackend *ab, AudioTrack *track);
 
 // Play/pause the current AudioTrack (prepared using prepare() or queue()).
 // If pause == 1, the track state is set to paused. Otherwise, the track state is set to playing.
-int AudioBackend_play(AudioBackend *ab, bool pause);
+enum AudioBackend_ERR AudioBackend_play(AudioBackend *ab, bool pause);
