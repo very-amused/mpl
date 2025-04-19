@@ -103,7 +103,7 @@ static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq) {
 
 		pw_thread_loop_unlock(ctx->loop);
 		deinit(ctx);
-		return AudioBackend_BAD_ALLOC
+		return AudioBackend_BAD_ALLOC;
 	}
 
 	// Connect to the PW server
@@ -155,18 +155,32 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *tr) {
 	}
 
 	// Set up callbacks
+	static const struct pw_stream_events STREAM_EVENTS = {PW_VERSION_STREAM_EVENTS,
+		.process = pw_stream_write_cb_};
+	struct spa_hook stream_events_handle;
+	pw_stream_add_listener(ctx->stream, &stream_events_handle, &STREAM_EVENTS, ctx);
 
 	/* Configure stream params
 	(this is way more complex than it needs to be thanks to PipeWire's reliance on the Simple Pile of Abstractions (SPA)) */
 	uint8_t params_buf[1024]; // backing memory for the POD builder
 	struct spa_pod_builder pod_builder = SPA_POD_BUILDER_INIT(params_buf, sizeof(params_buf));
 
-	struct spa_pod *stream_params[1];
+	const struct spa_pod *stream_params[1];
 	const struct spa_audio_info_raw audio_info = AudioPCM_pipewire_info(&tr->pcm);
 	stream_params[0] = spa_format_audio_raw_build(&pod_builder,
 			SPA_PARAM_EnumFormat, // Declare type as an SPA_PARAM holding a 1-value format enum. Yes, my head hurts too
 			&audio_info);
 
+	// Connect stream
+	int status = pw_stream_connect(ctx->stream, SPA_DIRECTION_OUTPUT, PW_ID_ANY,
+			PW_STREAM_FLAG_AUTOCONNECT,
+			stream_params,
+			sizeof(stream_params) / sizeof(stream_params[0]));
+	if (status < 0) {
+		return AudioBackend_CONNECT_ERR;
+	}
+
+	// Try to fill framebuffer
 
 	return -1;
 }
