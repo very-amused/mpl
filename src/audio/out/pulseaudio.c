@@ -152,6 +152,8 @@ static enum AudioBackend_ERR init(void *userdata, const EventQueue *eq) {
 
 	pa_threaded_mainloop_unlock(ctx->loop);
 
+	fprintf(stderr, "Connected to pulseaudio.\n");
+
 	return AudioBackend_OK;
 }
 
@@ -239,9 +241,12 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 		DEINIT();
 		return AudioBackend_FB_WRITE_ERR;
 	}
+	fprintf(stderr, "tb_size: %zu\n", tb_size);
 	tb_size = AudioBuffer_read(ctx->playback_buffer, tb, tb_size);
 	if (pa_stream_write(ctx->stream, tb, tb_size, NULL, 0, PA_SEEK_RELATIVE) != 0) {
 		DEINIT();
+		fprintf(stderr, "fuck\n");
+		fprintf(stderr, "tb_size: %zu\n", tb_size);
 		return AudioBackend_FB_WRITE_ERR;
 	}
 

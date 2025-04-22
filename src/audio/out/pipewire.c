@@ -8,6 +8,7 @@
 #include <spa/param/audio/format-utils.h>
 #include <spa/param/audio/raw.h>
 #include <spa/pod/builder.h>
+#include <pipewire/loop.h>
 
 #include "audio/buffer.h"
 #include "audio/pcm.h"
@@ -73,6 +74,8 @@ AudioBackend AB_Pipewire = {
 // filling it with n frames (n is an integer, no partial frames),
 // and then requeueing it.
 static void pw_stream_write_cb_(void *ctx__);
+// Audio stream state change callback
+static void pw_stream_state_cb_(void *ctx__, enum pw_stream_state old_state, enum pw_stream_state state, const char *errmsg);
 
 static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq) {
 	Ctx *ctx = ctx__;
@@ -156,7 +159,8 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *tr) {
 
 	// Set up callbacks
 	static const struct pw_stream_events STREAM_EVENTS = {PW_VERSION_STREAM_EVENTS,
-		.process = pw_stream_write_cb_};
+		.process = pw_stream_write_cb_,
+		.state_changed = pw_stream_state_cb_};
 	struct spa_hook stream_events_handle;
 	pw_stream_add_listener(ctx->stream, &stream_events_handle, &STREAM_EVENTS, ctx);
 
@@ -173,20 +177,39 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *tr) {
 
 	// Connect stream
 	int status = pw_stream_connect(ctx->stream, SPA_DIRECTION_OUTPUT, PW_ID_ANY,
-			PW_STREAM_FLAG_AUTOCONNECT,
+			PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_INACTIVE,
 			stream_params,
 			sizeof(stream_params) / sizeof(stream_params[0]));
 	if (status < 0) {
+		pw_thread_loop_unlock(ctx->loop);
 		return AudioBackend_CONNECT_ERR;
 	}
 
-	// Try to fill framebuffer
+	// Wait for stream connection to finish
+	pw_thread_loop_wait(ctx->loop);
+	if (pw_stream_get_state(ctx->stream, NULL) != PW_STREAM_STATE_PAUSED) {
+		pw_thread_loop_unlock(ctx->loop);
+		return AudioBackend_CONNECT_ERR;
+	}
 
-	return -1;
+	pw_thread_loop_unlock(ctx->loop);
+
+	return AudioBackend_OK;
 }
+
 static enum AudioBackend_ERR play(void *ctx__, bool pause) {
-	// TODO
-	return -1;
+	Ctx *ctx = ctx__;
+
+	pw_thread_loop_lock(ctx->loop);
+
+	pw_stream_set_active(ctx->stream, !pause);
+	pw_thread_loop_wait(ctx->loop);
+	enum pw_stream_state stream_state = pw_stream_get_state(ctx->stream, NULL);
+	const bool paused = stream_state == PW_STREAM_STATE_PAUSED;
+
+	pw_thread_loop_unlock(ctx->loop);
+
+	return (pause ^ !paused) ? AudioBackend_OK : AudioBackend_PLAY_ERR;
 }
 
 static void pw_stream_write_cb_(void *ctx__) {
@@ -223,4 +246,19 @@ static void pw_stream_write_cb_(void *ctx__) {
 		.body_size = sizeof(EventBody_Timecode),
 		.body_inline = frames_read};
 	EventQueue_send(ctx->evt_queue, &evt);
+}
+
+static void pw_stream_state_cb_(void *ctx__, enum pw_stream_state old_state, enum pw_stream_state state, const char *errmsg) {
+	Ctx *ctx = ctx__;
+
+	switch (state) {
+	case PW_STREAM_STATE_STREAMING:
+	case PW_STREAM_STATE_ERROR:
+	case PW_STREAM_STATE_PAUSED:
+		pw_thread_loop_signal(ctx->loop, 0);
+	
+	case PW_STREAM_STATE_UNCONNECTED:
+	case PW_STREAM_STATE_CONNECTING:
+		break;
+	}
 }

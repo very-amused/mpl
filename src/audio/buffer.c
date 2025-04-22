@@ -86,10 +86,12 @@ size_t AudioBuffer_read(RingBuffer *buf, unsigned char *dst, size_t n) {
 	int rd = atomic_load(&buf->rd);
 
 	// Align read
+	/*
 	const size_t max_read = AudioBuffer_max_read(buf, wr, rd);
-	if (max_read > n) {
+	if (max_read < n) {
 		n = max_read;
 	}
+	*/
 
 	while (count < n && rd != wr) {
 		// Read chunk
