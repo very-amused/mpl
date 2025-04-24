@@ -7,7 +7,7 @@
 #include <stdatomic.h>
 #include <semaphore.h>
 
-int AudioBuffer_init(RingBuffer *buf, const AudioPCM *pcm) {
+int AudioBuffer_init(AudioBuffer *buf, const AudioPCM *pcm) {
 	// To start, we're going to use a fixed buffer time length of 30s.
 	// Later, we'll use track header info to decide how big the initial buffer allocation is.
 	static const size_t TIME_LEN = 30;
@@ -38,14 +38,14 @@ int AudioBuffer_init(RingBuffer *buf, const AudioPCM *pcm) {
 	return 0;
 }
 
-void AudioBuffer_deinit(RingBuffer *buf) {
+void AudioBuffer_deinit(AudioBuffer *buf) {
 	av_free(buf->data);
 	buf->data = NULL;
 }
 
 
 
-size_t AudioBuffer_write(RingBuffer *buf, unsigned char *src, size_t n) {
+size_t AudioBuffer_write(AudioBuffer *buf, unsigned char *src, size_t n) {
 	size_t count = 0; // # of bytes written
 
 	int wr = atomic_load(&buf->wr);
@@ -77,9 +77,9 @@ size_t AudioBuffer_write(RingBuffer *buf, unsigned char *src, size_t n) {
 }
 
 // Return the maximum size (in bytes) of a non-blocking read aligned to buf->frame_size
-static const size_t AudioBuffer_max_read(const RingBuffer *buf, const int rd, const int wr);
+static const size_t AudioBuffer_max_read(const AudioBuffer *buf, const int rd, const int wr);
 
-size_t AudioBuffer_read(RingBuffer *buf, unsigned char *dst, size_t n, bool align) {
+size_t AudioBuffer_read(AudioBuffer *buf, unsigned char *dst, size_t n, bool align) {
 	size_t count = 0; // # of bytes read
 
 	const int wr = atomic_load(&buf->wr);
@@ -119,7 +119,7 @@ size_t AudioBuffer_read(RingBuffer *buf, unsigned char *dst, size_t n, bool alig
 	return count;
 }
 
-static const size_t AudioBuffer_max_read(const RingBuffer *buf, const int rd, const int wr) {
+static const size_t AudioBuffer_max_read(const AudioBuffer *buf, const int rd, const int wr) {
 	size_t maxrd;
 	if (wr >= rd) {
 		maxrd = wr - rd;

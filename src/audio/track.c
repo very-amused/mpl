@@ -81,7 +81,7 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url) {
 	t->end_padding = codec_params->trailing_padding;
 
 	// Allocate playback buffer
-	t->buffer = malloc(sizeof(RingBuffer));
+	t->buffer = malloc(sizeof(AudioBuffer));
 	if (t->buffer == NULL || AudioBuffer_init(t->buffer, &t->pcm) != 0) {
 		return AudioTrack_BUFFER_ERR;
 	}

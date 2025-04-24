@@ -26,7 +26,7 @@ typedef struct AudioTrack {
 	
 	// PCM playback
 	AudioPCM pcm;
-	RingBuffer *buffer;
+	AudioBuffer *buffer;
 
 	// Metadata
 	EventBody_Timecode duration_timecode; // Duration in sample frames

@@ -11,7 +11,7 @@
 
 
 // A ring buffer used to hold decoded PCM samples
-typedef struct RingBuffer {
+struct RingBuffer {
 	size_t size; // Total size of the buffer in bytes
 	size_t frame_size; // Frame size, for convenient computation of the number of frames read
 
@@ -21,19 +21,20 @@ typedef struct RingBuffer {
 
 	// Semaphores providing read/write notifications to minimize spinning
 	sem_t rd_sem, wr_sem;
-} RingBuffer;
+};
+typedef struct RingBuffer AudioBuffer;
 
 // Initialize an AudioBuffer for use
-int AudioBuffer_init(RingBuffer *buf, const AudioPCM *pcm);
+int AudioBuffer_init(AudioBuffer *buf, const AudioPCM *pcm);
 // Deinitialize an AudioBuffer for freeing
-void AudioBuffer_deinit(RingBuffer *buf);
+void AudioBuffer_deinit(AudioBuffer *buf);
 
 // Write up to n bytes from *src to *ab. Never blocks.
 // Returns the number of bytes actually written.
-size_t AudioBuffer_write(RingBuffer *buf, unsigned char *src, size_t n);
+size_t AudioBuffer_write(AudioBuffer *buf, unsigned char *src, size_t n);
 // Read up to n bytes from *ab to *dst. Never blocks.
 // Returns the number of bytes actually read.
 //
 // Iff align == 1 and the n parameter is a multiple of buf->frame_size,
 // the returned number of bytes is guaranteed to also be a multiple of buf->frame_size.
-size_t AudioBuffer_read(RingBuffer *buf, unsigned char *dst, size_t n, bool align);
+size_t AudioBuffer_read(AudioBuffer *buf, unsigned char *dst, size_t n, bool align);

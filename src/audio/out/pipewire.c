@@ -227,7 +227,7 @@ static void pw_stream_write_cb_(void *ctx__) {
 	}
 
 	// Compute max number of frames to write (n)
-	RingBuffer *buf = ctx->track->buffer;
+	AudioBuffer *buf = ctx->track->buffer;
 	const size_t frame_size = buf->frame_size;
 	uint32_t n_frames = tb.maxsize / frame_size;
 	if (pw_buf->requested != 0 && pw_buf->requested < n_frames) {
