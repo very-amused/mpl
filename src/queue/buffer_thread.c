@@ -95,8 +95,8 @@ int BufferThread_start(BufferThread *thr, AudioTrack *track, AudioTrack *next_tr
 		}
 		return 0;
 	}
-	thr->thread = malloc(sizeof(pthread_t));
 
+	thr->thread = malloc(sizeof(pthread_t));
 	pthread_create(thr->thread, NULL, BufferThread_routine, thr);
 	return 0;
 }

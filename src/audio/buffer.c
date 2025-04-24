@@ -79,19 +79,18 @@ size_t AudioBuffer_write(RingBuffer *buf, unsigned char *src, size_t n) {
 // Return the maximum size (in bytes) of a non-blocking read aligned to buf->frame_size
 static const size_t AudioBuffer_max_read(const RingBuffer *buf, const int rd, const int wr);
 
-size_t AudioBuffer_read(RingBuffer *buf, unsigned char *dst, size_t n) {
+size_t AudioBuffer_read(RingBuffer *buf, unsigned char *dst, size_t n, bool align) {
 	size_t count = 0; // # of bytes read
 
 	const int wr = atomic_load(&buf->wr);
 	int rd = atomic_load(&buf->rd);
 
-	// Align read
-	/*
-	const size_t max_read = AudioBuffer_max_read(buf, wr, rd);
-	if (max_read < n) {
-		n = max_read;
+	if (align) {
+		const size_t max_read = AudioBuffer_max_read(buf, rd, wr);
+		if (max_read < n) {
+			n = max_read;
+		}
 	}
-	*/
 
 	while (count < n && rd != wr) {
 		// Read chunk
@@ -128,12 +127,7 @@ static const size_t AudioBuffer_max_read(const RingBuffer *buf, const int rd, co
 		maxrd = buf->size - (rd - wr);
 	}
 
-	if (maxrd < buf->frame_size) {
-		return 0;
-	}
-	if (maxrd > buf->frame_size) {
-		maxrd -= (maxrd % buf->frame_size);
-	}
+	maxrd -= (maxrd % buf->frame_size);
 	
 	return maxrd;
 }

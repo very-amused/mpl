@@ -241,8 +241,7 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 		DEINIT();
 		return AudioBackend_FB_WRITE_ERR;
 	}
-	fprintf(stderr, "tb_size: %zu\n", tb_size);
-	tb_size = AudioBuffer_read(ctx->playback_buffer, tb, tb_size);
+	tb_size = AudioBuffer_read(ctx->playback_buffer, tb, tb_size, false);
 	if (pa_stream_write(ctx->stream, tb, tb_size, NULL, 0, PA_SEEK_RELATIVE) != 0) {
 		DEINIT();
 		fprintf(stderr, "fuck\n");
@@ -300,7 +299,7 @@ static void pa_stream_write_cb_(pa_stream *stream, size_t n_bytes, void *userdat
 		fprintf(stderr, "Warning: failed to populated PulseAudio framebuffer.\n");
 		return;
 	}
-	tb_size = AudioBuffer_read(ctx->playback_buffer, tb, tb_size);
+	tb_size = AudioBuffer_read(ctx->playback_buffer, tb, tb_size, false);
 	if (pa_stream_write(ctx->stream, tb, tb_size, NULL, 0, PA_SEEK_RELATIVE) != 0) {
 		fprintf(stderr, "Error in write callback\n");
 	}

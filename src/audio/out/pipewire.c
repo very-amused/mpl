@@ -227,19 +227,20 @@ static void pw_stream_write_cb_(void *ctx__) {
 	}
 
 	// Compute max number of frames to write (n)
-	const size_t frame_size = ctx->track->buffer->frame_size;
+	RingBuffer *buf = ctx->track->buffer;
+	const size_t frame_size = buf->frame_size;
 	uint32_t n_frames = tb.maxsize / frame_size;
 	if (pw_buf->requested != 0 && pw_buf->requested < n_frames) {
 		n_frames = pw_buf->requested;
 	}
 	// Read frames from track buffer
-	pw_buf->size = AudioBuffer_read(ctx->track->buffer, tb.data, n_frames * frame_size) / frame_size;
+	pw_buf->size = AudioBuffer_read(buf, tb.data, n_frames * frame_size, true) / frame_size;
 
 	// Return transfer buffer to PW
 	pw_stream_queue_buffer(ctx->stream, pw_buf);
 
 	// Compute and send timecode to the main thread
-	const size_t n_read = ctx->track->buffer->n_read;
+	const size_t n_read = buf->n_read;
 	const EventBody_Timecode frames_read = n_read / frame_size;
 	const Event evt = {
 		.event_type = mpl_TIMECODE,

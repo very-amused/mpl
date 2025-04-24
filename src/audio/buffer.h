@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <libavutil/samplefmt.h>
 #include <stdio.h>
 #include <stdatomic.h>
@@ -31,6 +32,8 @@ void AudioBuffer_deinit(RingBuffer *buf);
 // Returns the number of bytes actually written.
 size_t AudioBuffer_write(RingBuffer *buf, unsigned char *src, size_t n);
 // Read up to n bytes from *ab to *dst. Never blocks.
-// Returns the number of bytes actually read,
-// which is guaranteed to be a multiple of buf->frame_size.
-size_t AudioBuffer_read(RingBuffer *buf, unsigned char *dst, size_t n);
+// Returns the number of bytes actually read.
+//
+// Iff align == 1 and the n parameter is a multiple of buf->frame_size,
+// the returned number of bytes is guaranteed to also be a multiple of buf->frame_size.
+size_t AudioBuffer_read(RingBuffer *buf, unsigned char *dst, size_t n, bool align);
