@@ -38,4 +38,5 @@ subdir('src')
 executable('mpl', src,
 	include_directories : include,
 	dependencies : deps,
-	c_args : cflags, link_args: cflags)
+	c_args : cflags, link_args: cflags,
+	install  : true)
