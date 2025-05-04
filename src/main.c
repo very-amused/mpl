@@ -89,7 +89,6 @@ int main(int argc, char **argv) {
 		}
 		case mpl_TRACK_END:
 		{
-			fprintf(stderr, "Received event TRACK_END\n");
 			const Track *next = Queue_next_track(&queue);
 			if (!next) {
 				goto quit;

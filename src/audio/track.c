@@ -209,7 +209,7 @@ enum AudioTrack_ERR AudioTrack_buffer_packet(AudioTrack *t, size_t *n_bytes) {
 	do {
 		status = av_read_frame(t->avf_ctx, t->av_packet);
 		if (status < 0) {
-			if (status == AVERROR(EOF)) {
+			if (status == AVERROR_EOF) {
 				return AudioTrack_EOF;
 			}
 			av_perror(status, av_err);
@@ -219,7 +219,7 @@ enum AudioTrack_ERR AudioTrack_buffer_packet(AudioTrack *t, size_t *n_bytes) {
 
 	// Decode into frames
 	status = avcodec_send_packet(t->avc_ctx, t->av_packet);
-	if (status < 0) {
+	if (status != 0) {
 		av_perror(status, av_err);
 		return AudioTrack_PACKET_ERR;
 	}
