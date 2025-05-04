@@ -29,7 +29,6 @@ int main(int argc, char **argv) {
 	// Fire up CLI user interface and the main EventQueue
 	UserInterface_CLI ui;
 	UserInterface_CLI_init(&ui);
-	fprintf(stderr, "Ready to receive input\n");
 
 	// Initialize queue w/ track
 	Queue queue;
@@ -104,7 +103,6 @@ quit:
 
 	// Cleanup
 	Queue_deinit(&queue);
-	fprintf(stderr, "passed Queue_deinit\n");
 	UserInterface_CLI_deinit(&ui);
 	free(url);
 

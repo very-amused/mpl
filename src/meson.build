@@ -1,4 +1,4 @@
-src += files('main.c', 'track.c')
+src += files('main.c', 'track.c', 'track_meta.c')
 
 subdir('audio')
 subdir('queue')

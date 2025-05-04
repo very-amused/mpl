@@ -46,6 +46,7 @@ void BufferThread_free(BufferThread *thr) {
 		}
 		pthread_join(*thr->thread, NULL);
 	}
+	free(thr->thread);
 
 	// We don't own the track pointers, so we do nothing with those
 
@@ -60,18 +61,14 @@ static void *BufferThread_routine(void *args) {
 buffer_loop:
 	do {
 		if (sem_trywait(&thr->cancel) == 0) {
-			printf("yooo\n");
 			return NULL;
 		}
 		int paused;
 		sem_getvalue(&thr->pause, &paused);
 		if (paused) {
 			// Keep pause at 1 until unpaused (so other threads can see we're paused)
-			fprintf(stderr, "paused, waiting on thr->play\n");
 			sem_wait(&thr->play);
-			fprintf(stderr, "waiting on thr->pause\n");
 			sem_wait(&thr->pause);
-			fprintf(stderr, "continuing buffer loop");
 			goto buffer_loop;
 		}
 

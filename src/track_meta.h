@@ -15,3 +15,8 @@ typedef struct TrackMeta {
 	char *album;
 	size_t album_len;
 } TrackMeta;
+
+// Zero track metadata
+void TrackMeta_init(TrackMeta *meta);
+// Deinitialize allocated track metadata
+void TrackMeta_deinit(TrackMeta *meta);
