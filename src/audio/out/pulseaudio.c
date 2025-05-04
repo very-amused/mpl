@@ -1,6 +1,7 @@
 #include <fcntl.h>
 #include <pulse/channelmap.h>
 #include <pulse/def.h>
+#include <pulse/operation.h>
 #include <pulse/proplist.h>
 #include <pulse/sample.h>
 #include <pulse/thread-mainloop.h>
@@ -261,8 +262,9 @@ static enum AudioBackend_ERR play(void *ctx__, bool pause) {
 
 	pa_threaded_mainloop_lock(ctx->loop);
 
-	pa_stream_cork(ctx->stream, pause, pa_stream_success_cb_, ctx);
+	pa_operation *op = pa_stream_cork(ctx->stream, pause, pa_stream_success_cb_, ctx);
 	pa_threaded_mainloop_wait(ctx->loop);
+	pa_operation_unref(op);
 	const bool corked = pa_stream_is_corked(ctx->stream);
 
 	pa_threaded_mainloop_unlock(ctx->loop);

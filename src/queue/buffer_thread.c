@@ -1,7 +1,6 @@
 #include "buffer_thread.h"
 #include "audio/track.h"
 #include "error.h"
-#include <errno.h>
 #include <stdatomic.h>
 #include <stddef.h>
 

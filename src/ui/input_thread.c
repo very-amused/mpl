@@ -2,7 +2,6 @@
 #include "event_queue.h"
 #include "ui/event.h"
 
-#include <ctype.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <stdlib.h>
