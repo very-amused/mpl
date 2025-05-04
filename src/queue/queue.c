@@ -177,6 +177,11 @@ int Queue_select(Queue *q, QueueNode *node) {
 			node->track->audio = NULL;
 			return 1;
 		}
+		// Load track metadata
+		at_err = AudioTrack_get_metadata(node->track->audio, &node->track->meta);
+		if (at_err != AudioTrack_OK) {
+			fprintf(stderr, "Failed to read metadata for track %s: %s\n", node->track->url, AudioTrack_ERR_name(at_err));
+		}
 		// Buffer 3 seconds of audio data
 		at_err = AudioTrack_buffer_ms(node->track->audio, AudioSeek_Relative, 3000);
 		if (at_err != AudioTrack_OK) {

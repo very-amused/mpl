@@ -38,6 +38,24 @@ int main(int argc, char **argv) {
 	Queue_prepend(&queue, Track_new(url, url_len)); // Takes ownership of *track
 	Queue_play(&queue, 0);
 
+	// Display metadata
+	const Track *track = Queue_cur_track(&queue);
+	static const char TERM_BOLD[] = "\x1b[1m";
+	static const char TERM_ITAL[] = "\x1b[3m";
+	static const char TERM_RESET[] = "\x1b[0m";
+	if (track->meta.artist) {
+		fprintf(stderr, "%sArtist:%s %s%s%s\n", TERM_BOLD, TERM_RESET,
+				TERM_ITAL, track->meta.artist, TERM_RESET);
+	}
+	if (track->meta.name) {
+		fprintf(stderr, "%sTitle:%s %s%s%s\n", TERM_BOLD, TERM_RESET,
+				TERM_ITAL, track->meta.name, TERM_RESET);
+	}
+	if (track->meta.album) {
+		fprintf(stderr, "%sAlbum:%s %s%s%s\n", TERM_BOLD, TERM_RESET,
+				TERM_ITAL, track->meta.album, TERM_RESET);
+	}
+
 
 	// Handle events on the main thread
 	Event evt;
@@ -67,7 +85,7 @@ int main(int argc, char **argv) {
 			fmt_timecode(duration_buf, sizeof(duration_buf), tr->audio->duration_timecode, &pcm);
 			static const char CLEAR_LINE_VT100[] = "\033[2K\r";
 			fprintf(stderr, CLEAR_LINE_VT100);
-			fprintf(stderr, "Timecode: %s/%s", timecode_buf, duration_buf);
+			fprintf(stderr, "%s/%s", timecode_buf, duration_buf);
 			break;
 		}
 		default:

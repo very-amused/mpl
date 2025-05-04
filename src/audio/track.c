@@ -4,6 +4,7 @@
 #include "audio/pcm.h"
 #include "util/rational.h"
 
+#include <ctype.h>
 #include <errno.h>
 #include <libavutil/mathematics.h>
 #include <libavutil/rational.h>
@@ -21,6 +22,7 @@
 #include <libavutil/error.h>
 #include <libavformat/avformat.h>
 #include <libavcodec/codec.h>
+#include <libavutil/dict.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -143,6 +145,55 @@ void AudioTrack_deinit(AudioTrack *t) {
 	t->buffer = NULL;
 
 	avformat_close_input(&t->avf_ctx);
+}
+
+enum AudioTrack_ERR AudioTrack_get_metadata(AudioTrack *at, TrackMeta *meta) {
+	const AVDictionary *av_metadata = at->avf_ctx->metadata;
+	// Lowercase metadata key string
+	static const size_t LKEY_MAX = 255;
+	char lkey[LKEY_MAX+1];
+	size_t lkey_len = 0;
+
+	for (const AVDictionaryEntry *tag = av_dict_iterate(av_metadata, NULL); tag != NULL; tag = av_dict_iterate(av_metadata, tag)) {
+		// Normalize key to lowercase
+		lkey_len = strlen(tag->key);
+		if (lkey_len > LKEY_MAX) {
+			fprintf(stderr, "Error: metadata key exceeds max length of %zu, skipping (%s)\n", LKEY_MAX, tag->key);
+			continue;
+		}
+		for (size_t i = 0; i < lkey_len; i++) {
+			lkey[i] = tolower(tag->key[i]);
+		}
+		lkey[lkey_len] = '\0';
+
+		switch (lkey[0]) {
+		case 'a':
+		{
+			if (strncmp(lkey, "artist", lkey_len) == 0) {
+				meta->artist_len = strlen(tag->value);
+				meta->artist = strndup(tag->value, meta->artist_len);
+			} else if (strncmp(lkey, "album", lkey_len) == 0) {
+				meta->album_len = strlen(tag->value);
+				meta->album = strndup(tag->value, meta->album_len);
+			}
+			break;
+		}
+
+		case 't':
+		{
+			if (strncmp(lkey, "title", lkey_len) == 0) {
+				meta->name_len = strlen(tag->value);
+				meta->name = strndup(tag->value, meta->name_len);
+			} else if (strncmp(lkey, "track", lkey_len) == 0) {
+				// TODO: parse trackno
+			}
+			break;
+		}
+		}
+		//fprintf(stderr, "%s=%s\n", tag->key, tag->value);
+	}
+
+	return AudioTrack_OK;
 }
 
 enum AudioTrack_ERR AudioTrack_buffer_packet(AudioTrack *t, size_t *n_bytes) {

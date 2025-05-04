@@ -1,24 +1,17 @@
 #pragma once
 #include <stddef.h>
 
+#include "track_meta.h"
 #include "audio/track.h"
+
 
 typedef struct Track {
 	// Track URL. All information we get about the track stems from this
 	char *url;
 	size_t url_len;
 
-	// Track name
-	char *name;
-	size_t name_len;
-
-	// Artist info
-	char *artist;
-	size_t artist_len;
-
-	// Album info
-	char *album;
-	size_t album_len;
+	// Track metadata
+	TrackMeta meta;
 
 	// Audio info
 	AudioTrack *audio;

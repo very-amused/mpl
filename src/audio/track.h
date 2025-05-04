@@ -1,6 +1,7 @@
 #pragma once
 #include "audio/seek.h"
 #include "buffer.h"
+#include "track_meta.h"
 #include "ui/event.h"
 
 #include <libavcodec/packet.h>
@@ -33,8 +34,12 @@ typedef struct AudioTrack {
 	size_t start_padding, end_padding; // The number of sample frames at the start and end of the track used for padding. These must be discarded for gapless playback.
 } AudioTrack;
 
+// Initialize an AudioTrack and update metadata if meta != NULL
 enum AudioTrack_ERR AudioTrack_init(AudioTrack *at, const char *url);
 void AudioTrack_deinit(AudioTrack *at);
+
+// Retrieve metadata from an AudioTrack's decoding context, storing the result in *meta
+enum AudioTrack_ERR AudioTrack_get_metadata(AudioTrack *at, TrackMeta *meta);
 
 // Buffer one packet worth of frames and set n_bytes (if not NULL) to the number of bytes buffered in doing so.
 enum AudioTrack_ERR AudioTrack_buffer_packet(AudioTrack *at, size_t *n_bytes);
