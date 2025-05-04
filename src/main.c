@@ -88,6 +88,14 @@ int main(int argc, char **argv) {
 			fprintf(stderr, "%s/%s", timecode_buf, duration_buf);
 			break;
 		}
+		case mpl_TRACK_END:
+		{
+			fprintf(stderr, "Received event TRACK_END\n");
+			const Track *next = Queue_next_track(&queue);
+			if (!next) {
+				goto quit;
+			}
+		}
 		default:
 			fprintf(stderr, "Warning: unhandled event %s\n", MPL_EVENT_name(evt.event_type));
 		}
@@ -96,6 +104,7 @@ quit:
 
 	// Cleanup
 	Queue_deinit(&queue);
+	fprintf(stderr, "passed Queue_deinit\n");
 	UserInterface_CLI_deinit(&ui);
 	free(url);
 

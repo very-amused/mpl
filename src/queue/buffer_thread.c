@@ -38,6 +38,12 @@ void BufferThread_free(BufferThread *thr) {
 	// Stop thread
 	if (thr->thread) {
 		sem_post(&thr->cancel);
+		int paused;
+		sem_getvalue(&thr->pause, &paused);
+		if (paused) {
+			atomic_store(&thr->track, NULL);
+			sem_post(&thr->play);
+		}
 		pthread_join(*thr->thread, NULL);
 	}
 
@@ -54,14 +60,19 @@ static void *BufferThread_routine(void *args) {
 buffer_loop:
 	do {
 		if (sem_trywait(&thr->cancel) == 0) {
-			pthread_exit(NULL);
+			printf("yooo\n");
+			return NULL;
 		}
 		int paused;
 		sem_getvalue(&thr->pause, &paused);
 		if (paused) {
 			// Keep pause at 1 until unpaused (so other threads can see we're paused)
+			fprintf(stderr, "paused, waiting on thr->play\n");
 			sem_wait(&thr->play);
+			fprintf(stderr, "waiting on thr->pause\n");
 			sem_wait(&thr->pause);
+			fprintf(stderr, "continuing buffer loop");
+			goto buffer_loop;
 		}
 
 		AudioTrack *track = atomic_load(&thr->track);

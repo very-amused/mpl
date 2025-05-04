@@ -31,6 +31,8 @@ void Queue_deinit(Queue *q);
 
 // Get the currently playing track in the queue
 const Track *Queue_cur_track(const Queue *q);
+// Get the next track queued after the currently playing track
+const Track *Queue_next_track(const Queue *q);
 
 // Clear all tracks in a queue
 // NOTE: locks the queue

@@ -214,6 +214,7 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 	pa_threaded_mainloop_unlock(ctx->loop)
 
 	// Connect the stream
+
 	pa_buffer_attr buf_attr = AudioPCM_pulseaudio_buffer_attr(pcm);
 	int status = pa_stream_connect_playback(
 			ctx->stream,
@@ -223,6 +224,7 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 			NULL, NULL);
 	if (status != 0) {
 		DEINIT();
+
 		return AudioBackend_CONNECT_ERR;
 	}
 
@@ -313,6 +315,13 @@ static void pa_stream_write_cb_(pa_stream *stream, size_t n_bytes, void *userdat
 		.body_inline = frames_read};
 	// Send timecode to the main thread
 	EventQueue_send(ctx->evt_queue, &evt);
+	if (tb_size == 0) {
+		// Notify the main thread of track end
+		const Event end_evt = {
+			.event_type = mpl_TRACK_END,
+			.body_size = 0};
+		EventQueue_send(ctx->evt_queue, &end_evt);
+	}
 }
 
 static void pa_stream_state_cb_(pa_stream *stream, void *userdata) {

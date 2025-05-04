@@ -44,6 +44,7 @@ void Queue_deinit(Queue *q) {
 	if (q->backend) {
 		Queue_disconnect_audio(q);
 	}
+	BufferThread_free(q->buffer_thread);
 	Queue_clear(q);
 
 	// Free the queue's lock
@@ -53,6 +54,9 @@ void Queue_deinit(Queue *q) {
 
 const Track *Queue_cur_track(const Queue *q) {
 	return q->cur != q->head ? q->cur->track : NULL;
+}
+const Track *Queue_next_track(const Queue *q) {
+	return q->cur->next != q->head ? q->cur->next->track : NULL;
 }
 
 int Queue_append(Queue *q, Track *t) {

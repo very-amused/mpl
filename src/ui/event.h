@@ -7,7 +7,8 @@
 // Some of these events will have associated body data.
 #define MPL_EVENT_ENUM(VARIANT) \
 	VARIANT(mpl_KEYPRESS) \
-	VARIANT(mpl_TIMECODE)
+	VARIANT(mpl_TIMECODE) \
+	VARIANT(mpl_TRACK_END)
 
 enum MPL_EVENT {
 	MPL_EVENT_ENUM(ENUM_VAL)
@@ -35,5 +36,3 @@ typedef char EventBody_Keypress;
 // The number of audio frames that have been played in the current track.
 // Divide by the track's PCM->sample_rate to get the timecode in seconds.
 typedef uint64_t EventBody_Timecode;
-
-// TODO: implement timecode body
