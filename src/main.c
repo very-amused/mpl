@@ -1,3 +1,4 @@
+#include "audio/seek.h"
 #include "queue/queue.h"
 #include "queue/state.h"
 #include "track.h"
@@ -73,7 +74,10 @@ int main(int argc, char **argv) {
 			case 'q':
 				goto quit;
 			case '<':
-				fprintf(stderr, "Seeking 1s prev\n");
+				Queue_seek(&queue, -1000, AudioSeek_Relative);
+				break;
+			case '>':
+				Queue_seek(&queue, 1000, AudioSeek_Relative);
 				break;
 			}
 			break;

@@ -46,4 +46,4 @@ size_t AudioBuffer_read(AudioBuffer *buf, unsigned char *dst, size_t n, bool ali
 // handle seeks.
 //
 // Returns 0 on success, or -1 when the seek cannot be done in-buffer.
-int AudioBuffer_seek(AudioBuffer *buf, int64_t offset, enum AudioSeek seek_dir);
+int AudioBuffer_seek(AudioBuffer *buf, int64_t offset_bytes, enum AudioSeek seek_dir);

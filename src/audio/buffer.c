@@ -131,3 +131,9 @@ static const size_t AudioBuffer_max_read(const AudioBuffer *buf, const int rd, c
 	
 	return maxrd;
 }
+
+int AudioBuffer_seek(AudioBuffer *buf, int64_t offset_bytes, enum AudioSeek from) {
+	// TODO
+	fprintf(stderr, "AudioBuffer_seek called\n");
+	return 1;
+}

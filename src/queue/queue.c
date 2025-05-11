@@ -1,4 +1,5 @@
 #include "queue.h"
+#include "audio/buffer.h"
 #include "audio/out/backend.h"
 #include "audio/out/backends.h"
 #include "audio/pcm.h"
@@ -188,6 +189,43 @@ int Queue_play(Queue *q, bool pause) {
 		return 1;
 	}
 	return BufferThread_start(q->buffer_thread, cur_audio, next_audio);
+}
+
+int Queue_seek(Queue *q, int32_t offset_ms, enum AudioSeek from) {
+	AudioTrack *cur_audio = q->cur != q->head ? q->cur->track->audio : NULL;
+	if (!cur_audio) {
+		// TODO: err code
+		return 1;
+	}
+
+	// Convert offset into bytes
+	const int32_t offset_bytes = AudioPCM_buffer_size(&cur_audio->pcm, offset_ms) * (offset_ms < 0 ? -1 : 1);
+
+	// Pause buffering so we can adjust the buffer's write index
+	BufferThread_play(q->buffer_thread, true);
+
+	// Lock AudioBackend so we can adjust the buffer's read index
+	AudioBackend_lock(q->backend);
+	{
+		if (from != AudioSeek_Relative) {
+			fprintf(stderr, "Warning: only AudioSeek_Relative is currently supported\n");
+			AudioBackend_unlock(q->backend);
+			BufferThread_play(q->buffer_thread, false);
+			return 1;
+		}
+
+		// Try to seek in-buffer
+		if (AudioBuffer_seek(cur_audio->buffer, offset_bytes, from) != 0) {
+			fprintf(stderr, "In-buffer seek failed, bailing out\n");
+			AudioBackend_unlock(q->backend);
+			BufferThread_play(q->buffer_thread, false);
+			return 1;
+		}
+	}
+	AudioBackend_unlock(q->backend);
+	BufferThread_play(q->buffer_thread, false);
+
+	return 0;
 }
 
 float Queue_cur_timestamp(const Queue *q) {

@@ -1,11 +1,13 @@
 #pragma once
 #include "audio/out/backend.h"
+#include "audio/seek.h"
 #include "lock.h"
 #include "state.h"
 #include "track.h"
 #include "buffer_thread.h"
 
 #include <stdbool.h>
+#include <stdint.h>
 
 typedef struct QueueNode QueueNode;
 
@@ -48,6 +50,9 @@ int Queue_insert(Queue *q, Track *t, bool before);
 int Queue_select(Queue *q, QueueNode *node);
 // Play or pause the currently selected track.
 int	Queue_play(Queue *q, bool pause);
+// Seek within the currently playing track.
+// Handles necessary locks as well as buffer + decoding context updates
+int Queue_seek(Queue *q, int32_t offset_ms, enum AudioSeek from);
 
 // Get playback state from the queue and its AudioBackend
 enum Queue_PLAYBACK_STATE Queue_get_playback_state(const Queue *q);

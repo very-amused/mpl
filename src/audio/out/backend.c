@@ -34,7 +34,7 @@ enum AudioBackend_ERR AudioBackend_play(AudioBackend *ab, bool pause) {
 	return ab->play(ab->ctx, pause);
 }
 
-void Audiobackend_lock(AudioBackend *ab) {
+void AudioBackend_lock(AudioBackend *ab) {
  ab->lock(ab->ctx);
 }
 void AudioBackend_unlock(AudioBackend *ab) {
