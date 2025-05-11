@@ -228,14 +228,6 @@ int Queue_seek(Queue *q, int32_t offset_ms, enum AudioSeek from) {
 	return 0;
 }
 
-float Queue_cur_timestamp(const Queue *q) {
-	if (q->cur == q->head) {
-		return 0;
-	}
-	const AudioTrack *audio = q->cur->track->audio;
-	return AudioPCM_seconds(&audio->pcm, audio->buffer->n_read);
-}
-
 // Get playback state from the queue and its AudioBackend
 enum Queue_PLAYBACK_STATE Queue_get_playback_state(const Queue *q) {
 	// TODO
