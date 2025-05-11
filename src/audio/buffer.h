@@ -1,5 +1,6 @@
 #pragma once
 #include "pcm.h"
+#include "seek.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -38,3 +39,11 @@ size_t AudioBuffer_write(AudioBuffer *buf, unsigned char *src, size_t n);
 // Iff align == 1 and the n parameter is a multiple of buf->frame_size,
 // the returned number of bytes is guaranteed to also be a multiple of buf->frame_size.
 size_t AudioBuffer_read(AudioBuffer *buf, unsigned char *dst, size_t n, bool align);
+
+// Try to seeking within an AudioBuffer.
+// NOTE: the buffer must be de-facto locked via some external mechanism when this is called.
+// The ideal way to achieve this is to lock the AudioBackend thread and have the BufferThread
+// handle seeks.
+//
+// Returns 0 on success, or -1 when the seek cannot be done in-buffer.
+int AudioBuffer_seek(AudioBuffer *buf, int64_t offset, enum AudioSeek seek_dir);

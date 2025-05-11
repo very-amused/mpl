@@ -2,7 +2,7 @@
 
 // Audio seek directions.
 enum AudioSeek {
-	AudioSeek_FromStart,
+	AudioSeek_Start,
 	AudioSeek_Relative,
-	AudioSeek_FromEnd
+	AudioSeek_End
 };

@@ -72,6 +72,9 @@ int main(int argc, char **argv) {
 				break;
 			case 'q':
 				goto quit;
+			case '<':
+				fprintf(stderr, "Seeking 1s prev\n");
+				break;
 			}
 			break;
 		}

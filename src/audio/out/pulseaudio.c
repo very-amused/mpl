@@ -47,6 +47,8 @@ static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq);
 static void deinit(void *ctx__);
 static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *track);
 static enum AudioBackend_ERR play(void *ctx__, bool pause);
+static void lock(void *ctx__);
+static void unlock(void *ctx__);
 
 /* AudioBackend implementation using PulseAudio */
 AudioBackend AB_PulseAudio = {
@@ -58,6 +60,9 @@ AudioBackend AB_PulseAudio = {
 	.prepare = prepare,
 
 	.play = play,
+
+	.lock = lock,
+	.unlock = unlock,
 
 	.ctx_size = sizeof(Ctx)
 };
@@ -270,6 +275,16 @@ static enum AudioBackend_ERR play(void *ctx__, bool pause) {
 	pa_threaded_mainloop_unlock(ctx->loop);
 
 	return (pause ^ !corked) ? AudioBackend_OK : AudioBackend_PLAY_ERR;
+}
+
+static void lock(void *ctx__) {
+	Ctx *ctx = ctx__;
+	pa_threaded_mainloop_lock(ctx->loop);
+}
+
+static void unlock(void *ctx__) {
+	Ctx *ctx = ctx__;
+	pa_threaded_mainloop_unlock(ctx->loop);
 }
 
 static void pa_ctx_state_cb_(pa_context *pa_ctx, void *userdata) {

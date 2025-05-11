@@ -34,6 +34,12 @@ typedef struct AudioBackend {
 	// If pause == 1, the track state is set to paused. Otherwise, the track state is set to playing.
 	enum AudioBackend_ERR (*play)(void *ctx, bool pause);
 
+	// Lock the backend communication loop,
+	// preventing events from firing until it is unlocked
+	void (*lock)(void *ctx);
+	// Unlock the backend communication loop
+	void (*unlock)(void *ctx);
+
 	// Private backend-specific context
 	const size_t ctx_size;
 	void *ctx;
@@ -53,3 +59,9 @@ enum AudioBackend_ERR AudioBackend_prepare(AudioBackend *ab, AudioTrack *track);
 // Play/pause the current AudioTrack (prepared using prepare() or queue()).
 // If pause == 1, the track state is set to paused. Otherwise, the track state is set to playing.
 enum AudioBackend_ERR AudioBackend_play(AudioBackend *ab, bool pause);
+
+// Lock the backend communication loop,
+// preventing events from firing until it is unlocked
+void AudioBackend_lock(AudioBackend *ab);
+// Unlock the backend communication loop
+void AudioBackend_unlock(AudioBackend *ab);
