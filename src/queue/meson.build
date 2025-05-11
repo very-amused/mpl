@@ -1,2 +1,3 @@
-src_queue = files('queue.c', 'lock.c', 'buffer_thread.c')
+# lock.c is currently unused
+src_queue = files('queue.c', 'buffer_thread.c')
 src += src_queue

@@ -18,8 +18,6 @@ typedef struct Queue {
 	AudioBackend *backend;
 	BufferThread *buffer_thread;
 
-	QueueLock *lock;
-
 	enum Queue_PLAYBACK_STATE playback_state;
 } Queue;
 
@@ -35,24 +33,18 @@ const Track *Queue_cur_track(const Queue *q);
 const Track *Queue_next_track(const Queue *q);
 
 // Clear all tracks in a queue
-// NOTE: locks the queue
 int Queue_clear(Queue *q);
 
 // Append track *t to the end of the queue
-// NOTE: takes ownership of *t
-// NOTE: locks the queue
 int Queue_append(Queue *q, Track *t);
 // Prepend track *t  to the beginning of the queue
 // NOTE: takes ownership of *t
-// NOTE: locks the queue
 int Queue_prepend(Queue *q, Track *t);
 // Insert track *t  either ahead of or before the current track in the queue
 // NOTE: takes ownership of *t
-// NOTE: locks the queue
 int Queue_insert(Queue *q, Track *t, bool before);
 
 // Select a track to be q->cur. Handles playback
-// NOTE: locks the queue
 int Queue_select(Queue *q, QueueNode *node);
 // Play or pause the currently selected track.
 int	Queue_play(Queue *q, bool pause);
