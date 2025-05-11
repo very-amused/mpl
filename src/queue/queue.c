@@ -41,10 +41,13 @@ int Queue_init(Queue *q) {
 }
 // Deinitialize a queue and disconnect audio output.
 void Queue_deinit(Queue *q) {
+	/* NOTE: We have to stop the buffer thread before disconnecting audio,
+	otherwise we have a deadlock b/c AudioTrack_buffer_packet() will hang forever
+	due to the AudioBuffer's read semaphore being dead after audio is disconnected */
+	BufferThread_free(q->buffer_thread);
 	if (q->backend) {
 		Queue_disconnect_audio(q);
 	}
-	BufferThread_free(q->buffer_thread);
 	Queue_clear(q);
 
 	// Free the queue's lock

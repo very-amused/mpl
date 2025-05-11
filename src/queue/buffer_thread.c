@@ -26,7 +26,7 @@ BufferThread *BufferThread_new() {
 
 	// Initialize semaphores
 	sem_t *const semaphores[] = {&thr->pause, &thr->play, &thr->cancel};
-	const size_t semaphores_len = sizeof(semaphores) / sizeof(semaphores[0]);
+	static const size_t semaphores_len = sizeof(semaphores) / sizeof(semaphores[0]);
 	for (size_t i = 0; i < semaphores_len; i++) {
 		sem_init(semaphores[i], 0, 0);
 	}
@@ -60,12 +60,11 @@ static void *BufferThread_routine(void *args) {
 buffer_loop:
 	do {
 		if (sem_trywait(&thr->cancel) == 0) {
+			//fprintf(stderr, "BufferThread has received cancel signal\n");
 			return NULL;
 		}
-		int paused;
-		sem_getvalue(&thr->pause, &paused);
-		if (paused) {
-			// Keep pause at 1 until unpaused (so other threads can see we're paused)
+		if (sem_trywait(&thr->pause) == 0) {
+			// Keep pause high until unpaused (so other threads can see we're paused)
 			sem_wait(&thr->play);
 			sem_wait(&thr->pause);
 			goto buffer_loop;
