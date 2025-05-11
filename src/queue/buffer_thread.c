@@ -63,7 +63,9 @@ buffer_loop:
 			//fprintf(stderr, "BufferThread has received cancel signal\n");
 			return NULL;
 		}
-		if (sem_trywait(&thr->pause) == 0) {
+		int pause;
+		sem_getvalue(&thr->pause, &pause);
+		if (pause) {
 			// Keep pause high until unpaused (so other threads can see we're paused)
 			sem_wait(&thr->play);
 			sem_wait(&thr->pause);

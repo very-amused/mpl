@@ -148,7 +148,6 @@ int Queue_insert(Queue *q, Track *t, bool before) {
 }
 
 int Queue_clear(Queue *q) {
-	// TODO: AudioBackend_stop(q->backend);
 	if (QueueLock_lock(q->lock) != 0) {
 		return 1;
 	}
@@ -182,6 +181,7 @@ int Queue_select(Queue *q, QueueNode *node) {
 			fprintf(stderr, "Failed to initialize AudioTrack for track %s: %s\n", node->track->url, AudioTrack_ERR_name(at_err));
 			free(node->track->audio);
 			node->track->audio = NULL;
+			QueueLock_unlock(q->lock);
 			return 1;
 		}
 		// Load track metadata
@@ -196,6 +196,7 @@ int Queue_select(Queue *q, QueueNode *node) {
 			AudioTrack_deinit(node->track->audio);
 			free(node->track->audio);
 			node->track->audio = NULL;
+			QueueLock_unlock(q->lock);
 			return 1;
 		}
 	}
