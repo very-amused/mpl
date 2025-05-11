@@ -38,5 +38,5 @@ void Audiobackend_lock(AudioBackend *ab) {
  ab->lock(ab->ctx);
 }
 void AudioBackend_unlock(AudioBackend *ab) {
-	ab->lock(ab->ctx);
+	ab->unlock(ab->ctx);
 }
