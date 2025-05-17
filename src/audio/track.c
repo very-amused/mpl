@@ -1,9 +1,3 @@
-#include "track.h"
-#include "../error.h"
-#include "audio/buffer.h"
-#include "audio/pcm.h"
-#include "util/rational.h"
-
 #include <ctype.h>
 #include <errno.h>
 #include <libavutil/mathematics.h>
@@ -25,6 +19,13 @@
 #include <libavutil/dict.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "track.h"
+#include "../error.h"
+#include "audio/buffer.h"
+#include "audio/pcm.h"
+#include "util/rational.h"
+#include "util/log.h"
 
 
 enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url) {
@@ -107,7 +108,7 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url) {
 	}
 
 	// Drain any padding samples at the start
-	//fprintf(stderr, "start_padding: %zu\n", t->start_padding);
+	LOG(Verbosity_DEBUG, "Track start_padding: %zu\n", t->start_padding);
 	while (t->start_padding > 0) {
 		status = av_read_frame(t->avf_ctx, t->av_packet); // Despite its name, av_read_frame reads packets
 		if (status < 0) {
@@ -154,7 +155,8 @@ enum AudioTrack_ERR AudioTrack_get_metadata(AudioTrack *at, TrackMeta *meta) {
 	char lkey[LKEY_MAX+1];
 	size_t lkey_len = 0;
 
-	for (const AVDictionaryEntry *tag = av_dict_iterate(av_metadata, NULL); tag != NULL; tag = av_dict_iterate(av_metadata, tag)) {
+	uint32_t tagno = 0;
+	for (const AVDictionaryEntry *tag = av_dict_iterate(av_metadata, NULL); tag != NULL; tag = av_dict_iterate(av_metadata, tag), tagno++) {
 		// Normalize key to lowercase
 		lkey_len = strlen(tag->key);
 		if (lkey_len > LKEY_MAX) {
@@ -190,7 +192,7 @@ enum AudioTrack_ERR AudioTrack_get_metadata(AudioTrack *at, TrackMeta *meta) {
 			break;
 		}
 		}
-		//fprintf(stderr, "%s=%s\n", tag->key, tag->value);
+		LOG(Verbosity_DEBUG, "tag %d: %s=%s\n", tagno, tag->key, tag->value);
 	}
 
 	return AudioTrack_OK;

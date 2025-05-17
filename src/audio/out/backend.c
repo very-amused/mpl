@@ -1,8 +1,9 @@
-#include "backend.h"
-#include "audio/pcm.h"
-#include "error.h"
 #include "ui/event_queue.h"
 #include <string.h>
+
+#include "backend.h"
+#include "error.h"
+#include "util/log.h"
 
 // Initialize an AudioBackend for playback
 enum AudioBackend_ERR AudioBackend_init(AudioBackend *ab, const EventQueue *eq) {
@@ -21,6 +22,7 @@ enum AudioBackend_ERR AudioBackend_init(AudioBackend *ab, const EventQueue *eq) 
 
 // Deinitialize an AudioBackend
 void AudioBackend_deinit(AudioBackend *ab) {
+	LOG(Verbosity_VERBOSE, "Deinitializing audio backend\n");
 	ab->deinit(ab->ctx);
 
 	free(ab->ctx);
@@ -36,9 +38,11 @@ enum AudioBackend_ERR AudioBackend_play(AudioBackend *ab, bool pause) {
 
 void AudioBackend_lock(AudioBackend *ab) {
  ab->lock(ab->ctx);
+ LOG(Verbosity_VERBOSE, "Audio backend locked\n");
 }
 void AudioBackend_unlock(AudioBackend *ab) {
 	ab->unlock(ab->ctx);
+	LOG(Verbosity_VERBOSE, "Audio backend unlocked\n");
 }
 void AudioBackend_seek(AudioBackend *ab) {
 	ab->seek(ab->ctx);

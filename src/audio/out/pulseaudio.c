@@ -19,6 +19,7 @@
 #include "error.h"
 #include "ui/event.h"
 #include "ui/event_queue.h"
+#include "util/log.h"
 
 // PulseAudio backend context
 typedef struct Ctx {
@@ -127,7 +128,7 @@ static enum AudioBackend_ERR init(void *userdata, const EventQueue *eq) {
 
 	// 1. Request connection to the default PulseAudio server
 	if (pa_context_connect(ctx->pa_ctx, NULL, PA_CONTEXT_NOFLAGS, NULL) < 0) {
-		fprintf(stderr, "Error: failed to connect to PulseAudio.\n");
+		LOG(Verbosity_NORMAL, "Error: failed to connect to PulseAudio.\n");
 		DEINIT();
 		return AudioBackend_CONNECT_ERR;
 	}
@@ -142,7 +143,7 @@ static enum AudioBackend_ERR init(void *userdata, const EventQueue *eq) {
 	// With our connection and event loop running, we can now get error codes/messages from PA
 #undef DEINIT
 #define DEINIT() \
-	fprintf(stderr, "PulseAudio error: %s\n", pa_strerror(pa_context_errno(ctx->pa_ctx))); \
+	LOG(Verbosity_NORMAL, "PulseAudio error: %s\n", pa_strerror(pa_context_errno(ctx->pa_ctx))); \
 	pa_threaded_mainloop_unlock(ctx->loop); \
 	pa_threaded_mainloop_stop(ctx->loop); \
 	pa_context_disconnect(ctx->pa_ctx); \
@@ -160,7 +161,7 @@ static enum AudioBackend_ERR init(void *userdata, const EventQueue *eq) {
 
 	pa_threaded_mainloop_unlock(ctx->loop);
 
-	fprintf(stderr, "Connected to pulseaudio.\n");
+	LOG(Verbosity_VERBOSE, "Connected to pulseaudio.\n");
 
 	return AudioBackend_OK;
 }
@@ -190,7 +191,7 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 	pa_threaded_mainloop_lock(ctx->loop);
 
 #define DEINIT() \
-	fprintf(stderr, "PulseAudio error: %s\n", pa_strerror(pa_context_errno(ctx->pa_ctx))); \
+	LOG(Verbosity_NORMAL, "PulseAudio error: %s\n", pa_strerror(pa_context_errno(ctx->pa_ctx))); \
 	pa_threaded_mainloop_unlock(ctx->loop);
 
 
@@ -216,7 +217,7 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 
 #undef DEINIT
 #define DEINIT() \
-	fprintf(stderr, "PulseAudio error: %s\n", pa_strerror(pa_context_errno(ctx->pa_ctx))); \
+	LOG(Verbosity_NORMAL, "PulseAudio error: %s\n", pa_strerror(pa_context_errno(ctx->pa_ctx))); \
 	pa_stream_disconnect(ctx->stream); \
 	pa_stream_unref(ctx->stream); \
 	pa_threaded_mainloop_unlock(ctx->loop)
@@ -258,6 +259,7 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 		fprintf(stderr, "tb_size: %zu\n", tb_size);
 		return AudioBackend_FB_WRITE_ERR;
 	}
+#undef DEINIT
 
 	pa_threaded_mainloop_unlock(ctx->loop);
 
@@ -302,12 +304,12 @@ static void seek(void *ctx__) {
 	void *tb; // Transfer buffer
 	size_t tb_size = AudioBuffer_max_read(ctx->playback_buffer, -1, -1, 0);
 	if (pa_stream_begin_write(ctx->stream, &tb, &tb_size) != 0 || tb == NULL) {
-		fprintf(stderr, "Warning: failed to allocate PulseAudio framebuffer.\n");
+		LOG(Verbosity_NORMAL, "Warning: failed to allocate PulseAudio framebuffer.\n");
 		return;
 	}
 	tb_size = AudioBuffer_read(ctx->playback_buffer, tb, tb_size, false);
 	if (pa_stream_write(ctx->stream, tb, tb_size, NULL, 0, PA_SEEK_RELATIVE_ON_READ) != 0) {
-		fprintf(stderr, "Error in PulseAudio seek\n");
+		LOG(Verbosity_NORMAL, "Error in PulseAudio seek\n");
 	}
 
 	// Compute number of frames read, send to main as a timecode

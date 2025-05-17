@@ -1,7 +1,3 @@
-#include "input_thread.h"
-#include "event_queue.h"
-#include "ui/event.h"
-
 #include <pthread.h>
 #include <semaphore.h>
 #include <stdlib.h>
@@ -13,6 +9,10 @@
 #include <poll.h>
 #include <sys/poll.h>
 
+#include "input_thread.h"
+#include "event_queue.h"
+#include "ui/event.h"
+#include "util/log.h"
 
 struct InputThread {
 	// EventQueue for sending input events
@@ -77,6 +77,7 @@ void *InputThread_loop(void *thr__) {
 	}
 
 cancel:
+	LOG(Verbosity_VERBOSE, "Input thread received cancel signal\n");
 	close(thr->shutdown_pipe[0]);
 	tcsetattr(STDIN_FILENO, TCSANOW, &orig_term_opts);
 	return NULL;

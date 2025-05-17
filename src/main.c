@@ -7,6 +7,7 @@
 #include "ui/event.h"
 #include "ui/event_queue.h"
 #include "ui/timecode.h"
+#include "util/log.h"
 
 #include <ctype.h>
 #include <stdint.h>
@@ -27,10 +28,7 @@ int main(int argc, const char **argv) {
 	// Fire up CLI user interface and the main EventQueue
 	UserInterface_CLI ui;
 	UserInterface_CLI_init(&ui, &ui_opts);
-	if (CLI_opts.verbosity >= Verbosity_VERBOSE) {
-		printf("Logging enabled: %s\n",
-				Verbosity_name(CLI_opts.verbosity));
-	}
+	LOG(Verbosity_VERBOSE, "Logging enabled: %s\n", Verbosity_name(CLI_opts.verbosity));
 
 	// Form URL from file argv
 	const char *file = argv[argc-1];
@@ -83,10 +81,10 @@ int main(int argc, const char **argv) {
 			case 'q':
 				goto quit;
 			case '<':
-				Queue_seek(&queue, -1000, AudioSeek_Relative);
+				Queue_seek(&queue, -1300, AudioSeek_Relative);
 				break;
 			case '>':
-				Queue_seek(&queue, 1000, AudioSeek_Relative);
+				Queue_seek(&queue, 1300, AudioSeek_Relative);
 				break;
 			}
 			break;
@@ -119,8 +117,10 @@ int main(int argc, const char **argv) {
 quit:
 
 	// Cleanup
-	Queue_deinit(&queue);
+	LOG(Verbosity_DEBUG, "Deinitializing UI\n");
 	UserInterface_CLI_deinit(&ui);
+	LOG(Verbosity_DEBUG, "Deinitializing Queue\n");
+	Queue_deinit(&queue);
 	free(url);
 
 	return 0;

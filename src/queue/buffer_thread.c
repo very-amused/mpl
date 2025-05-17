@@ -1,6 +1,3 @@
-#include "buffer_thread.h"
-#include "audio/track.h"
-#include "error.h"
 #include <stdatomic.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -11,6 +8,11 @@
 #include <semaphore.h>
 #include <unistd.h>
 #endif
+
+#include "buffer_thread.h"
+#include "audio/track.h"
+#include "error.h"
+#include "util/log.h"
 
 struct BufferThread {
 	_Atomic (AudioTrack *) track;
@@ -60,7 +62,7 @@ buffer_loop:
 	do {
 		// Handle cancel signal
 		if (sem_trywait(&thr->cancel) == 0) {
-			//fprintf(stderr, "BufferThread has received cancel signal\n");
+			LOG(Verbosity_VERBOSE, "Buffer thread received cancel signal\n");
 			return NULL;
 		}
 		// Handle pause signal
@@ -88,9 +90,6 @@ buffer_loop:
 		}
 
 		at_err = AudioTrack_buffer_packet(track, NULL);
-		//static int packetno = 0;
-		//packetno++;
-		//fprintf(stderr, "Buffering packet %d\n", packetno);
 	} while (at_err == AudioTrack_OK);
 
 	AudioTrack *next = atomic_exchange(&thr->next_track, NULL);
@@ -130,7 +129,7 @@ void BufferThread_play(BufferThread *thr, bool play) {
 
 		sem_post(&thr->play);
 		while (atomic_load(&thr->paused)) {}
-		printf("Buffering resumed\n");
+		LOG(Verbosity_DEBUG, "Buffering resumed\n");
 	} else {
 		// Debounce
 		if (atomic_load(&thr->paused)) {
@@ -145,6 +144,6 @@ void BufferThread_play(BufferThread *thr, bool play) {
 			sem_post(&tr->buffer->rd_sem);
 		}
 		while (!atomic_load(&thr->paused)) {}
-		printf("Buffering paused\n");
+		LOG(Verbosity_DEBUG, "Buffering paused\n");
 	}
 }
