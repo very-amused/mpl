@@ -40,3 +40,6 @@ void AudioBackend_lock(AudioBackend *ab) {
 void AudioBackend_unlock(AudioBackend *ab) {
 	ab->unlock(ab->ctx);
 }
+void AudioBackend_seek(AudioBackend *ab) {
+	ab->seek(ab->ctx);
+}

@@ -49,6 +49,7 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *track);
 static enum AudioBackend_ERR play(void *ctx__, bool pause);
 static void lock(void *ctx__);
 static void unlock(void *ctx__);
+static void seek(void *ctx__);
 
 /* AudioBackend implementation using PulseAudio */
 AudioBackend AB_PulseAudio = {
@@ -63,6 +64,7 @@ AudioBackend AB_PulseAudio = {
 
 	.lock = lock,
 	.unlock = unlock,
+	.seek = seek,
 
 	.ctx_size = sizeof(Ctx)
 };
@@ -284,6 +286,41 @@ static void lock(void *ctx__) {
 
 static void unlock(void *ctx__) {
 	Ctx *ctx = ctx__;
+	pa_threaded_mainloop_unlock(ctx->loop);
+}
+
+static void seek(void *ctx__) {
+	Ctx *ctx = ctx__;
+
+	if (!(ctx->stream && ctx->playback_buffer)) {
+		return;
+	}
+
+
+	pa_threaded_mainloop_lock(ctx->loop);
+
+	void *tb; // Transfer buffer
+	size_t tb_size = AudioBuffer_max_read(ctx->playback_buffer, -1, -1, 0);
+	if (pa_stream_begin_write(ctx->stream, &tb, &tb_size) != 0 || tb == NULL) {
+		fprintf(stderr, "Warning: failed to allocate PulseAudio framebuffer.\n");
+		return;
+	}
+	tb_size = AudioBuffer_read(ctx->playback_buffer, tb, tb_size, false);
+	if (pa_stream_write(ctx->stream, tb, tb_size, NULL, 0, PA_SEEK_RELATIVE_ON_READ) != 0) {
+		fprintf(stderr, "Error in PulseAudio seek\n");
+	}
+
+	// Compute number of frames read, send to main as a timecode
+	const size_t n_read = ctx->playback_buffer->n_read;
+	const size_t frame_size = ctx->playback_buffer->frame_size;
+	const EventBody_Timecode frames_read = n_read / frame_size;
+	const Event evt = {
+		.event_type = mpl_TIMECODE,
+		.body_size = sizeof(EventBody_Timecode),
+		.body_inline = frames_read};
+	// Send timecode to the main thread
+	EventQueue_send(ctx->evt_queue, &evt);
+
 	pa_threaded_mainloop_unlock(ctx->loop);
 }
 

@@ -39,6 +39,9 @@ typedef struct AudioBackend {
 	void (*lock)(void *ctx);
 	// Unlock the backend communication loop
 	void (*unlock)(void *ctx);
+	// Invalidate anything the backend has buffered and immediately start asking for new data,
+	// used to implement seeks
+	void (*seek)(void *ctx);
 
 	// Private backend-specific context
 	const size_t ctx_size;
@@ -65,3 +68,5 @@ enum AudioBackend_ERR AudioBackend_play(AudioBackend *ab, bool pause);
 void AudioBackend_lock(AudioBackend *ab);
 // Unlock the backend communication loop
 void AudioBackend_unlock(AudioBackend *ab);
+// Invalidate anything the backend has buffered and read new data from playback_buffer
+void AudioBackend_seek(AudioBackend *ab);

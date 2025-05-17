@@ -19,6 +19,7 @@ struct RingBuffer {
 	unsigned char *data;
 	atomic_int rd, wr; // Read/write indices relative to line_size
 	size_t n_read; // Cumulative number of bytes read since initialization
+	size_t n_written; // Cumulative number of bytes written since initialization
 
 	// Semaphores providing read/write notifications to minimize spinning
 	sem_t rd_sem, wr_sem;
@@ -39,6 +40,9 @@ size_t AudioBuffer_write(AudioBuffer *buf, unsigned char *src, size_t n);
 // Iff align == 1 and the n parameter is a multiple of buf->frame_size,
 // the returned number of bytes is guaranteed to also be a multiple of buf->frame_size.
 size_t AudioBuffer_read(AudioBuffer *buf, unsigned char *dst, size_t n, bool align);
+// Return the maximum size (in bytes) of a non-blocking read, optionally aligned to buf->frame_size
+// NOTE: Pass -1 as rd and wr to automatically load rd/wr indices
+const size_t AudioBuffer_max_read(const AudioBuffer *buf, int rd, int wr, bool align);
 
 // Try to seeking within an AudioBuffer.
 // NOTE: the buffer must be de-facto locked via some external mechanism when this is called.

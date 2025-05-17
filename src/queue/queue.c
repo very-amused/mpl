@@ -199,7 +199,8 @@ int Queue_seek(Queue *q, int32_t offset_ms, enum AudioSeek from) {
 	}
 
 	// Convert offset into bytes
-	const int32_t offset_bytes = AudioPCM_buffer_size(&cur_audio->pcm, offset_ms) * (offset_ms < 0 ? -1 : 1);
+	const int32_t offset_abs = offset_ms < 0 ? -offset_ms : offset_ms;
+	const int32_t offset_bytes = AudioPCM_buffer_size(&cur_audio->pcm, offset_abs) * (offset_ms < 0 ? -1 : 1);
 
 	// Pause buffering so we can adjust the buffer's write index
 	BufferThread_play(q->buffer_thread, true);
@@ -221,6 +222,7 @@ int Queue_seek(Queue *q, int32_t offset_ms, enum AudioSeek from) {
 			BufferThread_play(q->buffer_thread, false);
 			return 1;
 		}
+		AudioBackend_seek(q->backend);
 	}
 	AudioBackend_unlock(q->backend);
 	BufferThread_play(q->buffer_thread, false);

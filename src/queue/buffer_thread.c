@@ -3,10 +3,13 @@
 #include "error.h"
 #include <stdatomic.h>
 #include <stddef.h>
+#include <stdlib.h>
+#include <time.h>
 
 #ifdef __unix__
 #include <pthread.h>
 #include <semaphore.h>
+#include <unistd.h>
 #endif
 
 struct BufferThread {
@@ -73,9 +76,24 @@ buffer_loop:
 		}
 
 		AudioTrack *track = atomic_load(&thr->track);
+		static const AudioTrack *tr_cached = NULL;
+		static size_t buf_ahead_max = 0;
+		if (tr_cached != track) {
+			tr_cached = track;
+			buf_ahead_max = track->buffer->size/2;
+		}
+		const int rd = atomic_load(&track->buffer->rd);
+		const int wr = atomic_load(&track->buffer->wr);
+		// Keep half the buffer full of past frames to enable bidirectional buffer seeks 
+		// FIXME: potential performance issues
+		if (AudioBuffer_max_read(track->buffer, rd, wr, false) >= buf_ahead_max) {
+			sem_wait(&track->buffer->rd_sem);
+			continue;
+		}
+
 		at_err = AudioTrack_buffer_packet(track, NULL);
-		static int packetno = 0;
-		packetno++;
+		//static int packetno = 0;
+		//packetno++;
 		//fprintf(stderr, "Buffering packet %d\n", packetno);
 	} while (at_err == AudioTrack_OK);
 
@@ -112,6 +130,11 @@ int BufferThread_start(BufferThread *thr, AudioTrack *track, AudioTrack *next_tr
 void BufferThread_play(BufferThread *thr, bool pause) {
 	if (pause) {
 		sem_post(&thr->pause);
+		// Wake up anything waiting on a read (which could potentially include the buffer thread)
+		AudioTrack *tr = atomic_load(&thr->track);
+		if (tr) {
+			sem_post(&tr->buffer->rd_sem);
+		}
 		return;
 	} else {
 		int paused;
