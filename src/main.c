@@ -81,10 +81,10 @@ int main(int argc, const char **argv) {
 			case 'q':
 				goto quit;
 			case '<':
-				Queue_seek(&queue, -1300, AudioSeek_Relative);
+				Queue_seek(&queue, -1000, AudioSeek_Relative);
 				break;
 			case '>':
-				Queue_seek(&queue, 1300, AudioSeek_Relative);
+				Queue_seek(&queue, 1000, AudioSeek_Relative);
 				break;
 			}
 			break;

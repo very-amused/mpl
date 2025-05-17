@@ -9,6 +9,7 @@
 #include "state.h"
 #include "track.h"
 #include "error.h"
+#include "util/log.h"
 
 #include <pthread.h>
 #include <semaphore.h>
@@ -120,6 +121,7 @@ int Queue_insert(Queue *q, Track *t, bool before) {
 int Queue_clear(Queue *q) {
 	QueueNode *node = q->head->next;
 	while (node != q->head) {
+		LOG(Verbosity_VERBOSE, "Freeing track %s\n", node->track->url);
 		QueueNode *const next = node->next;
 		Track_free(node->track);
 		free(node);

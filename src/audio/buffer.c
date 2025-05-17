@@ -1,5 +1,3 @@
-#include "buffer.h"
-#include "audio/seek.h"
 #include <libavutil/mem.h>
 #include <libavutil/samplefmt.h>
 #include <stdio.h>
@@ -7,6 +5,10 @@
 #include <string.h>
 #include <stdatomic.h>
 #include <semaphore.h>
+
+#include "buffer.h"
+#include "audio/seek.h"
+#include "util/log.h"
 
 int AudioBuffer_init(AudioBuffer *buf, const AudioPCM *pcm) {
 	// To start, we're going to use a fixed buffer time length of 30s.
@@ -182,8 +184,10 @@ int AudioBuffer_seek(AudioBuffer *buf, int64_t offset_bytes, enum AudioSeek from
 
 		// Perform the seek
 		if (offset_abs <= rd) {
+			LOG(Verbosity_VERBOSE, "Seek type 0\n");
 			atomic_fetch_sub(&buf->rd, offset_abs);
 		} else {
+			LOG(Verbosity_VERBOSE, "Seek type 1\n");
 			atomic_store(&buf->rd, buf->size - (offset_abs - rd));
 		}
 		buf->n_read -= offset_abs;
@@ -197,9 +201,11 @@ int AudioBuffer_seek(AudioBuffer *buf, int64_t offset_bytes, enum AudioSeek from
 
 		// Perform the seek
 		if (rd+offset_bytes <= wr) {
-			atomic_fetch_add(&buf->rd, offset_bytes);
+			LOG(Verbosity_VERBOSE, "Seek type 2\n");
+			atomic_fetch_add(&buf->rd, offset_bytes); // type 1
 		} else {
-			atomic_store(&buf->rd, offset_bytes - (buf->size - buf->rd));
+			LOG(Verbosity_VERBOSE, "Seek type 3\n");
+			atomic_store(&buf->rd, offset_bytes - (buf->size - rd)); // type 2
 		}
 		buf->n_read += offset_bytes;
 		return 0;
