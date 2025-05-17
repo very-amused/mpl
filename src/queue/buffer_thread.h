@@ -16,4 +16,4 @@ void BufferThread_free(BufferThread *thr);
 int BufferThread_start(BufferThread *thr, AudioTrack *track, AudioTrack *next_track);
 
 // Play/pause buffering
-void BufferThread_play(BufferThread *thr, bool pause);
+void BufferThread_play(BufferThread *thr, bool play);

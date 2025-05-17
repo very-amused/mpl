@@ -177,7 +177,7 @@ int Queue_play(Queue *q, bool pause) {
 	}
 	q->playback_state = pause ? Queue_PAUSED : Queue_PLAYING;
 	if (pause) {
-		BufferThread_play(q->buffer_thread, pause);
+		BufferThread_play(q->buffer_thread, false);
 		return 0;
 	}
 
@@ -203,7 +203,7 @@ int Queue_seek(Queue *q, int32_t offset_ms, enum AudioSeek from) {
 	const int32_t offset_bytes = AudioPCM_buffer_size(&cur_audio->pcm, offset_abs) * (offset_ms < 0 ? -1 : 1);
 
 	// Pause buffering so we can adjust the buffer's write index
-	BufferThread_play(q->buffer_thread, true);
+	BufferThread_play(q->buffer_thread, false);
 
 	// Lock AudioBackend so we can adjust the buffer's read index
 	AudioBackend_lock(q->backend);
@@ -211,7 +211,7 @@ int Queue_seek(Queue *q, int32_t offset_ms, enum AudioSeek from) {
 		if (from != AudioSeek_Relative) {
 			fprintf(stderr, "Warning: only AudioSeek_Relative is currently supported\n");
 			AudioBackend_unlock(q->backend);
-			BufferThread_play(q->buffer_thread, false);
+			BufferThread_play(q->buffer_thread, true);
 			return 1;
 		}
 
@@ -219,21 +219,20 @@ int Queue_seek(Queue *q, int32_t offset_ms, enum AudioSeek from) {
 		if (AudioBuffer_seek(cur_audio->buffer, offset_bytes, from) != 0) {
 			fprintf(stderr, "In-buffer seek failed, bailing out\n");
 			AudioBackend_unlock(q->backend);
-			BufferThread_play(q->buffer_thread, false);
+			BufferThread_play(q->buffer_thread, true);
 			return 1;
 		}
 		AudioBackend_seek(q->backend);
 	}
 	AudioBackend_unlock(q->backend);
-	BufferThread_play(q->buffer_thread, false);
+	BufferThread_play(q->buffer_thread, true);
 
 	return 0;
 }
 
 // Get playback state from the queue and its AudioBackend
 enum Queue_PLAYBACK_STATE Queue_get_playback_state(const Queue *q) {
-	// TODO
-	return Queue_PLAYING;
+	return q->playback_state;
 }
 
 int Queue_connect_audio(Queue *q, AudioBackend *ab, const EventQueue *eq) {

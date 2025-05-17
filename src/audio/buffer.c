@@ -173,10 +173,10 @@ int AudioBuffer_seek(AudioBuffer *buf, int64_t offset_bytes, enum AudioSeek from
 			if (offset_abs > prev_max) {
 				return -1;
 			}
-		} else {
+		} else { // rd = 0 is the beginning of the track
 			const int64_t prev_max = rd < wr ? rd : 0;
 			if (offset_abs > prev_max) {
-				return -1;
+				offset_abs = prev_max;
 			}
 		}
 

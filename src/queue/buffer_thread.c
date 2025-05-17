@@ -17,8 +17,8 @@ struct BufferThread {
 	_Atomic (AudioTrack *) next_track;
 
 	pthread_t *thread;
-	sem_t pause; // Tell the thread to temporarily stop buffering.
-	sem_t play; // Tell a paused thread to resume buffering
+	sem_t play; // Play/pause the thread's buffering. After posting, spin on t->paused to verify result
+	atomic_bool paused; // Bool indicating whether the thread is paused (waiting on t->play)
 	sem_t cancel; // Tell the thread to exit
 };
 
@@ -26,9 +26,10 @@ BufferThread *BufferThread_new() {
 	BufferThread *thr = malloc(sizeof(BufferThread));
 	thr->track = thr->next_track = NULL;
 	thr->thread = NULL;
+	thr->paused = false;
 
 	// Initialize semaphores
-	sem_t *const semaphores[] = {&thr->pause, &thr->play, &thr->cancel};
+	sem_t *const semaphores[] = {&thr->play, &thr->cancel};
 	static const size_t semaphores_len = sizeof(semaphores) / sizeof(semaphores[0]);
 	for (size_t i = 0; i < semaphores_len; i++) {
 		sem_init(semaphores[i], 0, 0);
@@ -40,12 +41,7 @@ void BufferThread_free(BufferThread *thr) {
 	// Stop thread
 	if (thr->thread) {
 		sem_post(&thr->cancel);
-		int paused;
-		sem_getvalue(&thr->pause, &paused);
-		if (paused) {
-			atomic_store(&thr->track, NULL);
-			sem_post(&thr->play);
-		}
+		BufferThread_play(thr, true);
 		pthread_join(*thr->thread, NULL);
 	}
 	free(thr->thread);
@@ -62,17 +58,17 @@ static void *BufferThread_routine(void *args) {
 	enum AudioTrack_ERR at_err;
 buffer_loop:
 	do {
+		// Handle cancel signal
 		if (sem_trywait(&thr->cancel) == 0) {
 			//fprintf(stderr, "BufferThread has received cancel signal\n");
 			return NULL;
 		}
-		int pause;
-		sem_getvalue(&thr->pause, &pause);
-		if (pause) {
-			// Keep pause high until unpaused (so other threads can see we're paused)
+		// Handle pause signal
+		if (sem_trywait(&thr->play) == 0) {
+			atomic_store(&thr->paused, true);
 			sem_wait(&thr->play);
-			sem_wait(&thr->pause);
-			goto buffer_loop;
+			atomic_store(&thr->paused, false);
+			continue;
 		}
 
 		AudioTrack *track = atomic_load(&thr->track);
@@ -100,7 +96,8 @@ buffer_loop:
 	AudioTrack *next = atomic_exchange(&thr->next_track, NULL);
 
 	if (!next) {
-		sem_post(&thr->pause);
+		// Pause our thread until thr->track is set
+		sem_post(&thr->play);
 	} else {
 		atomic_store(&thr->track, next);
 	}
@@ -112,35 +109,46 @@ int BufferThread_start(BufferThread *thr, AudioTrack *track, AudioTrack *next_tr
 	atomic_store(&thr->track, track);
 	atomic_store(&thr->next_track, next_track);
 
-	// Start or resume buffering
+	// Resume buffering
 	if (thr->thread) {
-		int paused;
-		sem_getvalue(&thr->pause, &paused);
-		if (paused) {
-			sem_post(&thr->play);
-		}
+		BufferThread_play(thr, true);
 		return 0;
 	}
 
+	// Start buffering
 	thr->thread = malloc(sizeof(pthread_t));
 	pthread_create(thr->thread, NULL, BufferThread_routine, thr);
 	return 0;
 }
 
-void BufferThread_play(BufferThread *thr, bool pause) {
-	if (pause) {
-		sem_post(&thr->pause);
-		// Wake up anything waiting on a read (which could potentially include the buffer thread)
+void BufferThread_play(BufferThread *thr, bool play) {
+	if (play) {
+		// Debounce play signals
+		if (!atomic_load(&thr->paused)) {
+			return;
+		}
+
+		sem_post(&thr->play);
+		while (atomic_load(&thr->paused)) {
+			printf("a");
+		}
+		printf("resumed\n");
+	} else {
+		// Debounce
+		if (atomic_load(&thr->paused)) {
+			return;
+		}
+
+		// Send pause signal
+		sem_post(&thr->play);
+		// Wake up anything blocking on a read (which could potentially include the buffer thread)
 		AudioTrack *tr = atomic_load(&thr->track);
 		if (tr) {
 			sem_post(&tr->buffer->rd_sem);
 		}
-		return;
-	} else {
-		int paused;
-		sem_getvalue(&thr->pause, &paused);
-		if (paused) {
-			sem_post(&thr->play);
+		while (!atomic_load(&thr->paused)) {
+			printf("a");
 		}
+		printf("paused\n");
 	}
 }
