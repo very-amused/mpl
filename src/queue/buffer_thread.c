@@ -129,10 +129,8 @@ void BufferThread_play(BufferThread *thr, bool play) {
 		}
 
 		sem_post(&thr->play);
-		while (atomic_load(&thr->paused)) {
-			printf("a");
-		}
-		printf("resumed\n");
+		while (atomic_load(&thr->paused)) {}
+		printf("Buffering resumed\n");
 	} else {
 		// Debounce
 		if (atomic_load(&thr->paused)) {
@@ -146,9 +144,7 @@ void BufferThread_play(BufferThread *thr, bool play) {
 		if (tr) {
 			sem_post(&tr->buffer->rd_sem);
 		}
-		while (!atomic_load(&thr->paused)) {
-			printf("a");
-		}
-		printf("paused\n");
+		while (!atomic_load(&thr->paused)) {}
+		printf("Buffering paused\n");
 	}
 }

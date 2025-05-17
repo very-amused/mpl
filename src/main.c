@@ -1,4 +1,5 @@
 #include "audio/seek.h"
+#include "error.h"
 #include "queue/queue.h"
 #include "queue/state.h"
 #include "track.h"
@@ -12,24 +13,32 @@
 #include <unistd.h>
 #include <stdio.h>
 
-int main(int argc, char **argv) {
+int main(int argc, const char **argv) {
 	printf("This is MPL v%s\n", MPL_VERSION);
 
+	// Parse CLI args 
 	if (argc < 2) {
-		fprintf(stderr, "usage: mpl {file}\n");
+		fprintf(stderr, "usage: mpl [-v] [-vv] {file}\n");
 		return 1;
 	}
+	UserInterface_CLI_opts ui_opts;
+	UserInterface_CLI_opts_parse(&ui_opts, argc, argv);
+
+	// Fire up CLI user interface and the main EventQueue
+	UserInterface_CLI ui;
+	UserInterface_CLI_init(&ui, &ui_opts);
+	if (CLI_opts.verbosity >= Verbosity_VERBOSE) {
+		printf("Logging enabled: %s\n",
+				Verbosity_name(CLI_opts.verbosity));
+	}
+
 	// Form URL from file argv
-	char *file = argv[1];
+	const char *file = argv[argc-1];
 	static const char LIBAV_PROTO_FILE[] = "file:";
 	static const size_t LIBAV_PROTO_FILE_LEN = sizeof(LIBAV_PROTO_FILE);
 	const size_t url_len = LIBAV_PROTO_FILE_LEN + strlen(file);
 	char *url = malloc((url_len + 1) * sizeof(char));
 	snprintf(url, url_len, "%s%s", LIBAV_PROTO_FILE, file);
-
-	// Fire up CLI user interface and the main EventQueue
-	UserInterface_CLI ui;
-	UserInterface_CLI_init(&ui);
 
 	// Initialize queue w/ track
 	Queue queue;

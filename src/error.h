@@ -65,4 +65,25 @@ static inline const char *AudioTrack_ERR_name(enum AudioTrack_ERR err) {
 	}
 	return DEFAULT_ERR_NAME;
 }
+
 #undef AUDIOTRACK_ERR
+
+#define VERBOSITY(VARIANT) \
+	VARIANT(Verbosity_NORMAL) \
+	VARIANT(Verbosity_VERBOSE) \
+	VARIANT(Verbosity_DEBUG)
+
+/* Verbosity levels for logging facilities.
+ * Currently only used in UserInterface_CLI */
+enum Verbosity {
+	VERBOSITY(ENUM_VAL)
+};
+
+static inline const char *Verbosity_name(enum Verbosity lvl) {
+	switch (lvl) {
+		VERBOSITY(ENUM_KEY)
+	}
+	return DEFAULT_ERR_NAME;
+}
+
+#undef VERBOSITY
