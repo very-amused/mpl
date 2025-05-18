@@ -32,10 +32,7 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url) {
 	char av_err[AV_ERROR_MAX_STRING_SIZE]; // libav* library error message buffer
 
 	// Zero pointers to ensure AudioTrack_deinit is safe
-	t->avf_ctx = NULL;
-	t->avc_ctx = NULL;
-	t->codec = NULL;
-	t->buffer = NULL;
+	memset(t, 0, sizeof(AudioTrack));
 
 	// Create av format demuxing context
 	int status = avformat_open_input(&t->avf_ctx, url, NULL, NULL);
