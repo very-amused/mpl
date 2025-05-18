@@ -169,10 +169,10 @@ enum AudioTrack_ERR AudioTrack_get_metadata(AudioTrack *at, TrackMeta *meta) {
 		switch (lkey[0]) {
 		case 'a':
 		{
-			if (strncmp(lkey, "artist", lkey_len) == 0) {
+			if (strcmp(lkey, "artist") == 0) {
 				meta->artist_len = strlen(tag->value);
 				meta->artist = strndup(tag->value, meta->artist_len);
-			} else if (strncmp(lkey, "album", lkey_len) == 0) {
+			} else if (strcmp(lkey, "album") == 0) {
 				meta->album_len = strlen(tag->value);
 				meta->album = strndup(tag->value, meta->album_len);
 			}
@@ -181,10 +181,10 @@ enum AudioTrack_ERR AudioTrack_get_metadata(AudioTrack *at, TrackMeta *meta) {
 
 		case 't':
 		{
-			if (strncmp(lkey, "title", lkey_len) == 0) {
+			if (strcmp(lkey, "title") == 0) {
 				meta->name_len = strlen(tag->value);
 				meta->name = strndup(tag->value, meta->name_len);
-			} else if (strncmp(lkey, "track", lkey_len) == 0) {
+			} else if (strcmp(lkey, "track") == 0) {
 				// TODO: parse trackno
 			}
 			break;
