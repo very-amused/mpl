@@ -13,9 +13,6 @@ pulseaudio = dependency('libpulse', version : '>=16.0.0', required : get_option(
 pipewire = dependency('libpipewire-0.3', version : '>=0.3.0', required : get_option('pipewire'))
 deps += pulseaudio
 deps += pipewire
-# math
-cc = meson.get_compiler('c')
-deps += cc.find_library('m', required : false)
 
 # Source and header files
 src = []

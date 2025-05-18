@@ -66,6 +66,7 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url) {
 	t->pcm.sample_fmt = codec_params->format;
 	t->pcm.sample_rate = codec_params->sample_rate;
 	t->pcm.n_channels = codec_params->ch_layout.nb_channels;
+	LOG(Verbosity_DEBUG, "AudioTrack: is_planar: %d\n\tsample rate: %d\nsample_fmt: %s\n", av_sample_fmt_is_planar(t->pcm.sample_fmt), t->pcm.sample_rate, av_get_sample_fmt_name(t->pcm.sample_fmt));
 	// Timing info
 	const AVRational time_base = stream->time_base;
 	const int64_t duration_tb = stream->duration; // Duration in time_base units
@@ -209,8 +210,11 @@ enum AudioTrack_ERR AudioTrack_buffer_packet(AudioTrack *t, size_t *n_bytes) {
 	// Read packet
 	int status;
 	do {
+		// WARNING: av_read_frame does NOT unref buffers
+		av_packet_unref(t->av_packet);
 		status = av_read_frame(t->avf_ctx, t->av_packet);
 		if (status < 0) {
+			av_packet_unref(t->av_packet);
 			if (status == AVERROR_EOF) {
 				return AudioTrack_EOF;
 			}
@@ -222,6 +226,7 @@ enum AudioTrack_ERR AudioTrack_buffer_packet(AudioTrack *t, size_t *n_bytes) {
 	// Decode into frames
 	status = avcodec_send_packet(t->avc_ctx, t->av_packet);
 	if (status != 0) {
+		av_packet_unref(t->av_packet);
 		av_perror(status, av_err);
 		return AudioTrack_PACKET_ERR;
 	}
