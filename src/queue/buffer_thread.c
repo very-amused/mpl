@@ -20,7 +20,9 @@ struct BufferThread {
 
 	pthread_t *thread;
 	sem_t play; // Play/pause the thread's buffering. After posting, spin on t->paused to verify result
-	atomic_bool paused; // Bool indicating whether the thread is paused (waiting on t->play)
+	bool paused; // Bool indicating whether the thread is paused (waiting on t->play)
+	pthread_mutex_t paused_lock; // Lock for t->paused
+	pthread_cond_t paused_cv; // CV broadcasting t->pause updates
 	sem_t cancel; // Tell the thread to exit
 };
 
@@ -36,6 +38,10 @@ BufferThread *BufferThread_new() {
 	for (size_t i = 0; i < semaphores_len; i++) {
 		sem_init(semaphores[i], 0, 0);
 	}
+
+	// Initialize locks and CVs
+	pthread_mutex_init(&thr->paused_lock, NULL);
+	pthread_cond_init(&thr->paused_cv, NULL);
 
 	return thr;
 }
@@ -67,9 +73,19 @@ buffer_loop:
 		}
 		// Handle pause signal
 		if (sem_trywait(&thr->play) == 0) {
-			atomic_store(&thr->paused, true);
+			pthread_mutex_lock(&thr->paused_lock);
+			{
+				thr->paused = true;
+				pthread_cond_broadcast(&thr->paused_cv);
+			}
+			pthread_mutex_unlock(&thr->paused_lock);
 			sem_wait(&thr->play);
-			atomic_store(&thr->paused, false);
+			pthread_mutex_lock(&thr->paused_lock);
+			{
+				thr->paused = false;
+				pthread_cond_broadcast(&thr->paused_cv);
+			}
+			pthread_mutex_unlock(&thr->paused_lock);
 			continue;
 		}
 
@@ -121,18 +137,23 @@ int BufferThread_start(BufferThread *thr, AudioTrack *track, AudioTrack *next_tr
 }
 
 void BufferThread_play(BufferThread *thr, bool play) {
+	// Acquire lock over the 'paused' member so we can read it and listen for updates
+	pthread_mutex_lock(&thr->paused_lock);
+
 	if (play) {
 		// Debounce play signals
-		if (!atomic_load(&thr->paused)) {
+		if (!thr->paused) {
+			pthread_mutex_unlock(&thr->paused_lock);
 			return;
 		}
 
 		sem_post(&thr->play);
-		while (atomic_load(&thr->paused)) {}
+		pthread_cond_wait(&thr->paused_cv, &thr->paused_lock);
 		LOG(Verbosity_DEBUG, "Buffering resumed\n");
 	} else {
 		// Debounce
-		if (atomic_load(&thr->paused)) {
+		if (thr->paused) {
+			pthread_mutex_unlock(&thr->paused_lock);
 			return;
 		}
 
@@ -143,7 +164,9 @@ void BufferThread_play(BufferThread *thr, bool play) {
 		if (tr) {
 			sem_post(&tr->buffer->rd_sem);
 		}
-		while (!atomic_load(&thr->paused)) {}
+		pthread_cond_wait(&thr->paused_cv, &thr->paused_lock);
 		LOG(Verbosity_DEBUG, "Buffering paused\n");
 	}
+
+	pthread_mutex_unlock(&thr->paused_lock);
 }
