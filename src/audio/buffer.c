@@ -1,3 +1,4 @@
+#include <limits.h>
 #include <libavutil/mem.h>
 #include <libavutil/samplefmt.h>
 #include <stdio.h>
@@ -145,6 +146,13 @@ const size_t AudioBuffer_max_read(const AudioBuffer *buf, int rd, int wr, bool a
 	return maxrd;
 }
 
+// Try to seek n bytes backwards in an AudioBuffer
+static int AudioBuffer_seek_backward(AudioBuffer *buf, int n, enum AudioSeek from,
+		int rd, int wr);
+// Try to seek n bytes forwards in an AudioBuffer
+static int AudioBuffer_seek_forward(AudioBuffer *buf, uint64_t n, enum AudioSeek from,
+		const int rd, const int wr);
+
 // WIP
 int AudioBuffer_seek(AudioBuffer *buf, int64_t offset_bytes, enum AudioSeek from) {
 
@@ -165,6 +173,7 @@ int AudioBuffer_seek(AudioBuffer *buf, int64_t offset_bytes, enum AudioSeek from
 		// Can't seek in an empty buffer
 		return -1;
 	}
+
 	if (offset_bytes < 0) {
 		int64_t offset_abs = -offset_bytes;
 
@@ -212,4 +221,48 @@ int AudioBuffer_seek(AudioBuffer *buf, int64_t offset_bytes, enum AudioSeek from
 	}
 
 	return 1;
+}
+
+static int AudioBuffer_seek_backward(AudioBuffer *buf, int n, enum AudioSeek from,
+		int rd, int wr) {
+	// FIXME FIXME FIXME
+	// AudioBuffers should NEVER exceed INT_MAX in size,
+	// this should be checked during construction
+	if (buf->size > INT_MAX) {
+		return -2;
+	}
+
+	// Whether our seek can wrap around the buffer
+	const bool wrap = rd < wr && buf->n_written >= buf->size;
+
+
+	// Sanity check n
+	if (n >= buf->size || n < 0) {
+		return -1;
+	}
+
+	// Handle non-wrapping seeks (these are easy)
+	if (!wrap) {
+		const int s_max = wr < rd ? (rd - (wr+1)) : rd; // inclusive seek limit
+		if (n > s_max) {
+			return -1;
+		}
+		rd -= n;
+		atomic_store(&buf->rd, rd);
+		return 0;
+	}
+
+	// Handle wrapping seeks
+	const int size = buf->size;
+	const int s_max = (size - ((wr+1) - rd));
+	if (n > s_max) {
+		return -1;
+	}
+	rd -= n;
+	if (rd < 0) {
+		// take rd %= n using arithmetic mod.
+		rd = size + rd; // e.g (0 - 1 % 10 -> 9)
+	}
+	atomic_store(&buf->rd, rd);
+	return 0;
 }
