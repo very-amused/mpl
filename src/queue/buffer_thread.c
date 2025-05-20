@@ -78,7 +78,6 @@ buffer_loop:
 		}
 		// Handle pause signal
 		if (sem_trywait(&thr->play) == 0) {
-pause:
 			pthread_mutex_lock(&thr->paused_lock);
 			{
 				thr->paused = true;
@@ -122,7 +121,7 @@ pause:
 		// Pause our thread until thr->track is set
 		// NOTE: since we can't hold paused_lock here,
 		// this is the only way to self-pause without risking a deadlock
-		goto pause;
+		sem_post(&thr->play);
 	} else {
 		atomic_store(&thr->track, next);
 	}
