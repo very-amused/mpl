@@ -9,6 +9,7 @@
 
 #include "buffer.h"
 #include "audio/seek.h"
+#include "error.h"
 #include "util/log.h"
 
 int AudioBuffer_init(AudioBuffer *buf, const AudioPCM *pcm) {
@@ -150,8 +151,8 @@ const size_t AudioBuffer_max_read(const AudioBuffer *buf, int rd, int wr, bool a
 static int AudioBuffer_seek_backward(AudioBuffer *buf, int n, enum AudioSeek from,
 		int rd, int wr);
 // Try to seek n bytes forwards in an AudioBuffer
-static int AudioBuffer_seek_forward(AudioBuffer *buf, uint64_t n, enum AudioSeek from,
-		const int rd, const int wr);
+static int AudioBuffer_seek_forwards(AudioBuffer *buf, int n, enum AudioSeek from,
+		int rd, int wr);
 
 // WIP
 int AudioBuffer_seek(AudioBuffer *buf, int64_t offset_bytes, enum AudioSeek from) {
@@ -167,6 +168,11 @@ int AudioBuffer_seek(AudioBuffer *buf, int64_t offset_bytes, enum AudioSeek from
 		// Handle a zero seek as a noop
 		return 0;
 	}
+	// TODO: how likely is this to actually happen?
+	if (offset_bytes > INT_MAX || offset_bytes < -INT_MAX) {
+		return -1;
+	}
+
 	const int rd = atomic_load(&buf->rd);
 	const int wr = atomic_load(&buf->wr);
 	if (rd == wr) {
@@ -175,32 +181,8 @@ int AudioBuffer_seek(AudioBuffer *buf, int64_t offset_bytes, enum AudioSeek from
 	}
 
 	if (offset_bytes < 0) {
-		int64_t offset_abs = -offset_bytes;
-
-		// Check if offset is within valid data
-		if (buf->n_written >= buf->size - 1) { // All data 'behind' rd is valid
-			// Number of bytes we can seek backwards in-buffer
-			const int64_t prev_max = rd < wr ? buf->size - (wr-rd) - 1 : (rd-wr) - 1;
-			if (offset_abs > prev_max) {
-				return -1;
-			}
-		} else { // rd = 0 is the beginning of the track
-			const int64_t prev_max = rd < wr ? rd : 0;
-			if (offset_abs > prev_max) {
-				offset_abs = prev_max;
-			}
-		}
-
-		// Perform the seek
-		if (offset_abs <= rd) {
-			LOG(Verbosity_VERBOSE, "Seek type 0\n");
-			atomic_fetch_sub(&buf->rd, offset_abs);
-		} else {
-			LOG(Verbosity_VERBOSE, "Seek type 1\n");
-			atomic_store(&buf->rd, buf->size - (offset_abs - rd));
-		}
-		buf->n_read -= offset_abs;
-		return 0;
+		int offset_scalar = -offset_bytes;
+		return AudioBuffer_seek_backward(buf, offset_scalar, from, rd, wr);
 	} else {
 		// Check if offset is within valid data
 		const int64_t ahead_max = rd <= wr ? wr-rd : buf->size - (wr-rd);
@@ -232,37 +214,58 @@ static int AudioBuffer_seek_backward(AudioBuffer *buf, int n, enum AudioSeek fro
 		return -2;
 	}
 
-	// Whether our seek can wrap around the buffer
-	const bool wrap = rd < wr && buf->n_written >= buf->size;
-
-
 	// Sanity check n
 	if (n >= buf->size || n < 0) {
 		return -1;
 	}
 
-	// Handle non-wrapping seeks (these are easy)
-	if (!wrap) {
-		const int s_max = wr < rd ? (rd - (wr+1)) : rd; // inclusive seek limit
+	switch (from) {
+	case AudioSeek_Relative:
+	{
+		// Whether our seek can wrap around the buffer
+		const bool wrap = rd < wr && buf->n_written >= buf->size;
+
+		// Handle non-wrapping seeks (these are easy)
+		if (!wrap) {
+			const int s_max = wr < rd ? (rd - (wr+1)) : rd; // inclusive seek limit
+			// Don't block seeks to track start
+			if (buf->n_written < buf->size && n > s_max) {
+				n = s_max;
+			}
+			if (n > s_max) {
+				return -1;
+			}
+			rd -= n;
+			buf->n_read -= n;
+			LOG(Verbosity_DEBUG, "seek_backward set rd = %d\n", rd);
+			atomic_store(&buf->rd, rd);
+			return 0;
+		}
+
+		// Handle wrapping seeks
+		const int size = buf->size;
+		const int s_max = (size - ((wr+1) - rd));
 		if (n > s_max) {
 			return -1;
 		}
 		rd -= n;
+		if (rd < 0) {
+			// take rd %= n using arithmetic mod.
+			rd = size + rd; // e.g (0 - 1 % 10 -> 9)
+		}
 		atomic_store(&buf->rd, rd);
+		buf->n_read -= n;
 		return 0;
 	}
 
-	// Handle wrapping seeks
-	const int size = buf->size;
-	const int s_max = (size - ((wr+1) - rd));
-	if (n > s_max) {
+	default:
+		break;
+	}
+
+	return -1;
+}
+
+static int AudioBuffer_seek_forwards(AudioBuffer *buf, int n, enum AudioSeek from,
+	int rd, int wr) {
 		return -1;
-	}
-	rd -= n;
-	if (rd < 0) {
-		// take rd %= n using arithmetic mod.
-		rd = size + rd; // e.g (0 - 1 % 10 -> 9)
-	}
-	atomic_store(&buf->rd, rd);
-	return 0;
 }
