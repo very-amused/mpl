@@ -231,7 +231,7 @@ int Queue_seek(Queue *q, int32_t offset_ms, enum AudioSeek from) {
 	const int32_t offset = AudioPCM_buffer_size(&cur_audio->pcm, offset_ms_abs) * (offset_ms < 0 ? -1 : 1);
 
 	// Pause buffering so we can adjust the buffer's write index
-	BufferThread_play(q->buffer_thread, false);
+	BufferThread_lock(q->buffer_thread);
 	// Lock AudioBackend so we can adjust the buffer's read index
 	AudioBackend_lock(q->backend);
 	int status;
@@ -239,7 +239,7 @@ int Queue_seek(Queue *q, int32_t offset_ms, enum AudioSeek from) {
 		status = Queue_seek_inner(q, offset, from, cur_audio);
 	}
 	AudioBackend_unlock(q->backend);
-	BufferThread_play(q->buffer_thread, true);
+	BufferThread_unlock(q->buffer_thread);
 
 	return status;
 }
@@ -257,7 +257,7 @@ int Queue_seek_snap(Queue *q, int32_t offset_ms) {
 	const int32_t offset_scalar = AudioPCM_buffer_size(&cur_audio->pcm, offset_ms_abs);
 
 	// Lock everything else that touches the track's AudioBuffer
-	BufferThread_play(q->buffer_thread, false);
+	BufferThread_lock(q->buffer_thread);
 	AudioBackend_lock(q->backend);
 
 	// Convert offset into bytes, this will be an even multiple of frame_size since we use AudioPCM_buffer_size
@@ -271,7 +271,6 @@ int Queue_seek_snap(Queue *q, int32_t offset_ms) {
 	const ssize_t time_ms = (1000 * n_read) / fps;
 
 	// TODO: comment what's going on here
-	const ssize_t ms_to_next = offset_ms_abs - (time_ms % offset_ms_abs);
 	const ssize_t ms_from_last = time_ms % offset_ms_abs;
 	static const size_t SNAP_WINDOW_MS = 1000;
 	if (offset < 0) {
@@ -286,7 +285,7 @@ int Queue_seek_snap(Queue *q, int32_t offset_ms) {
 	int status = Queue_seek_inner(q, offset, AudioSeek_Relative, cur_audio);
 
 	AudioBackend_unlock(q->backend);
-	BufferThread_play(q->buffer_thread, true);
+	BufferThread_unlock(q->buffer_thread);
 
 	return status;
 }
