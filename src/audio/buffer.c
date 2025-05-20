@@ -185,24 +185,6 @@ int AudioBuffer_seek(AudioBuffer *buf, int64_t offset_bytes, enum AudioSeek from
 		return AudioBuffer_seek_backward(buf, offset_scalar, from, rd, wr);
 	} else {
 		return AudioBuffer_seek_forward(buf, offset_bytes, from, rd, wr);
-		/*
-		// Check if offset is within valid data
-		const int64_t ahead_max = rd <= wr ? wr-rd : buf->size - (wr-rd);
-		if (offset_bytes > ahead_max) {
-			return -1;
-		}
-
-		// Perform the seek
-		if (rd+offset_bytes <= wr) {
-			LOG(Verbosity_VERBOSE, "Seek type 2\n");
-			atomic_fetch_add(&buf->rd, offset_bytes); // type 1
-		} else {
-			LOG(Verbosity_VERBOSE, "Seek type 3\n");
-			atomic_store(&buf->rd, offset_bytes - (buf->size - rd)); // type 2
-		}
-		buf->n_read += offset_bytes;
-		return 0;
-		*/
 	}
 
 	return 1;
@@ -215,49 +197,39 @@ static int AudioBuffer_seek_backward(AudioBuffer *buf, int n, enum AudioSeek fro
 		return -1;
 	}
 
-	switch (from) {
-	case AudioSeek_Relative:
-	{
-		// Whether our seek can wrap around the buffer
-		const bool wrap = rd < wr && buf->n_written >= buf->size;
+	// Whether our seek can wrap around the buffer
+	const bool wrap = rd < wr && buf->n_written >= buf->size;
 
-		// Handle non-wrapping seeks (these are easy)
-		if (!wrap) {
-			const int s_max = wr < rd ? (rd - (wr+1)) : rd; // inclusive seek limit
-			// Don't block seeks to track start
-			if (buf->n_written < buf->size && n > s_max) {
-				n = s_max;
-			}
-			if (n > s_max) {
-				return -1;
-			}
-			rd -= n;
-			buf->n_read -= n;
-			atomic_store(&buf->rd, rd);
-			return 0;
+	// Handle non-wrapping seeks (these are easy)
+	if (!wrap) {
+		const int s_max = wr < rd ? (rd - (wr+1)) : rd; // inclusive seek limit
+		// Don't block seeks to track start
+		if (buf->n_written < buf->size && n > s_max) {
+			n = s_max;
 		}
-
-		// Handle wrapping seeks
-		const int size = buf->size;
-		const int s_max = size - ((wr+1) - rd);
 		if (n > s_max) {
 			return -1;
 		}
 		rd -= n;
-		if (rd < 0) {
-			// take rd %= n using arithmetic mod.
-			rd = size + rd; // e.g (0 - 1 % 10 -> 9)
-		}
-		atomic_store(&buf->rd, rd);
 		buf->n_read -= n;
+		atomic_store(&buf->rd, rd);
 		return 0;
 	}
 
-	default:
-		break;
+	// Handle wrapping seeks
+	const int size = buf->size;
+	const int s_max = size - ((wr+1) - rd);
+	if (n > s_max) {
+		return -1;
 	}
-
-	return -1;
+	rd -= n;
+	if (rd < 0) {
+		// take rd %= n using arithmetic mod.
+		rd = size + rd; // e.g (0 - 1 % 10 -> 9)
+	}
+	atomic_store(&buf->rd, rd);
+	buf->n_read -= n;
+	return 0;
 }
 
 static int AudioBuffer_seek_forward(AudioBuffer *buf, int n, enum AudioSeek from,
