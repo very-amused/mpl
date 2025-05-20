@@ -181,7 +181,7 @@ int Queue_play(Queue *q, bool pause) {
 	}
 	q->playback_state = pause ? Queue_PAUSED : Queue_PLAYING;
 	if (pause) {
-		BufferThread_play(q->buffer_thread, false);
+		BufferThread_lock(q->buffer_thread);
 		return 0;
 	}
 
