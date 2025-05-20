@@ -15,7 +15,7 @@
 int AudioBuffer_init(AudioBuffer *buf, const AudioPCM *pcm) {
 	// To start, we're going to use a fixed buffer time length of 30s.
 	// Later, we'll use track header info to decide how big the initial buffer allocation is.
-	static const size_t TIME_LEN = 30;
+	static const size_t TIME_LEN = 60;
 
 	// Compute line and buffer sizes
 	buf->size = av_samples_get_buffer_size(
@@ -149,10 +149,10 @@ const size_t AudioBuffer_max_read(const AudioBuffer *buf, int rd, int wr, bool a
 
 // Try to seek n bytes backwards in an AudioBuffer
 static int AudioBuffer_seek_backward(AudioBuffer *buf, int n, enum AudioSeek from,
-		int rd, int wr);
+		int rd, const int wr);
 // Try to seek n bytes forwards in an AudioBuffer
-static int AudioBuffer_seek_forwards(AudioBuffer *buf, int n, enum AudioSeek from,
-		int rd, int wr);
+static int AudioBuffer_seek_forward(AudioBuffer *buf, int n, enum AudioSeek from,
+		int rd, const int wr);
 
 // WIP
 int AudioBuffer_seek(AudioBuffer *buf, int64_t offset_bytes, enum AudioSeek from) {
@@ -168,8 +168,8 @@ int AudioBuffer_seek(AudioBuffer *buf, int64_t offset_bytes, enum AudioSeek from
 		// Handle a zero seek as a noop
 		return 0;
 	}
-	// TODO: how likely is this to actually happen?
-	if (offset_bytes > INT_MAX || offset_bytes < -INT_MAX) {
+	// TODO: how likely are we to actually exceed INT_MAX
+	if (offset_bytes > INT_MAX || offset_bytes < INT_MIN) {
 		return -1;
 	}
 
@@ -184,6 +184,8 @@ int AudioBuffer_seek(AudioBuffer *buf, int64_t offset_bytes, enum AudioSeek from
 		int offset_scalar = -offset_bytes;
 		return AudioBuffer_seek_backward(buf, offset_scalar, from, rd, wr);
 	} else {
+		return AudioBuffer_seek_forward(buf, offset_bytes, from, rd, wr);
+		/*
 		// Check if offset is within valid data
 		const int64_t ahead_max = rd <= wr ? wr-rd : buf->size - (wr-rd);
 		if (offset_bytes > ahead_max) {
@@ -200,6 +202,7 @@ int AudioBuffer_seek(AudioBuffer *buf, int64_t offset_bytes, enum AudioSeek from
 		}
 		buf->n_read += offset_bytes;
 		return 0;
+		*/
 	}
 
 	return 1;
@@ -207,13 +210,6 @@ int AudioBuffer_seek(AudioBuffer *buf, int64_t offset_bytes, enum AudioSeek from
 
 static int AudioBuffer_seek_backward(AudioBuffer *buf, int n, enum AudioSeek from,
 		int rd, int wr) {
-	// FIXME FIXME FIXME
-	// AudioBuffers should NEVER exceed INT_MAX in size,
-	// this should be checked during construction
-	if (buf->size > INT_MAX) {
-		return -2;
-	}
-
 	// Sanity check n
 	if (n >= buf->size || n < 0) {
 		return -1;
@@ -237,14 +233,13 @@ static int AudioBuffer_seek_backward(AudioBuffer *buf, int n, enum AudioSeek fro
 			}
 			rd -= n;
 			buf->n_read -= n;
-			LOG(Verbosity_DEBUG, "seek_backward set rd = %d\n", rd);
 			atomic_store(&buf->rd, rd);
 			return 0;
 		}
 
 		// Handle wrapping seeks
 		const int size = buf->size;
-		const int s_max = (size - ((wr+1) - rd));
+		const int s_max = size - ((wr+1) - rd);
 		if (n > s_max) {
 			return -1;
 		}
@@ -265,7 +260,37 @@ static int AudioBuffer_seek_backward(AudioBuffer *buf, int n, enum AudioSeek fro
 	return -1;
 }
 
-static int AudioBuffer_seek_forwards(AudioBuffer *buf, int n, enum AudioSeek from,
-	int rd, int wr) {
+static int AudioBuffer_seek_forward(AudioBuffer *buf, int n, enum AudioSeek from,
+	int rd, const int wr) {
+	// Sanity check n
+	if (n >= buf->size || n < 0) {
 		return -1;
+	}
+
+	// Whether our seek can wrap around the buffer
+	const bool wrap = wr < rd;
+
+	// Handle non-wrapping seeks
+	if (!wrap) {
+		const int s_max = (wr-1) - rd;
+		if (n > s_max) {
+			return -1;
+		}
+		rd += n;
+		buf->n_read += n;
+		atomic_store(&buf->rd, rd);
+		return 0;
+	}
+
+	// Handle wrapping seeks
+	const int size = buf->size;
+	const int s_max = size - (rd - (wr-1));
+	if (n > s_max) {
+		return -1;
+	}
+	rd += n;
+	rd %= buf->size;
+	buf->n_read += n;
+	atomic_store(&buf->rd, rd);
+	return 0;
 }
