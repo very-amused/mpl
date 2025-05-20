@@ -50,4 +50,4 @@ const size_t AudioBuffer_max_read(const AudioBuffer *buf, int rd, int wr, bool a
 // handle seeks.
 //
 // Returns 0 on success, or -1 when the seek cannot be done in-buffer.
-int AudioBuffer_seek(AudioBuffer *buf, int64_t offset_bytes, enum AudioSeek seek_dir);
+enum AudioBuffer_ERR AudioBuffer_seek(AudioBuffer *buf, int64_t offset_bytes, enum AudioSeek seek_dir);

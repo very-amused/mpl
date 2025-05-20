@@ -10,7 +10,6 @@
 #include "buffer.h"
 #include "audio/seek.h"
 #include "error.h"
-#include "util/log.h"
 
 int AudioBuffer_init(AudioBuffer *buf, const AudioPCM *pcm) {
 	// To start, we're going to use a fixed buffer time length of 30s.
@@ -148,53 +147,49 @@ const size_t AudioBuffer_max_read(const AudioBuffer *buf, int rd, int wr, bool a
 }
 
 // Try to seek n bytes backwards in an AudioBuffer
-static int AudioBuffer_seek_backward(AudioBuffer *buf, int n, enum AudioSeek from,
+static enum AudioBuffer_ERR AudioBuffer_seek_backward(AudioBuffer *buf, int n, enum AudioSeek from,
 		int rd, const int wr);
 // Try to seek n bytes forwards in an AudioBuffer
-static int AudioBuffer_seek_forward(AudioBuffer *buf, int n, enum AudioSeek from,
+static enum AudioBuffer_ERR AudioBuffer_seek_forward(AudioBuffer *buf, int n, enum AudioSeek from,
 		int rd, const int wr);
 
 // WIP
-int AudioBuffer_seek(AudioBuffer *buf, int64_t offset_bytes, enum AudioSeek from) {
+enum AudioBuffer_ERR AudioBuffer_seek(AudioBuffer *buf, int64_t offset_bytes, enum AudioSeek from) {
 
 	// For now, support only relative seeks
 	if (from != AudioSeek_Relative) {
 		fprintf(stderr, "Only relative seeks are currently supported\n");
-		return 1;
+		return AudioBuffer_INVALID_SEEK;
 	}
 
 	// Check if our seek is within valid data bounds
 	if (offset_bytes == 0) {
 		// Handle a zero seek as a noop
-		return 0;
+		return AudioBuffer_OK;
 	}
 	// TODO: how likely are we to actually exceed INT_MAX
 	if (offset_bytes > INT_MAX || offset_bytes < INT_MIN) {
-		return -1;
+		return AudioBuffer_SEEK_OOB;
 	}
 
 	const int rd = atomic_load(&buf->rd);
 	const int wr = atomic_load(&buf->wr);
 	if (rd == wr) {
 		// Can't seek in an empty buffer
-		return -1;
+		return AudioBuffer_SEEK_OOB;
 	}
 
 	if (offset_bytes < 0) {
-		int offset_scalar = -offset_bytes;
-		return AudioBuffer_seek_backward(buf, offset_scalar, from, rd, wr);
-	} else {
-		return AudioBuffer_seek_forward(buf, offset_bytes, from, rd, wr);
+		return AudioBuffer_seek_backward(buf, -offset_bytes, from, rd, wr);
 	}
-
-	return 1;
+	return AudioBuffer_seek_forward(buf, offset_bytes, from, rd, wr);
 }
 
-static int AudioBuffer_seek_backward(AudioBuffer *buf, int n, enum AudioSeek from,
+static enum AudioBuffer_ERR AudioBuffer_seek_backward(AudioBuffer *buf, int n, enum AudioSeek from,
 		int rd, int wr) {
 	// Sanity check n
 	if (n >= buf->size || n < 0) {
-		return -1;
+		return AudioBuffer_SEEK_OOB;
 	}
 
 	// Whether our seek can wrap around the buffer
@@ -208,19 +203,19 @@ static int AudioBuffer_seek_backward(AudioBuffer *buf, int n, enum AudioSeek fro
 			n = s_max;
 		}
 		if (n > s_max) {
-			return -1;
+			return AudioBuffer_SEEK_OOB;
 		}
 		rd -= n;
 		buf->n_read -= n;
 		atomic_store(&buf->rd, rd);
-		return 0;
+		return AudioBuffer_OK;
 	}
 
 	// Handle wrapping seeks
 	const int size = buf->size;
 	const int s_max = size - ((wr+1) - rd);
 	if (n > s_max) {
-		return -1;
+		return AudioBuffer_SEEK_OOB;
 	}
 	rd -= n;
 	if (rd < 0) {
@@ -229,14 +224,14 @@ static int AudioBuffer_seek_backward(AudioBuffer *buf, int n, enum AudioSeek fro
 	}
 	atomic_store(&buf->rd, rd);
 	buf->n_read -= n;
-	return 0;
+	return AudioBuffer_OK;
 }
 
-static int AudioBuffer_seek_forward(AudioBuffer *buf, int n, enum AudioSeek from,
+static enum AudioBuffer_ERR AudioBuffer_seek_forward(AudioBuffer *buf, int n, enum AudioSeek from,
 	int rd, const int wr) {
 	// Sanity check n
 	if (n >= buf->size || n < 0) {
-		return -1;
+		return AudioBuffer_SEEK_OOB;
 	}
 
 	// Whether our seek can wrap around the buffer
@@ -246,23 +241,23 @@ static int AudioBuffer_seek_forward(AudioBuffer *buf, int n, enum AudioSeek from
 	if (!wrap) {
 		const int s_max = (wr-1) - rd;
 		if (n > s_max) {
-			return -1;
+			return AudioBuffer_SEEK_OOB;
 		}
 		rd += n;
 		buf->n_read += n;
 		atomic_store(&buf->rd, rd);
-		return 0;
+		return AudioBuffer_OK;
 	}
 
 	// Handle wrapping seeks
 	const int size = buf->size;
 	const int s_max = size - (rd - (wr-1));
 	if (n > s_max) {
-		return -1;
+		return AudioBuffer_SEEK_OOB;
 	}
 	rd += n;
 	rd %= buf->size;
 	buf->n_read += n;
 	atomic_store(&buf->rd, rd);
-	return 0;
+	return AudioBuffer_OK;
 }

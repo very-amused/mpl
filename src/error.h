@@ -68,6 +68,25 @@ static inline const char *AudioTrack_ERR_name(enum AudioTrack_ERR err) {
 
 #undef AUDIOTRACK_ERR
 
+#define AUDIOBUFFER_ERR(VARIANT) \
+	VARIANT(AudioBuffer_OK) \
+	VARIANT(AudioBuffer_SEEK_OOB) \
+	VARIANT(AudioBuffer_INVALID_SEEK)
+
+// Errors returned by certain AudioBuffer_* methods
+enum AudioBuffer_ERR {
+	AUDIOBUFFER_ERR(ENUM_VAL)
+};
+
+static inline const char *AudioBuffer_ERR_name(enum AudioBuffer_ERR err) {
+	switch (err) {
+		AUDIOBUFFER_ERR(ENUM_KEY)
+	}
+	return DEFAULT_ERR_NAME;
+}
+
+#undef AUDIOBUFFER_ERR
+
 #define VERBOSITY(VARIANT) \
 	VARIANT(Verbosity_NORMAL) \
 	VARIANT(Verbosity_VERBOSE) \
