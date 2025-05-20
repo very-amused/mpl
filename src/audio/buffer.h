@@ -44,7 +44,7 @@ size_t AudioBuffer_read(AudioBuffer *buf, unsigned char *dst, size_t n, bool ali
 // NOTE: Pass -1 as rd and wr to automatically load rd/wr indices
 const size_t AudioBuffer_max_read(const AudioBuffer *buf, int rd, int wr, bool align);
 
-// Try to seeking within an AudioBuffer.
+// Try to seek within an AudioBuffer.
 // NOTE: the buffer must be de-facto locked via some external mechanism when this is called.
 // The ideal way to achieve this is to lock the AudioBackend thread and have the BufferThread
 // handle seeks.

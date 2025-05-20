@@ -53,6 +53,19 @@ int	Queue_play(Queue *q, bool pause);
 // Seek within the currently playing track.
 // Handles necessary locks as well as buffer + decoding context updates
 int Queue_seek(Queue *q, int32_t offset_ms, enum AudioSeek from);
+// Seek within the current track, snapping to the nearest multiple of offset_ms.
+// [AudioSeek_Relative] is always used as `from`.
+// Examples:
+// 00:01 + 5s -> 00:05
+// 00:01 - 5s -> 00:00
+// 00:04 + 5s -> 00:05
+// 00:05 + 5s -> 00:10
+// 00:06 - 5s -> 00:05
+//
+// This is basically Queue_seek with better UX
+// WIP
+int Queue_seek_snap(Queue *q, int32_t offset_ms);
+
 
 // Get playback state from the queue and its AudioBackend
 enum Queue_PLAYBACK_STATE Queue_get_playback_state(const Queue *q);
