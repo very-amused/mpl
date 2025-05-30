@@ -33,6 +33,7 @@ if get_option('buildtype') == 'debug'
 	cflags += '-O0'
 	cflags += '-fsanitize=address'
 	cflags += '-fno-omit-frame-pointer'
+	cflags += '-DMPL_DEBUG'
 endif
 
 subdir('src')
