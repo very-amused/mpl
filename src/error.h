@@ -106,3 +106,22 @@ static inline const char *Verbosity_name(enum Verbosity lvl) {
 }
 
 #undef VERBOSITY
+
+#define CONF_ARG_T(VARIANT) \
+	VARIANT(ConfArg_INT32) \
+	VARIANT(ConfArg_STR) \
+	VARIANT(ConfArg_VAR)
+
+/* A configuration argument's type. */
+enum ConfArg_t {
+	CONF_ARG_T(ENUM_VAL)
+};
+
+static inline const char *ConfArg_t_name(enum ConfArg_t arg_t) {
+	switch (arg_t) {
+		CONF_ARG_T(ENUM_KEY)
+	}
+	return DEFAULT_ERR_NAME;
+}
+
+#undef CONF_ARG_T
