@@ -67,19 +67,24 @@ struct confTokenNode {
 };
 typedef struct confTokenNode confTokenList;
 
-// Initialze the sentinel node for a DLL holding confToken's
-void confTokenList_init(confTokenNode *head);
-// Deinitialize a DLL holding confToken's, calling confToken_deinit() on all tokens
-void confTokenList_deinit(confTokenNode *head);
+// Initialze confTokenList sentinel node (head)
+void confTokenList_init(confTokenList *head);
+// Deinitialize a confTokenList, calling confToken_deinit() on all tokens along the way.
+// NOTE: caller is responsible for freeing *head
+void confTokenList_deinit(confTokenList *head);
 
 // Push to the back of a confTokenList
 // NOTE: takes ownership of *token
 // Returns 0 on success, nonzero on error
-int confTokenList_push(confTokenNode *head, confToken *token);
+int confTokenList_push(confTokenList *head, confToken *token);
 // Pop from the front of a confTokenList
 // NOTE: caller is responsible for freeing *token.
 // Returns NULL if the list is empty
-confToken *confTokenList_pop(confTokenNode *head);
+confToken *confTokenList_pop(confTokenList *head);
+
+// Peek the token at the front of a confTokenList.
+// Must be followed up with confToken_pop to actually pop the token.
+const confToken *confTokenList_peek(const confTokenList *head);
 
 // Tokenize an mpl config string
 int confLexer_tokenize(const char *config);
