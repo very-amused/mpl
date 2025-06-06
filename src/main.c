@@ -26,6 +26,8 @@ int main(int argc, const char **argv) {
 	UserInterface_CLI_opts_parse(&ui_opts, argc, argv);
 	configure_av_log(); // Configure libav logging
 
+	// Parse mpl.conf
+
 	// Fire up CLI user interface and the main EventQueue
 	UserInterface_CLI ui;
 	UserInterface_CLI_init(&ui, &ui_opts);
