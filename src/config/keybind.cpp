@@ -1,5 +1,5 @@
-#include <wchar.h>
 #include <stdlib.h>
+#include <string.h>
 #include <stdio.h>
 
 extern "C" {
@@ -15,33 +15,40 @@ struct Keybind {
 	void *userdata;
 
 	// C++ nonsense
-	Keybind() = delete;
-	Keybind(const Keybind &) = delete;
-	Keybind operator=(const Keybind &) = delete;
-	Keybind(const char *line); // Parse from a line of config
-
+	Keybind() {
+		memset(this, 0, sizeof(Keybind));
+	}
 	~Keybind() {
 		free(userdata);
 	}
+
+	Keybind(const Keybind &) = delete;
+	Keybind operator=(const Keybind &) = delete;
 };
 
-Keybind::Keybind(const char *line) {
-	// TODO
-}
 
 // Parse and turn on RAII
 extern "C" Keybind *Keybind_parse(const char *line) {
-	return new Keybind(line);
+	std::unique_ptr<Keybind> bind(new Keybind); // Automatically frees if we exit early
+
+	// Parse key name
+	if (sscanf(line, "bind %lc = ", &bind->key) != 1) {
+		return NULL;
+	}
+
+	// Read action name
+
+	return bind.release();
 }
 
 struct KeybindMap {
 	std::unordered_map<wchar_t, std::unique_ptr<Keybind>> map;
 
 	KeybindMap() = default;
+	~KeybindMap() = default;
+
 	KeybindMap(const KeybindMap &) = delete;
 	KeybindMap operator=(const KeybindMap &) = delete;
-
-	~KeybindMap() = default;
 };
 
 extern "C" {
