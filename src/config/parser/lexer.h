@@ -65,11 +65,21 @@ struct confTokenNode {
 	confTokenNode *prev, *next; // (flink, blink)
 	// if prev == next == this, then this is the sentinel/head node
 };
+typedef struct confTokenNode confTokenList;
 
 // Initialze the sentinel node for a DLL holding confToken's
-void confTokenNode_init_dll(confTokenNode *head);
+void confTokenList_init(confTokenNode *head);
 // Deinitialize a DLL holding confToken's, calling confToken_deinit() on all tokens
-void confTokenNode_deinit_dll(confTokenNode *head);
+void confTokenList_deinit(confTokenNode *head);
+
+// Push to the back of a confTokenList
+// NOTE: takes ownership of *token
+// Returns 0 on success, nonzero on error
+int confTokenList_push(confTokenNode *head, confToken *token);
+// Pop from the front of a confTokenList
+// NOTE: caller is responsible for freeing *token.
+// Returns NULL if the list is empty
+confToken *confTokenList_pop(confTokenNode *head);
 
 // Tokenize an mpl config string
 int confLexer_tokenize(const char *config);

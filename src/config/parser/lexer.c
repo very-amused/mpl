@@ -20,11 +20,11 @@ void confToken_deinit(confToken *tok) {
 	}
 }
 
-void confTokenNode_init_dll(confTokenNode *head) {
+void confTokenNode_dll_init(confTokenNode *head) {
 	head->token = NULL;
 	head->prev = head->next = head;
 }
 // Deinitialize a DLL holding confToken's, calling confToken_deinit() on all tokens
-void confTokenNode_deinit_dll(confTokenNode *head) {
+void confTokenNode_dll_deinit(confTokenNode *head) {
 	// TODO
 }
