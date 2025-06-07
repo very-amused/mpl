@@ -1,4 +1,5 @@
 #include "audio/seek.h"
+#include "config/internal/state.h"
 #include "error.h"
 #include "queue/queue.h"
 #include "queue/state.h"
@@ -66,6 +67,8 @@ int main(int argc, const char **argv) {
 				TERM_ITAL, track->meta.album, TERM_RESET);
 	}
 
+	// WIP: Initialize configState so bindings work
+	configState_init(&queue, ui.evt_queue);
 
 	// Handle events on the main thread
 	Event evt;

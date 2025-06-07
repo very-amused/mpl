@@ -8,8 +8,6 @@ struct configState {
 	EventQueue *evt_queue; // used to send exit messages
 };
 
-extern struct configState config_state;
-
 // Initialize global configuration state to be passed to functions defined in
 // config/functions.h
 //
