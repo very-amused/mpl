@@ -1,9 +1,7 @@
-#include "audio/seek.h"
 #include "config/internal/state.h"
 #include "config/keybinds.h"
 #include "error.h"
 #include "queue/queue.h"
-#include "queue/state.h"
 #include "track.h"
 #include "ui/cli.h"
 #include "ui/event.h"
@@ -11,10 +9,9 @@
 #include "ui/timecode.h"
 #include "util/log.h"
 
-#include <ctype.h>
 #include <stdint.h>
-#include <unistd.h>
 #include <stdio.h>
+#include <wchar.h>
 
 int main(int argc, const char **argv) {
 	printf("This is MPL v%s\n", MPL_VERSION);
@@ -81,27 +78,9 @@ int main(int argc, const char **argv) {
 		case mpl_KEYPRESS:
 		{
 			EventBody_Keypress key = evt.body_inline;
-			//printf("\nKey %c was pressed\n", key);
-			// WIP: Try to call a configured keybind
-			if (call_keybind(key) == 0) {
-				break;
+			if (call_keybind(key) != 0) {
+				LOG(Verbosity_VERBOSE, "Unknown key: %lc\n", key);
 			}
-#if 0
-			switch (tolower(key)) {
-			case ',':
-				Queue_seek_snap(&queue, -1000);
-				break;
-			case '.':
-				Queue_seek_snap(&queue, 1000);
-				break;
-			case '<':
-				Queue_seek_snap(&queue, -5000);
-				break;
-			case '>':
-				Queue_seek_snap(&queue, 5000);
-				break;
-			}
-#endif
 			break;
 		}
 		case mpl_TIMECODE:
