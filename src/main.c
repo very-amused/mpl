@@ -1,5 +1,5 @@
 #include "config/internal/state.h"
-#include "config/keybinds.h"
+#include "config/keybind.h"
 #include "error.h"
 #include "queue/queue.h"
 #include "track.h"

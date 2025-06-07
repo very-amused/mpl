@@ -1,4 +1,4 @@
-#include "keybinds.h"
+#include "keybind.h"
 #include "config/functions.h"
 #include "config/internal/state.h"
 
