@@ -13,6 +13,8 @@ int call_keybind(wchar_t keycode) {
 		return 1;
 	}
 
+	static struct seekArgs seek_args;
+
 	switch (tolower(keycode)) {
 	case 'p':
 		play_toggle();
@@ -20,8 +22,22 @@ int call_keybind(wchar_t keycode) {
 	case 'q':
 		quit();
 		return 0;
-		break;
-		//goto quit;
+	case ',':
+		seek_args.ms = -1000;
+		seek_snap(&seek_args);
+		return 0;
+	case '.':
+		seek_args.ms = 1000;
+		seek_snap(&seek_args);
+		return 0;
+	case '<':
+		seek_args.ms = -5000;
+		seek_snap(&seek_args);
+		return 0;
+	case '>':
+		seek_args.ms = 5000;
+		seek_snap(&seek_args);
+		return 0;
 	}
 
 	return 1;

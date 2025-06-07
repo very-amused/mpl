@@ -1,4 +1,5 @@
 #include "functions.h"
+#include "audio/seek.h"
 #include "config/internal/state.h"
 #include "queue/queue.h"
 #include "queue/state.h"
@@ -23,4 +24,12 @@ void quit() {
 		.body_size = 0
 	};
 	EventQueue_send(config_state.evt_queue, &quit_evt);
+}
+
+void seek(const struct seekArgs *args) {
+	Queue_seek(config_state.queue, args->ms, AudioSeek_Relative);
+}
+
+void seek_snap(const struct seekArgs *args) {
+	Queue_seek_snap(config_state.queue, args->ms);
 }

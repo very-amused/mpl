@@ -86,6 +86,7 @@ int main(int argc, const char **argv) {
 			if (call_keybind(key) == 0) {
 				break;
 			}
+#if 0
 			switch (tolower(key)) {
 			case ',':
 				Queue_seek_snap(&queue, -1000);
@@ -100,6 +101,7 @@ int main(int argc, const char **argv) {
 				Queue_seek_snap(&queue, 5000);
 				break;
 			}
+#endif
 			break;
 		}
 		case mpl_TIMECODE:
