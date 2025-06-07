@@ -75,6 +75,9 @@ int main(int argc, const char **argv) {
 	Event evt;
 	while (EventQueue_recv(ui.evt_queue, &evt) == 0) {
 		switch (evt.event_type) {
+		case mpl_QUIT:
+			LOG(Verbosity_DEBUG, "Quitting from mpl_QUIT\n");
+			goto quit;
 		case mpl_KEYPRESS:
 		{
 			EventBody_Keypress key = evt.body_inline;
@@ -84,8 +87,6 @@ int main(int argc, const char **argv) {
 				break;
 			}
 			switch (tolower(key)) {
-			case 'q':
-				goto quit;
 			case ',':
 				Queue_seek_snap(&queue, -1000);
 				break;
