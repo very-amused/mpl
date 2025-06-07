@@ -1,5 +1,6 @@
 #include "audio/seek.h"
 #include "config/internal/state.h"
+#include "config/keybinds.h"
 #include "error.h"
 #include "queue/queue.h"
 #include "queue/state.h"
@@ -78,10 +79,11 @@ int main(int argc, const char **argv) {
 		{
 			EventBody_Keypress key = evt.body_inline;
 			//printf("\nKey %c was pressed\n", key);
-			switch (tolower(key)) {
-			case 'p':
-				Queue_play(&queue, queue.playback_state == Queue_PLAYING);
+			// WIP: Try to call a configured keybind
+			if (call_keybind(key) == 0) {
 				break;
+			}
+			switch (tolower(key)) {
 			case 'q':
 				goto quit;
 			case ',':
