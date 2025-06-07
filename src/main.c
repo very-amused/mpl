@@ -1,5 +1,7 @@
+#include "config/config.h"
 #include "config/internal/state.h"
 #include "config/keybind.h"
+#include "config/keybind_map/keybind_map.h"
 #include "error.h"
 #include "queue/queue.h"
 #include "track.h"
@@ -9,6 +11,7 @@
 #include "ui/timecode.h"
 #include "util/log.h"
 
+#include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <wchar.h>
@@ -25,10 +28,17 @@ int main(int argc, const char **argv) {
 	UserInterface_CLI_opts_parse(&ui_opts, argc, argv);
 	configure_av_log(); // Configure libav logging
 
+
 	// Fire up CLI user interface and the main EventQueue
 	UserInterface_CLI ui;
 	UserInterface_CLI_init(&ui, &ui_opts);
 	LOG(Verbosity_VERBOSE, "Logging enabled: %s\n", Verbosity_name(CLI_opts.verbosity));
+
+	// Parse mpl.conf
+	mplConfig config;
+	assert(mplConfig_parse(&config, "../test/mpl.conf") == 0);
+	assert(KeybindMap_call_keybind(config.keybinds, 'e') == 0);
+	assert(KeybindMap_call_keybind(config.keybinds, 'r') == 1);
 
 	// Form URL from file argv
 	const char *file = argv[argc-1];
