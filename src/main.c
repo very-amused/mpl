@@ -36,9 +36,9 @@ int main(int argc, const char **argv) {
 
 	// Parse mpl.conf
 	mplConfig config;
-	assert(mplConfig_parse(&config, "../test/mpl.conf") == 0);
-	assert(KeybindMap_call_keybind(config.keybinds, 'e') == 0);
-	assert(KeybindMap_call_keybind(config.keybinds, 'r') == 1);
+	assert(mplConfig_parse(&config, "../test/mpl.conf") == KeybindMap_OK);
+	assert(KeybindMap_call_keybind(config.keybinds, 'e') == KeybindMap_OK);
+	assert(KeybindMap_call_keybind(config.keybinds, 'r') == KeybindMap_NOT_FOUND);
 
 	// Form URL from file argv
 	const char *file = argv[argc-1];
@@ -126,6 +126,8 @@ quit:
 	LOG(Verbosity_DEBUG, "Deinitializing Queue\n");
 	Queue_deinit(&queue);
 	free(url);
+	LOG(Verbosity_DEBUG, "Deinitializing config\n");
+	mplConfig_deinit(&config);
 
 	return 0;
 }

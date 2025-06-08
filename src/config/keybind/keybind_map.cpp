@@ -1,3 +1,4 @@
+#include "error.h"
 extern "C" {
 #include "keybind_map.h"
 }
@@ -26,32 +27,31 @@ void KeybindMap_free(KeybindMap *keybinds) {
 }
 
 
-int KeybindMap_parse_mapping(KeybindMap *keybinds, const char *line) {
+enum KeybindMap_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *line) {
 	std::stringstream linestream(line);
 	
 	// bind
 	std::string token;
 	if (!(linestream >> token) || token != "bind") {
-		// Syntax error
-		return 1;
+		return KeybindMap_SYNTAX_ERR;
 	}
 
 	// {keyname}
 	std::string keyname;
 	if (!(linestream >> keyname)) {
-		return 1;
+		return KeybindMap_SYNTAX_ERR;
 	}
 	const wchar_t keycode = get_keycode(keyname);
 
 	// =
 	if (!(linestream >> token) || token != "=") {
-		return 1;
+		return KeybindMap_SYNTAX_ERR;
 	}
 
 	std::string fn_ident;
 	std::getline(linestream, fn_ident, '(');
 	if (!linestream.good()) {
-		return 1;
+		return KeybindMap_SYNTAX_ERR;
 	}
 
 	// TODO: Parse fn args
@@ -59,12 +59,12 @@ int KeybindMap_parse_mapping(KeybindMap *keybinds, const char *line) {
 	
 	keybinds->map[keycode] = true;
 
-	return 0;
+	return KeybindMap_OK;
 }
 
-int KeybindMap_call_keybind(const KeybindMap *keybinds, wchar_t keycode) {
+enum KeybindMap_ERR KeybindMap_call_keybind(const KeybindMap *keybinds, wchar_t keycode) {
 	const bool exists = keybinds->map.find(keycode) != keybinds->map.end();
-	return exists ? 0 : 1;
+	return exists ? KeybindMap_OK : KeybindMap_NOT_FOUND;
 }
 
 }
