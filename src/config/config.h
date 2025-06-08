@@ -1,6 +1,6 @@
 #pragma once
 
-#include "keybind_map/keybind_map.h"
+#include "keybind/keybind_map.h"
 
 typedef struct mplConfig {
 	KeybindMap *keybinds;

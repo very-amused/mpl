@@ -1,5 +1,5 @@
 #include "config.h"
-#include "keybind_map/keybind_map.h"
+#include "keybind/keybind_map.h"
 #include "util/log.h"
 
 #include <stdio.h>

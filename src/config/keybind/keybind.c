@@ -1,9 +1,5 @@
 #include "keybind.h"
 #include "config/functions.h"
-#include "config/internal/state.h"
-
-#include "ui/event_queue.h"
-#include "util/log.h"
 
 #include <ctype.h>
 
