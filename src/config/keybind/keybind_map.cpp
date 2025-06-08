@@ -1,13 +1,9 @@
-#include "util/log.h"
-#include <cstdio>
-#include <string>
 extern "C" {
 #include "keybind_map.h"
 }
 
-#include <wchar.h>
-
 #include <unordered_map>
+#include <string>
 #include <sstream>
 
 extern "C" struct KeybindMap {

@@ -106,3 +106,22 @@ static inline const char *Verbosity_name(enum Verbosity lvl) {
 }
 
 #undef VERBOSITY
+
+#define KEYBIND_MAP_ERR(VARIANT) \
+	VARIANT(KeybindMap_OK) \
+	VARIANT(KeybindMap_PARSE_ERR) \
+	VARIANT(KeybindMap_KEY_ALREADY_BOUND)
+
+// Errors returned by a KeybindMap_* method
+enum KeybindMap_ERR {
+	KEYBIND_MAP_ERR(ENUM_VAL)
+};
+
+static inline const char *KeybindMap_ERR_name(enum KeybindMap_ERR err) {
+	switch (err) {
+		KEYBIND_MAP_ERR(ENUM_KEY)
+	}
+	return DEFAULT_ERR_NAME;
+}
+
+#undef KEYBIND_MAP_ERR
