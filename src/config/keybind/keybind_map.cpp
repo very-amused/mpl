@@ -1,22 +1,20 @@
-#include "error.h"
 extern "C" {
 #include "keybind_map.h"
+#include "config/keybind/keycode.h"
+#include "error.h"
+#include "util/log.h"
+#include "wctype.h"
 }
 
 #include <unordered_map>
 #include <string>
 #include <sstream>
 
-extern "C" struct KeybindMap {
+extern "C" {
+
+struct KeybindMap {
 	std::unordered_map<wchar_t, bool> map;
 };
-
-static wchar_t get_keycode(const std::string &keyname) {
-	// TODO
-	return keyname[0];
-}
-
-extern "C" {
 
 KeybindMap *KeybindMap_new() {
 	return new KeybindMap;
@@ -41,7 +39,13 @@ enum KeybindMap_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *l
 	if (!(linestream >> keyname)) {
 		return KeybindMap_SYNTAX_ERR;
 	}
-	const wchar_t keycode = get_keycode(keyname);
+	const wchar_t keycode = parse_keycode(keyname.c_str());
+	LOG(Verbosity_DEBUG, "Parsed keycode:\n\tkeyname: %s\n", keyname.c_str());
+	if (iswprint(keycode)) {
+		LOG(Verbosity_DEBUG, "\tkeycode: %lc\n", keycode);
+	} else {
+		LOG(Verbosity_DEBUG, "\tkeycode (hex): %x\n", keycode);
+	}
 
 	// =
 	if (!(linestream >> token) || token != "=") {
