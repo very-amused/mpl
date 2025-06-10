@@ -63,7 +63,8 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url) {
 	t->pcm.sample_fmt = codec_params->format;
 	t->pcm.sample_rate = codec_params->sample_rate;
 	t->pcm.n_channels = codec_params->ch_layout.nb_channels;
-	LOG(Verbosity_DEBUG, "AudioTrack: is_planar: %d\n\tsample rate: %d\nsample_fmt: %s\n", av_sample_fmt_is_planar(t->pcm.sample_fmt), t->pcm.sample_rate, av_get_sample_fmt_name(t->pcm.sample_fmt));
+	LOG(Verbosity_VERBOSE, "AudioTrack: is_planar: %d\n\tsample rate: %d\nsample_fmt: %s\n",
+			av_sample_fmt_is_planar(t->pcm.sample_fmt), t->pcm.sample_rate, av_get_sample_fmt_name(t->pcm.sample_fmt));
 	// Timing info
 	const AVRational time_base = stream->time_base;
 	const int64_t duration_tb = stream->duration; // Duration in time_base units

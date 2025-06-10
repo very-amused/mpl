@@ -79,15 +79,16 @@ enum KeybindMap_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *l
 	NEXT();
 	char *keyname = strndup(&line[offset], tok_len);
 	const wchar_t keycode = parse_keycode(keyname);
-	if (!is_uascii(keycode)) {
-		free(keyname);
-		return KeybindMap_NON_ASCII;
-	}
 	LOG(Verbosity_DEBUG, "Parsed keycode:\n\tkeyname: %s\n", keyname);
 	if (iswprint(keycode)) {
 		LOG(Verbosity_DEBUG, "\tkeycode: %lc\n", keycode);
 	} else {
 		LOG(Verbosity_DEBUG, "\tkeycode (hex): %x\n", keycode);
+	}
+	LOG(Verbosity_DEBUG, "\tkeycode is unsigned ASCII: %s\n", is_uascii(keycode) ? "true" : "false");
+	if (!is_uascii(keycode)) {
+		free(keyname);
+		return KeybindMap_NON_ASCII;
 	}
 
 	// =
