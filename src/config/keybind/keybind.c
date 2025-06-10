@@ -13,10 +13,10 @@ int call_keybind(wchar_t keycode) {
 
 	switch (tolower(keycode)) {
 	case 'p':
-		play_toggle();
+		play_toggle(NULL);
 		return 0;
 	case 'q':
-		quit();
+		quit(NULL);
 		return 0;
 	case ',':
 		seek_args.ms = -1000;

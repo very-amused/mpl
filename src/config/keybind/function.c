@@ -8,45 +8,45 @@
 #include <stddef.h>
 #include <stdlib.h>
 
-enum BindableFnID KeybindFn_getid(const char *ident) {
+enum KeybindFnID KeybindFn_getid(const char *ident) {
 	switch (ident[0]) {
 	case 'p':
 		if (strcmp(ident, "play_toggle") == 0) {
-			return bfn_play_toggle;
+			return kbfn_play_toggle;
 		}
 		break;
 	case 's':
 		if (strcmp(ident, "seek") == 0) {
-			return bfn_seek;
+			return kbfn_seek;
 		} else if (strcmp(ident, "seek_snap") == 0) {
-			return bfn_seek_snap;
+			return kbfn_seek_snap;
 		}
 		break;
 	case 'q':
 		if (strcmp(ident, "quit") == 0) {
-			return bfn_quit;
+			return kbfn_quit;
 		}
 		break;
 	}
 
-	return NULL;
+	return -1;
 }
 
-KeybindFn KeybindFn_get(enum BindableFnID fn) {
+KeybindFn KeybindFn_getfn(enum KeybindFnID fn) {
 	switch (fn) {
-	case bfn_play_toggle:
+	case kbfn_play_toggle:
 		return play_toggle;
-	case bfn_quit:
+	case kbfn_quit:
 		return quit;
-	case bfn_seek:
+	case kbfn_seek:
 		return (KeybindFn)seek;
-	case bfn_seek_snap:
+	case kbfn_seek_snap:
 		return (KeybindFn)seek_snap;
 	}
 	return NULL;
 }
 
-enum KeybindMap_ERR KeybindFn_parse_args(enum BindableFnID fn,
+enum KeybindMap_ERR KeybindFn_parse_args(enum KeybindFnID fn,
 		void **fn_args, KeybindFnArgDeleter *deleter,
 		const char *line, const size_t line_len,
 		size_t offset, size_t tok_len) {
@@ -56,7 +56,7 @@ enum KeybindMap_ERR KeybindFn_parse_args(enum BindableFnID fn,
 	*deleter = free; // free(NULL) is a noop
 
 	switch (fn) {
-	case bfn_play_toggle:
+	case kbfn_play_toggle:
 	{
 		// No args
 		if (strtokn(&offset, &tok_len, line, line_len, ")") == -1) {
@@ -66,7 +66,7 @@ enum KeybindMap_ERR KeybindFn_parse_args(enum BindableFnID fn,
 		}
 		return KeybindMap_OK;
 	}
-	case bfn_quit:
+	case kbfn_quit:
 	{
 		if (strtokn(&offset, &tok_len, line, line_len, ")") == -1) {
 			return KeybindMap_SYNTAX_ERR;
@@ -75,7 +75,7 @@ enum KeybindMap_ERR KeybindFn_parse_args(enum BindableFnID fn,
 		}
 		return KeybindMap_OK;
 	}
-	case bfn_seek:
+	case kbfn_seek:
 	{
 		// 1 arg: milliseconds (int32_t)
 		if (strtokn(&offset, &tok_len, line, line_len, ")") == -1) {
@@ -92,7 +92,7 @@ enum KeybindMap_ERR KeybindFn_parse_args(enum BindableFnID fn,
 		*fn_args = args;
 		return KeybindMap_OK;
 	}
-	case bfn_seek_snap:
+	case kbfn_seek_snap:
 	{
 		if (strtokn(&offset, &tok_len, line, line_len, ")") == -1) {
 			return KeybindMap_SYNTAX_ERR;
@@ -109,6 +109,8 @@ enum KeybindMap_ERR KeybindFn_parse_args(enum BindableFnID fn,
 		return KeybindMap_OK;
 	}
 	}
+
+	return KeybindMap_NOT_FOUND;
 }
 
 void KeybindRoutine_init(KeybindRoutine *routine) {

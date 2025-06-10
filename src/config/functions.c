@@ -13,12 +13,12 @@ void configState_init(Queue *track_queue, EventQueue *evt_queue) {
 	config_state.evt_queue = evt_queue;
 }
 
-void play_toggle() {
+void play_toggle(void * _) {
 	const bool pause = config_state.queue->playback_state == Queue_PLAYING;
 	Queue_play(config_state.queue, pause);
 }
 
-void quit() {
+void quit(void * _) {
 	static const Event quit_evt = {
 		.event_type = mpl_QUIT,
 		.body_size = 0
