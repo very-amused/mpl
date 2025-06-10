@@ -111,7 +111,9 @@ enum KeybindMap_ERR KeybindMap_call_keybind(KeybindMap *keybinds, wchar_t keycod
 	}
 
 	KeybindRoutine *routine = keybinds->map[keycode].get();
-	routine->fns[0](routine->fn_args[0]);
+	for (size_t i = 0; i < routine->n_fns; i++) {
+		routine->fns[i](routine->fn_args[i]);
+	}
 
 	return KeybindMap_OK;
 }
