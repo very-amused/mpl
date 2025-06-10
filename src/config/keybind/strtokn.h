@@ -15,7 +15,7 @@ static inline int strtokn(size_t *offset, size_t *tok_len,
 		*offset += *tok_len + sizeof(char);
 	}
 	// Max token length
-	const char max_len = s_len - *offset;
+	const size_t max_len = s_len - *offset;
 	// Token start
 	const char *start = s + *offset;
 	// Reset current token length

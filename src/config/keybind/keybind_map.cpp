@@ -72,6 +72,9 @@ enum KeybindMap_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *l
 	}
 	std::string fn_ident(&line[parse_state.offset], parse_state.tok_len);
 	enum KeybindFnID kbfn = KeybindFn_getid(fn_ident.c_str());
+	if ((int)kbfn == -1) {
+		return KeybindMap_INVALID_FN;
+	}
 
 	// TODO: support multifunction bindings
 
