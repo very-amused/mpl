@@ -79,7 +79,7 @@ enum KeybindMap_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *l
 	return KeybindMap_OK;
 }
 
-enum KeybindMap_ERR KeybindMap_call_keybind(const KeybindMap *keybinds, wchar_t keycode) {
+enum KeybindMap_ERR KeybindMap_call_keybind(KeybindMap *keybinds, wchar_t keycode) {
 	// Ensure we're dealing with an ASCII keycode to prevent overflow
 	unsigned char ascii_keycode = keycode;
 	if (keycode != ascii_keycode) {

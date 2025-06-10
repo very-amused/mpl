@@ -8,7 +8,6 @@ int call_keybind(wchar_t keycode) {
 	if (keycode > (unsigned char)-1) {
 		return 1;
 	}
-
 	static struct seekArgs seek_args;
 
 	switch (tolower(keycode)) {

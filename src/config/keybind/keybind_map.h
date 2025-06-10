@@ -18,4 +18,4 @@ enum KeybindMap_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *l
 
 // Call the keybind mapped to {keycode} if it exists.
 // Returns 0 if a keybind exists and was called, 1 if the keybind doesn't exist 
-enum KeybindMap_ERR KeybindMap_call_keybind(const KeybindMap *keybinds, wchar_t keycode);
+enum KeybindMap_ERR KeybindMap_call_keybind(KeybindMap *keybinds, wchar_t keycode);

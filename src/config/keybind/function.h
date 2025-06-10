@@ -63,6 +63,11 @@ typedef struct KeybindRoutine {
 	void **fn_args;
 	// Function arg destructor array
 	KeybindFnArgDeleter *fn_arg_deleters;
+	// We connect RAII to the init/deinit functions
+#ifdef __cplusplus
+	KeybindRoutine();
+	~KeybindRoutine();
+#endif
 } KeybindRoutine; // TODO: C++ RAII
 
 // Initialize an empty KeybindRoutine

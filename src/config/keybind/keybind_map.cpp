@@ -16,11 +16,19 @@ extern "C" {
 
 #include <unordered_map>
 #include <string>
+#include <memory>
+
+KeybindRoutine::KeybindRoutine() {
+	KeybindRoutine_init(this);
+}
+KeybindRoutine::~KeybindRoutine() {
+	KeybindRoutine_deinit(this);
+}
 
 extern "C" {
 
 struct KeybindMap {
-	std::unordered_map<wchar_t, bool> map;
+	std::unordered_map<wchar_t, std::unique_ptr<KeybindRoutine>> map;
 };
 
 KeybindMap *KeybindMap_new() {
@@ -71,22 +79,41 @@ enum KeybindMap_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *l
 		return KeybindMap_SYNTAX_ERR;
 	}
 	std::string fn_ident(&line[parse_state.offset], parse_state.tok_len);
-	enum KeybindFnID kbfn = KeybindFn_getid(fn_ident.c_str());
-	if ((int)kbfn == -1) {
+	enum KeybindFnID fn_id = KeybindFn_getid(fn_ident.c_str());
+	if ((int)fn_id == -1) {
 		return KeybindMap_INVALID_FN;
 	}
 
 	// TODO: support multifunction bindings
 
-	
-	keybinds->map[keycode] = true;
+	std::unique_ptr<KeybindRoutine> routine(new KeybindRoutine);
+	routine->n_fns = 1;
+	routine-> fns = (KeybindFn *)malloc(1 * sizeof(KeybindFn));
+	routine->fns[0] = KeybindFn_getfn(fn_id);
+	routine->fn_args = (void **)malloc(1 * sizeof(void *));
+	routine->fn_arg_deleters = (KeybindFnArgDeleter *)malloc(1 * sizeof(KeybindFnArgDeleter));
+	enum KeybindMap_ERR err = KeybindFn_parse_args(fn_id,
+			&routine->fn_args[0], &routine->fn_arg_deleters[0], &parse_state);
+	if (err != KeybindMap_OK) {
+		return err;
+	}
+
+	// Add the routine to our keybind map
+	keybinds->map[keycode] = std::move(routine);
 
 	return KeybindMap_OK;
 }
 
-enum KeybindMap_ERR KeybindMap_call_keybind(const KeybindMap *keybinds, wchar_t keycode) {
+enum KeybindMap_ERR KeybindMap_call_keybind(KeybindMap *keybinds, wchar_t keycode) {
 	const bool exists = keybinds->map.find(keycode) != keybinds->map.end();
-	return exists ? KeybindMap_OK : KeybindMap_NOT_FOUND;
+	if (!exists) {
+		return KeybindMap_NOT_FOUND;
+	}
+
+	KeybindRoutine *routine = keybinds->map[keycode].get();
+	routine->fns[0](routine->fn_args[0]);
+
+	return KeybindMap_OK;
 }
 
 }
