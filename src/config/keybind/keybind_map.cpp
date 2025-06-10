@@ -1,20 +1,21 @@
 extern "C" {
 #include "keybind_map.h"
-#include "config/keybind/keycode.h"
+#include "keycode.h"
 #include "config/functions.h"
 #include "error.h"
 #include "util/log.h"
+#include "strtokn.h"
+#include "function.h"
 
 #include <wctype.h>
 #include <locale.h>
 #include <string.h>
 #include <stddef.h>
+#include <stdlib.h>
 }
 
 #include <unordered_map>
 #include <string>
-#include <sstream>
-
 
 extern "C" {
 
@@ -34,19 +35,25 @@ void KeybindMap_free(KeybindMap *keybinds) {
 enum KeybindMap_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *line) {
 	// Ensure UTF-8 support
 	setlocale(LC_ALL, "");
-	std::stringstream linestream(line);
-	
+	// Split by whitespace
+	strtoknState parse_state = {
+		.offset = 0,
+		.tok_len = 0,
+		.s = line,
+		.s_len = strlen(line)
+	};
+	static const char DELIMS[] = " \n\t\r";
+
+#define NEXT() if (strtokn_s(&parse_state, DELIMS) != 0) return KeybindMap_SYNTAX_ERR
 	// bind
-	std::string token;
-	if (!(linestream >> token) || token != "bind") {
+	NEXT();
+	if (strncmp(&line[parse_state.offset], "bind", parse_state.tok_len) != 0) {
 		return KeybindMap_SYNTAX_ERR;
 	}
 
 	// {keyname}
-	std::string keyname;
-	if (!(linestream >> keyname)) {
-		return KeybindMap_SYNTAX_ERR;
-	}
+	NEXT();
+	std::string keyname(&line[parse_state.offset], parse_state.tok_len);
 	const wchar_t keycode = parse_keycode(keyname.c_str());
 	LOG(Verbosity_DEBUG, "Parsed keycode:\n\tkeyname: %s\n", keyname.c_str());
 	if (iswprint(keycode)) {
@@ -56,17 +63,17 @@ enum KeybindMap_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *l
 	}
 	LOG(Verbosity_DEBUG, "\tkeycode is unsigned ASCII: %s\n", is_uascii(keycode) ? "true" : "false");
 
-
 	// =
-	if (!(linestream >> token) || token != "=") {
+	NEXT();
+	
+	// {function} (
+	if (strtokn_s(&parse_state, "(") != 0) {
 		return KeybindMap_SYNTAX_ERR;
 	}
+	std::string fn_ident(&line[parse_state.offset], parse_state.tok_len);
+	enum KeybindFnID kbfn = KeybindFn_getid(fn_ident.c_str());
 
-	std::string fn_ident;
-	std::getline(linestream, fn_ident, '(');
-	if (!linestream.good()) {
-		return KeybindMap_SYNTAX_ERR;
-	}
+	// TODO: support multifunction bindings
 
 	
 	keybinds->map[keycode] = true;
