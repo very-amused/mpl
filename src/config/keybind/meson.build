@@ -1,4 +1,4 @@
-src_keybind = files('keybind.c', 'keycode.c')
+src_keybind = files('keybind.c', 'keycode.c', 'function.c')
 if get_option('ascii_keybinds')
 	# ASCII-only keybinds done in C; more simple
 	src_keybind += files('keybind_map_ascii.c')

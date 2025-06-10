@@ -1,9 +1,7 @@
 #pragma once
+#include "error.h"
 
 #include <stdint.h>
-
-// A function call that can be used in a keybind routine
-typedef void (*KeybindFn)(void *);
 
 /* Functions usable in mpl.conf */
 void play_toggle(); // Play/pause
