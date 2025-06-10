@@ -18,8 +18,7 @@ const wchar_t parse_keycode(const char *keyname) {
 	const size_t keyname_len = strlen(keyname);
 	wchar_t keyname_wide[keyname_len];
 	// Convert multibyte string to widechar string
-	setlocale(LC_ALL, ""); // Define 'multibyte string' as UTF-8
-	mbstowcs(keyname_wide, keyname, keyname_len);
+	mbstowcs(keyname_wide, keyname, keyname_len); // NOTE: ensure UTF-8 is enabled via setlocal(LC_ALL, "") beforehand
 
 	return keyname_wide[0];
 }

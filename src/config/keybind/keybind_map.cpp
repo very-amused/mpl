@@ -3,7 +3,9 @@ extern "C" {
 #include "config/keybind/keycode.h"
 #include "error.h"
 #include "util/log.h"
-#include "wctype.h"
+
+#include <wctype.h>
+#include <locale.h>
 }
 
 #include <unordered_map>
@@ -26,6 +28,8 @@ void KeybindMap_free(KeybindMap *keybinds) {
 
 
 enum KeybindMap_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *line) {
+	// Ensure UTF-8 support
+	setlocale(LC_ALL, "");
 	std::stringstream linestream(line);
 	
 	// bind
@@ -46,6 +50,8 @@ enum KeybindMap_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *l
 	} else {
 		LOG(Verbosity_DEBUG, "\tkeycode (hex): %x\n", keycode);
 	}
+	LOG(Verbosity_DEBUG, "\tkeycode is unsigned ASCII: %s\n", is_uascii(keycode) ? "true" : "false");
+
 
 	// =
 	if (!(linestream >> token) || token != "=") {

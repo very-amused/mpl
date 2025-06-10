@@ -111,7 +111,8 @@ static inline const char *Verbosity_name(enum Verbosity lvl) {
 	VARIANT(KeybindMap_OK) \
 	VARIANT(KeybindMap_NOT_FOUND) /* A binding was not found for the provided key */ \
 	VARIANT(KeybindMap_SYNTAX_ERR) \
-	VARIANT(KeybindMap_BINDING_CONFLICT) /* A key that was already bound cannot be bound again without explicitly rebinding it */
+	VARIANT(KeybindMap_BINDING_CONFLICT) /* A key that was already bound cannot be bound again without explicitly rebinding it */ \
+	VARIANT(KeybindMap_NON_ASCII) /* Non-ASCII codepoint provided when MPL was built with the 'ascii_keybinds' feature */
 
 // Errors returned by a KeybindMap_* method
 enum KeybindMap_ERR {

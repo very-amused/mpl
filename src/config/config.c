@@ -24,7 +24,6 @@ int mplConfig_parse(mplConfig *conf, const char *path) {
 	int lineno = 1;
 	while (getline(&line, &line_len, fp) != EOF) {
 		// Parse line
-		fprintf(stderr, "Parsing config line: %s", line);
 		if (mplConfig_parse_line(conf, line) != 0) {
 			LOG(Verbosity_NORMAL, "Error parsing config at line %d\n", lineno);
 		}
