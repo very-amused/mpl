@@ -35,7 +35,7 @@ typedef void (*KeybindFn)(void *);
 enum KeybindFnID KeybindFn_getid(const char *ident);
 
 // Get a KeybindFn's pointer from its ID value
-// Returns NULL if the ID isn't a valid BindableFnID
+// Returns NULL if the ID isn't a valid KeybindFnID
 KeybindFn KeybindFn_getfn(enum KeybindFnID id);
 
 // A free function that deinitializes and frees the argument struct
