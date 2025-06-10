@@ -75,3 +75,7 @@ void KeybindRoutine_init(KeybindRoutine *routine);
 // Deintialize a KeybindRoutine, taking care of running
 // the correct function argument destructors
 void KeybindRoutine_deinit(KeybindRoutine *routine);
+
+// Push the nth KeybindFn to the back of the keybind routine.
+// Returns -1 if we've hit the end of the line being parsed
+enum KeybindMap_ERR KeybindRoutine_push(KeybindRoutine *routine, strtoknState *parse_state, size_t n);

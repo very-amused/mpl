@@ -73,29 +73,32 @@ enum KeybindMap_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *l
 
 	// =
 	NEXT();
-	
-	// {function} (
-	if (strtokn_s(&parse_state, "(") != 0) {
-		return KeybindMap_SYNTAX_ERR;
-	}
-	std::string fn_ident(&line[parse_state.offset], parse_state.tok_len);
-	enum KeybindFnID fn_id = KeybindFn_getid(fn_ident.c_str());
-	if ((int)fn_id == -1) {
-		return KeybindMap_INVALID_FN;
-	}
 
-	// TODO: support multifunction bindings
-
+	// Construct our routine for this keybind
 	std::unique_ptr<KeybindRoutine> routine(new KeybindRoutine);
-	routine->n_fns = 1;
-	routine-> fns = (KeybindFn *)malloc(1 * sizeof(KeybindFn));
-	routine->fns[0] = KeybindFn_getfn(fn_id);
-	routine->fn_args = (void **)malloc(1 * sizeof(void *));
-	routine->fn_arg_deleters = (KeybindFnArgDeleter *)malloc(1 * sizeof(KeybindFnArgDeleter));
-	enum KeybindMap_ERR err = KeybindFn_parse_args(fn_id,
-			&routine->fn_args[0], &routine->fn_arg_deleters[0], &parse_state);
-	if (err != KeybindMap_OK) {
-		return err;
+	// Count how many functions we're calling in this routine
+	{
+		strtoknState count_state = parse_state;
+		while (strtokn_s(&count_state, ")") != -1) {
+			routine->n_fns++;
+		}
+	}
+	// Allocate routine arrays
+	routine->fns = (KeybindFn *)malloc(routine->n_fns * sizeof(KeybindFn));
+	routine->fn_args = (void **)malloc(routine->n_fns * sizeof(void *));
+	routine->fn_arg_deleters = (KeybindFnArgDeleter *)malloc(routine->n_fns * sizeof(KeybindFnArgDeleter));
+	// TODO: Safer KeybindRoutine initialization
+	for (size_t i = 0; i < routine->n_fns; i++) {
+		routine->fns[i] = NULL;
+		routine->fn_args[i] = NULL;
+		routine->fn_arg_deleters[i] = free;
+	}
+	// Parse routine
+	for (size_t i = 0; i < routine->n_fns; i++) {
+		enum KeybindMap_ERR err = KeybindRoutine_push(routine.get(), &parse_state, i);
+		if (err != KeybindMap_OK) {
+			return err;
+		}
 	}
 
 	// Add the routine to our keybind map

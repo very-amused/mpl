@@ -2,11 +2,13 @@
 #include "config/functions.h"
 #include "error.h"
 #include "strtokn.h"
+#include "util/log.h"
 
 #include <stdio.h>
 #include <string.h>
 #include <stddef.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 enum KeybindFnID KeybindFn_getid(const char *ident) {
 	switch (ident[0]) {
@@ -111,4 +113,71 @@ void KeybindRoutine_deinit(KeybindRoutine *routine) {
 	free(routine->fns);
 	free(routine->fn_args);
 	free(routine->fn_arg_deleters);
+}
+
+enum KeybindMap_ERR KeybindRoutine_push(KeybindRoutine *routine, strtoknState *parse_state, size_t n) {
+	// Parse function ident
+	// {function} (
+	if (strtokn_s(parse_state, "(") != 0) {
+		return KeybindMap_SYNTAX_ERR;
+	}
+	char fn_ident[parse_state->tok_len + 1];
+	strncpy(fn_ident, &parse_state->s[parse_state->offset], parse_state->tok_len);
+	fn_ident[parse_state->tok_len] = '\0';
+	LOG(Verbosity_DEBUG, "fn_ident: %s\n", fn_ident);
+
+	// Get function ID from ident
+	enum KeybindFnID fn_id = KeybindFn_getid(fn_ident);
+	if ((int)fn_id == -1) {
+		return KeybindMap_INVALID_FN;
+	}
+
+	routine->fns[n] = KeybindFn_getfn(fn_id);
+	enum KeybindMap_ERR err = KeybindFn_parse_args(fn_id,
+			&routine->fn_args[n], &routine->fn_arg_deleters[n], parse_state);
+	if (err != KeybindMap_OK) {
+		return err;
+	}
+
+	// Parse through the next function separator
+	if (n == routine->n_fns-1) {
+		return KeybindMap_OK;
+	}
+	static const char FUNCTION_DELIMS[] = ";";
+	if (strtokn_s(parse_state, FUNCTION_DELIMS) == -1) {
+		return KeybindMap_SYNTAX_ERR;
+	}
+
+	// Eat any whitespace after delim
+	static const char WHITESPACE[] = " \n\t\r";
+
+	// TODO
+	// FIXME FIXME: this is insanely sketchy
+	parse_state->offset += parse_state->tok_len + sizeof(char);
+	// Max token length
+	const size_t max_len = parse_state->s_len - parse_state->offset;
+	// Token start
+	const char *start = parse_state->s + parse_state->offset;
+	// Reset current token length
+	parse_state->tok_len = 0;
+	while (parse_state->tok_len < max_len) {
+		const char c = start[parse_state->tok_len];
+		bool is_whitespace = false;
+		for (const char *ws = &WHITESPACE[0]; *ws != '\0'; ws++) {
+			if (c == *ws) {
+				is_whitespace = true;
+				break;
+			}
+		}
+		if (!is_whitespace) {
+			if (parse_state->tok_len > 0) {
+				parse_state->offset += parse_state->tok_len;
+				parse_state->tok_len = 0;
+			}
+			return KeybindMap_OK;
+		}
+		parse_state->tok_len++;
+	}
+
+	return KeybindMap_SYNTAX_ERR; // fn()) [mismatched parens]
 }
