@@ -34,3 +34,14 @@ static inline int strtokn(size_t *offset, size_t *tok_len,
 
 	return -1;
 }
+
+typedef struct strtoknState {
+	size_t offset, tok_len;
+	const char *s;
+	const size_t s_len;
+} strtoknState;
+
+// Call strtokn with a state struct
+static inline int strtokn_s(strtoknState *state, const char *delims) {
+	return strtokn(&state->offset, &state->tok_len, state->s, state->s_len, delims);
+}

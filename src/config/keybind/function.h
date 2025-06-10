@@ -1,4 +1,5 @@
 #pragma once
+#include "config/keybind/strtokn.h"
 #include "error.h"
 
 #define KEYBIND_FNS(VARIANT) \
@@ -48,9 +49,7 @@ typedef void (*KeybindFnArgDeleter)(void *);
 // Sets *deleter to point to the function's KeybindFnArgDeleter.
 // FIXME: compact strtokn state into a struct
 enum KeybindMap_ERR KeybindFn_parse_args(enum KeybindFnID fn,
-		void **fn_args, KeybindFnArgDeleter *deleter,
-		const char *line, const size_t line_len,
-		const size_t offset, size_t prev_tok_len);
+		void **fn_args, KeybindFnArgDeleter *deleter, strtoknState *parse_state);
 
 typedef struct KeybindRoutine {
 	// Number of functions (defined in config/functions.h)

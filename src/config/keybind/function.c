@@ -46,10 +46,35 @@ KeybindFn KeybindFn_getfn(enum KeybindFnID fn) {
 	return NULL;
 }
 
+/* #region Arg parsing for keybind functions */
+static enum KeybindMap_ERR argparse_noArgs(strtoknState *parse_state) {
+	if (strtokn_s(parse_state, ")") == -1) {
+		return KeybindMap_SYNTAX_ERR;
+	} else if (parse_state->tok_len > 0) {
+		return KeybindMap_INVALID_ARG;
+	}
+	return KeybindMap_OK;
+}
+static enum KeybindMap_ERR argparse_seekArgs(void **fn_args, KeybindFnArgDeleter *deleter, strtoknState *parse_state) {
+	// 1 arg: milliseconds (int32_t)
+	if (strtokn_s(parse_state, ")") == -1) {
+		return KeybindMap_SYNTAX_ERR;
+	}
+	struct seekArgs *args = malloc(sizeof(struct seekArgs));
+	char arg_str[parse_state->tok_len + 1];
+	strncpy(arg_str, &parse_state->s[parse_state->offset], parse_state->tok_len);
+	arg_str[parse_state->tok_len] = '\0';
+	if (sscanf(arg_str, "%d", &args->ms) != 1) {
+		free(args);
+		return KeybindMap_INVALID_ARG;
+	}
+	*fn_args = args;
+	return KeybindMap_OK;
+}
+/* #endregion */
+
 enum KeybindMap_ERR KeybindFn_parse_args(enum KeybindFnID fn,
-		void **fn_args, KeybindFnArgDeleter *deleter,
-		const char *line, const size_t line_len,
-		size_t offset, size_t tok_len) {
+		void **fn_args, KeybindFnArgDeleter *deleter, strtoknState *parse_state) {
 
 	// Defaults:
 	*fn_args = NULL;
@@ -57,61 +82,18 @@ enum KeybindMap_ERR KeybindFn_parse_args(enum KeybindFnID fn,
 
 	switch (fn) {
 	case kbfn_play_toggle:
-	{
-		// No args
-		if (strtokn(&offset, &tok_len, line, line_len, ")") == -1) {
-			return KeybindMap_SYNTAX_ERR;
-		} else if (tok_len != 0) {
-			return KeybindMap_INVALID_ARG;
-		}
-		return KeybindMap_OK;
-	}
+		return argparse_noArgs(parse_state);
 	case kbfn_quit:
-	{
-		if (strtokn(&offset, &tok_len, line, line_len, ")") == -1) {
-			return KeybindMap_SYNTAX_ERR;
-		} else if (tok_len != 0) {
-			return KeybindMap_INVALID_ARG;
-		}
-		return KeybindMap_OK;
-	}
+		return argparse_noArgs(parse_state);
 	case kbfn_seek:
-	{
-		// 1 arg: milliseconds (int32_t)
-		if (strtokn(&offset, &tok_len, line, line_len, ")") == -1) {
-			return KeybindMap_SYNTAX_ERR;
-		}
-		struct seekArgs *args = malloc(sizeof(struct seekArgs));
-		char arg_str[tok_len+1];
-		strncpy(arg_str, &line[offset], tok_len);
-		arg_str[tok_len] = '\0';
-		if (sscanf(arg_str, "%d", &args->ms) != 1) {
-			free(args);
-			return KeybindMap_INVALID_ARG;
-		}
-		*fn_args = args;
-		return KeybindMap_OK;
-	}
+		return argparse_seekArgs(fn_args, deleter, parse_state);
 	case kbfn_seek_snap:
-	{
-		if (strtokn(&offset, &tok_len, line, line_len, ")") == -1) {
-			return KeybindMap_SYNTAX_ERR;
-		}
-		struct seekArgs *args = malloc(sizeof(struct seekArgs));
-		char arg_str[tok_len+1];
-		strncpy(arg_str, &line[offset], tok_len);
-		arg_str[tok_len] = '\0';
-		if (sscanf(arg_str, "%d", &args->ms) != 1) {
-			free(args);
-			return KeybindMap_INVALID_ARG;
-		}
-		*fn_args = args;
-		return KeybindMap_OK;
-	}
+		return argparse_seekArgs(fn_args, deleter, parse_state);
 	}
 
 	return KeybindMap_NOT_FOUND;
 }
+
 
 void KeybindRoutine_init(KeybindRoutine *routine) {
 	memset(routine, 0, sizeof(KeybindRoutine));
