@@ -37,17 +37,18 @@ enum BindableFnID KeybindFn_getid(const char *ident);
 // Returns NULL if the ID isn't a valid BindableFnID
 KeybindFn KeybindFn_get(enum BindableFnID fn);
 
-// A destructor function that deinitializes (if applicable) and frees the argument struct
-// passed to a KeybindFn.
+// A free function that deinitializes and frees the argument struct
 // If no deinitialization is needed (i.e there are only int paramters), this can be [free()]
-typedef void (*KeybindFnArgDestructor)(void *);
+typedef void (*KeybindFnArgDeleter)(void *);
 // Allocate and parse a KeybindFn's arguments starting at &str[offset]
 //
 // Sets *fn_args to point to the function's argument struct.
-// Sets *fn_destructor to point to the function's KeybindFnArgDestructor.
+// Sets *deleter to point to the function's KeybindFnArgDeleter.
+// FIXME: compact strtokn state into a struct
 enum KeybindMap_ERR KeybindFn_parse_args(enum BindableFnID fn,
-		void **fn_args, KeybindFnArgDestructor **destructor,
-		const char *str, size_t offset);
+		void **fn_args, KeybindFnArgDeleter *deleter,
+		const char *line, const size_t line_len,
+		const size_t offset, size_t prev_tok_len);
 
 typedef struct KeybindRoutine {
 	// Number of functions (defined in config/functions.h)
@@ -60,7 +61,7 @@ typedef struct KeybindRoutine {
 	// Function arg pointer array (we're responsible for freeing these)
 	void **fn_args;
 	// Function arg destructor array
-	KeybindFnArgDestructor *fn_arg_destructors;
+	KeybindFnArgDeleter *fn_arg_deleters;
 } KeybindRoutine; // TODO: C++ RAII
 
 // Initialize an empty KeybindRoutine
