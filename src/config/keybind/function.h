@@ -37,10 +37,15 @@ KeybindFnRoutine KeybindFnID_get_fn(const enum KeybindFnID fn_id);
 // A function callable from keybinds, complete with its argument struct
 // and associated argument deleter (destructor that frees).
 typedef struct KeybindFn {
+	// Parsed function identifier
+	char *ident;
+	// Function ID
+	enum KeybindFnID id;
+
 	// The function itself
-	KeybindFnRoutine call;
+	KeybindFnRoutine routine;
 	// Function args passed to [call];
-	// allocated in [KeybindFn_parse] and deleted by calling [deleter(args)]
+	// allocation/deletion are handled in [KeybindFn_parse] and [KeybindFn_deinit] respectively
 	void *args;
 	// Function responsible for deleting (deinit + free) [args];
 	// Set in [KeybindFn_parse].
@@ -48,6 +53,13 @@ typedef struct KeybindFn {
 	// we use [free] as our deleter.
 	void (* args_deleter)(void *args);
 } KeybindFn;
+
+// Initialize a KeybindFn, parsing from `parse_state`;
+// `parse_state` will be left with a stored token delimited the function's closing paren
+enum Keybind_ERR KeybindFn_parse(KeybindFn *fn, strtoknState *parse_state);
+// Deinitialize a KeybindFn, freeing owned memory
+// and calling [args_deleter(args)]
+void KeybindFn_deinit(KeybindFn *fn);
 
 /* #region Legacy routines */
 

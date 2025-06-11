@@ -50,7 +50,7 @@ KeybindFnRoutine KeybindFnID_get_fn(const enum KeybindFnID fn_id) {
 
 
 /* #region Arg parsing for keybind functions */
-static enum Keybind_ERR argparse_noArgs(strtoknState *parse_state) {
+static enum Keybind_ERR argparse_noArgs(KeybindFn *_, strtoknState *parse_state) {
 	if (strtokn_s(parse_state, ")") == -1) {
 		return Keybind_SYNTAX_ERR;
 	} else if (parse_state->tok_len > 0) {
@@ -58,7 +58,32 @@ static enum Keybind_ERR argparse_noArgs(strtoknState *parse_state) {
 	}
 	return Keybind_OK;
 }
-static enum Keybind_ERR argparse_seekArgs(void **fn_args, KeybindFnLegacyArgDeleter *deleter, strtoknState *parse_state) {
+static enum Keybind_ERR argparse_seekArgs(KeybindFn *fn, strtoknState *parse_state) {
+	// 1 arg: milliseconds (int32_t)
+	if (strtokn_s(parse_state, ")") == -1) {
+		return Keybind_SYNTAX_ERR;
+	}
+	struct seekArgs *args = malloc(sizeof(struct seekArgs));
+	char arg_str[parse_state->tok_len + 1];
+	strncpy(arg_str, &parse_state->s[parse_state->offset], parse_state->tok_len);
+	arg_str[parse_state->tok_len] = '\0';
+	if (sscanf(arg_str, "%d", &args->ms) != 1) {
+		free(args);
+		return Keybind_INVALID_ARG;
+	}
+	fn->args = args; // default deleter of [free] works
+	return Keybind_OK;
+}
+
+static enum Keybind_ERR argparse_legacy_noArgs(strtoknState *parse_state) {
+	if (strtokn_s(parse_state, ")") == -1) {
+		return Keybind_SYNTAX_ERR;
+	} else if (parse_state->tok_len > 0) {
+		return Keybind_INVALID_ARG;
+	}
+	return Keybind_OK;
+}
+static enum Keybind_ERR argparse_legacy_seekArgs(void **fn_args, KeybindFnLegacyArgDeleter *deleter, strtoknState *parse_state) {
 	// 1 arg: milliseconds (int32_t)
 	if (strtokn_s(parse_state, ")") == -1) {
 		return Keybind_SYNTAX_ERR;
@@ -76,6 +101,60 @@ static enum Keybind_ERR argparse_seekArgs(void **fn_args, KeybindFnLegacyArgDele
 }
 /* #endregion */
 
+
+// Parse function arguments from `parse_state`
+// Returns Keybind_INVALID_FN if fn->id doesn't have a parse case defined
+static enum Keybind_ERR KeybindFn_parse_args(KeybindFn *fn, strtoknState *parse_state) {
+	// Defaults are fn->args = NULL and fn->args_deleter = free
+	// (set earlier in KeybindFn_parse)
+	switch (fn->id) {
+		case kbfn_play_toggle:
+		case kbfn_quit:
+			return argparse_noArgs(fn, parse_state);
+		case kbfn_seek:
+		case kbfn_seek_snap:
+			return argparse_seekArgs(fn, parse_state);
+	}
+}
+
+enum Keybind_ERR KeybindFn_parse(KeybindFn *fn, strtoknState *parse_state) {
+	// Set zero state so KeybindFn_deinit can be called if anything fails
+	fn->ident = NULL;
+	fn->id = -1;
+	fn->routine = NULL;
+	fn->args = NULL;
+	fn->args_deleter = free;
+
+	// Parse function ident
+	if (strtokn_s(parse_state, "(") == -1) {
+		return Keybind_SYNTAX_ERR;
+	}
+	fn->ident = malloc((parse_state->s_len + 1) * sizeof(char));
+	strncpy(fn->ident, &parse_state->s[parse_state->offset], parse_state->s_len);
+	fn->ident[parse_state->s_len] = '\0';
+
+	// Get function ID
+	fn->id = KeybindFnID_from_ident(fn->ident);
+	if (fn->id == (enum KeybindFnID)-1) {
+		return Keybind_INVALID_FN;
+	}
+	// Set routine (function ptr)
+	fn->routine = KeybindFnID_get_fn(fn->id);
+	if (!fn->routine) { // This shouldn't happen due to the above check, but it isn't worth risking a program crash
+		return Keybind_INVALID_FN;
+	}
+
+	// Parse args (allocates and initializes fn->args and fn->args_deleter)
+	return KeybindFn_parse_args(fn, parse_state);
+}
+
+void KeybindFn_deinit(KeybindFn *fn) {
+	// Free identifier string
+	free(fn->ident);
+	// Delete args
+	fn->args_deleter(fn->args);
+}
+
 enum Keybind_ERR KeybindFnLegacy_parse_args(enum KeybindFnID fn,
 		void **fn_args, KeybindFnLegacyArgDeleter *deleter, strtoknState *parse_state) {
 
@@ -85,13 +164,13 @@ enum Keybind_ERR KeybindFnLegacy_parse_args(enum KeybindFnID fn,
 
 	switch (fn) {
 	case kbfn_play_toggle:
-		return argparse_noArgs(parse_state);
+		return argparse_legacy_noArgs(parse_state);
 	case kbfn_quit:
-		return argparse_noArgs(parse_state);
+		return argparse_legacy_noArgs(parse_state);
 	case kbfn_seek:
-		return argparse_seekArgs(fn_args, deleter, parse_state);
+		return argparse_legacy_seekArgs(fn_args, deleter, parse_state);
 	case kbfn_seek_snap:
-		return argparse_seekArgs(fn_args, deleter, parse_state);
+		return argparse_legacy_seekArgs(fn_args, deleter, parse_state);
 	}
 
 	return Keybind_NOT_FOUND;
