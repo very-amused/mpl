@@ -34,9 +34,9 @@ enum KeybindFnID KeybindFnID_from_ident(const char *ident) {
 	return -1;
 }
 
-
-KeybindFnLegacy KeybindFnLegacy_getfn(enum KeybindFnID fn) {
-	switch (fn) {
+// Get the actual routine function ptr associated with a KeybindFnID
+KeybindFnRoutine KeybindFnID_get_fn(const enum KeybindFnID fn_id) {
+	switch (fn_id) {
 	case kbfn_play_toggle:
 		return play_toggle;
 	case kbfn_quit:
@@ -48,6 +48,7 @@ KeybindFnLegacy KeybindFnLegacy_getfn(enum KeybindFnID fn) {
 	}
 	return NULL;
 }
+
 
 /* #region Arg parsing for keybind functions */
 static enum KeybindMap_ERR argparse_noArgs(strtoknState *parse_state) {
@@ -133,7 +134,7 @@ enum KeybindMap_ERR KeybindRoutineLegacy_push(KeybindRoutineLegacy *routine, str
 		return KeybindMap_INVALID_FN;
 	}
 
-	routine->fns[n] = KeybindFnLegacy_getfn(fn_id);
+	routine->fns[n] = KeybindFnID_get_fn(fn_id);
 	enum KeybindMap_ERR err = KeybindFnLegacy_parse_args(fn_id,
 			&routine->fn_args[n], &routine->fn_arg_deleters[n], parse_state);
 	if (err != KeybindMap_OK) {

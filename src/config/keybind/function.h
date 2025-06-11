@@ -28,11 +28,17 @@ static const inline char *KeybindFnID_name(enum KeybindFnID id) {
 // Returns -1 if no such KeybindFnID exists, this case must be checked by the caller
 enum KeybindFnID KeybindFnID_from_ident(const char *ident);
 
+// Callable function pointer to a KeybindFn's routine
+typedef void (*KeybindFnRoutine)(void *args);
+
+// Get the actual routine function ptr associated with a KeybindFnID
+KeybindFnRoutine KeybindFnID_get_fn(const enum KeybindFnID fn_id);
+
 // A function callable from keybinds, complete with its argument struct
 // and associated argument deleter (destructor that frees).
 typedef struct KeybindFn {
 	// The function itself
-	void (* call)(void *args);
+	KeybindFnRoutine call;
 	// Function args passed to [call];
 	// allocated in [KeybindFn_parse] and deleted by calling [deleter(args)]
 	void *args;
@@ -43,8 +49,6 @@ typedef struct KeybindFn {
 	void (* args_deleter)(void *args);
 } KeybindFn;
 
-
-
 /* #region Legacy routines */
 
 // A function call that can be used in a keybind routine
@@ -53,10 +57,6 @@ typedef struct KeybindFn {
 //
 // (all KeybindFn's are defined in config/functions.h)
 typedef void (*KeybindFnLegacy)(void *);
-
-// Get a KeybindFn's pointer from its ID value
-// Returns NULL if the ID isn't a valid KeybindFnID
-KeybindFnLegacy KeybindFnLegacy_getfn(enum KeybindFnID id);
 
 // A free function that deinitializes and frees the argument struct
 // If no deinitialization is needed (i.e there are only int paramters), this can be [free()]
