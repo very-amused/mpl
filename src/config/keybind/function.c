@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-enum KeybindFnID KeybindFnLegacy_getid(const char *ident) {
+enum KeybindFnID KeybindFnID_from_ident(const char *ident) {
 	switch (ident[0]) {
 	case 'p':
 		if (strcmp(ident, "play_toggle") == 0) {
@@ -33,6 +33,7 @@ enum KeybindFnID KeybindFnLegacy_getid(const char *ident) {
 
 	return -1;
 }
+
 
 KeybindFnLegacy KeybindFnLegacy_getfn(enum KeybindFnID fn) {
 	switch (fn) {
@@ -127,7 +128,7 @@ enum KeybindMap_ERR KeybindRoutineLegacy_push(KeybindRoutineLegacy *routine, str
 	LOG(Verbosity_DEBUG, "fn_ident: %s\n", fn_ident);
 
 	// Get function ID from ident
-	enum KeybindFnID fn_id = KeybindFnLegacy_getid(fn_ident);
+	enum KeybindFnID fn_id = KeybindFnID_from_ident(fn_ident);
 	if ((int)fn_id == -1) {
 		return KeybindMap_INVALID_FN;
 	}

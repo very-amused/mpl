@@ -24,6 +24,10 @@ static const inline char *KeybindFnID_name(enum KeybindFnID id) {
 
 #undef KEYBIND_FNS
 
+// Get a KeybindFnID from a function's identifier (name)
+// Returns -1 if no such KeybindFnID exists, this case must be checked by the caller
+enum KeybindFnID KeybindFnID_from_ident(const char *ident);
+
 // A function callable from keybinds, complete with its argument struct
 // and associated argument deleter (destructor that frees).
 typedef struct KeybindFn {
@@ -39,6 +43,8 @@ typedef struct KeybindFn {
 	void (* args_deleter)(void *args);
 } KeybindFn;
 
+
+
 /* #region Legacy routines */
 
 // A function call that can be used in a keybind routine
@@ -47,10 +53,6 @@ typedef struct KeybindFn {
 //
 // (all KeybindFn's are defined in config/functions.h)
 typedef void (*KeybindFnLegacy)(void *);
-
-// Get a KeybindFn's ID value by its identifier (name)
-// Returns -1 if no KeybindFn with the given identifier exists
-enum KeybindFnID KeybindFnLegacy_getid(const char *ident);
 
 // Get a KeybindFn's pointer from its ID value
 // Returns NULL if the ID isn't a valid KeybindFnID
