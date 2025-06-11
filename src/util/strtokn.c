@@ -1,14 +1,7 @@
-#pragma once
-#include <stddef.h>
+#include "strtokn.h"
 
-// strtok if it was good.
-// *offset and *tok_len must both be 0 when first called,
-// and will be set to offset and length values (relative to s) of the next split token
-// Returns 0 on success, -1 on EOF
-//
-// (c) 2024 Keith Scroggs;
-// Originally implemented in argon2_mariadb
-static inline int strtokn(size_t *offset, size_t *tok_len,
+
+int strtokn(size_t *offset, size_t *tok_len,
 		const char *s, const size_t s_len, const char *delims) {
 	// Move offset past previous token + delimiter
 	if (*tok_len > 0) {
@@ -35,13 +28,6 @@ static inline int strtokn(size_t *offset, size_t *tok_len,
 	return -1;
 }
 
-typedef struct strtoknState {
-	size_t offset, tok_len;
-	const char *s;
-	const size_t s_len;
-} strtoknState;
-
-// Call strtokn with a state struct
-static inline int strtokn_s(strtoknState *state, const char *delims) {
+int strtokn_s(strtoknState *state, const char *delims) {
 	return strtokn(&state->offset, &state->tok_len, state->s, state->s_len, delims);
 }

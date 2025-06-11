@@ -1,5 +1,5 @@
 #pragma once
-#include "config/keybind/strtokn.h"
+#include "util/strtokn.h"
 #include "error.h"
 
 #define KEYBIND_FNS(VARIANT) \

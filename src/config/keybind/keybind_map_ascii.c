@@ -2,7 +2,7 @@
 #include "error.h"
 #include "keybind_map.h"
 #include "util/log.h"
-#include "strtokn.h"
+#include "util/strtokn.h"
 
 #include <wctype.h>
 #include <stdbool.h>

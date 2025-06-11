@@ -1,10 +1,9 @@
 extern "C" {
 #include "keybind_map.h"
 #include "keycode.h"
-#include "config/functions.h"
 #include "error.h"
 #include "util/log.h"
-#include "strtokn.h"
+#include "util/strtokn.h"
 #include "function.h"
 
 #include <wctype.h>
