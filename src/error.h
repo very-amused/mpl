@@ -107,7 +107,7 @@ static inline const char *Verbosity_name(enum Verbosity lvl) {
 
 #undef VERBOSITY
 
-#define KEYBIND_MAP_ERR(VARIANT) \
+#define KEYBIND_ERR(VARIANT) \
 	VARIANT(Keybind_OK) \
 	VARIANT(Keybind_NOT_FOUND) /* A binding was not found for the provided key */ \
 	VARIANT(Keybind_SYNTAX_ERR) /* Syntax error while parsing a keybind definition */ \
@@ -117,15 +117,15 @@ static inline const char *Verbosity_name(enum Verbosity lvl) {
 	VARIANT(Keybind_NON_ASCII) /* Non-ASCII codepoint provided when MPL was built with the 'ascii_keybinds' feature */
 
 // Errors returned by a KeybindMap_* method
-enum KeybindMap_ERR {
-	KEYBIND_MAP_ERR(ENUM_VAL)
+enum Keybind_ERR {
+	KEYBIND_ERR(ENUM_VAL)
 };
 
-static inline const char *KeybindMap_ERR_name(enum KeybindMap_ERR err) {
+static inline const char *Keybind_ERR_name(enum Keybind_ERR err) {
 	switch (err) {
-		KEYBIND_MAP_ERR(ENUM_KEY)
+		KEYBIND_ERR(ENUM_KEY)
 	}
 	return DEFAULT_ERR_NAME;
 }
 
-#undef KEYBIND_MAP_ERR
+#undef KEYBIND_ERR

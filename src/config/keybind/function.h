@@ -66,7 +66,7 @@ typedef void (*KeybindFnLegacyArgDeleter)(void *);
 //
 // Sets *fn_args to point to the function's argument struct.
 // Sets *deleter to point to the function's KeybindFnArgDeleter.
-enum KeybindMap_ERR KeybindFnLegacy_parse_args(enum KeybindFnID fn,
+enum Keybind_ERR KeybindFnLegacy_parse_args(enum KeybindFnID fn,
 		void **fn_args, KeybindFnLegacyArgDeleter *deleter, strtoknState *parse_state);
 
 typedef struct KeybindRoutineLegacy {
@@ -96,6 +96,6 @@ void KeybindRoutineLegacy_deinit(KeybindRoutineLegacy *routine);
 
 // Push the nth KeybindFn to the back of the keybind routine.
 // Returns -1 if we've hit the end of the line being parsed
-enum KeybindMap_ERR KeybindRoutineLegacy_push(KeybindRoutineLegacy *routine, strtoknState *parse_state, size_t n);
+enum Keybind_ERR KeybindRoutineLegacy_push(KeybindRoutineLegacy *routine, strtoknState *parse_state, size_t n);
 
 /* #endregion */

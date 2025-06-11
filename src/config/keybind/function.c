@@ -50,7 +50,7 @@ KeybindFnRoutine KeybindFnID_get_fn(const enum KeybindFnID fn_id) {
 
 
 /* #region Arg parsing for keybind functions */
-static enum KeybindMap_ERR argparse_noArgs(strtoknState *parse_state) {
+static enum Keybind_ERR argparse_noArgs(strtoknState *parse_state) {
 	if (strtokn_s(parse_state, ")") == -1) {
 		return Keybind_SYNTAX_ERR;
 	} else if (parse_state->tok_len > 0) {
@@ -58,7 +58,7 @@ static enum KeybindMap_ERR argparse_noArgs(strtoknState *parse_state) {
 	}
 	return Keybind_OK;
 }
-static enum KeybindMap_ERR argparse_seekArgs(void **fn_args, KeybindFnLegacyArgDeleter *deleter, strtoknState *parse_state) {
+static enum Keybind_ERR argparse_seekArgs(void **fn_args, KeybindFnLegacyArgDeleter *deleter, strtoknState *parse_state) {
 	// 1 arg: milliseconds (int32_t)
 	if (strtokn_s(parse_state, ")") == -1) {
 		return Keybind_SYNTAX_ERR;
@@ -76,7 +76,7 @@ static enum KeybindMap_ERR argparse_seekArgs(void **fn_args, KeybindFnLegacyArgD
 }
 /* #endregion */
 
-enum KeybindMap_ERR KeybindFnLegacy_parse_args(enum KeybindFnID fn,
+enum Keybind_ERR KeybindFnLegacy_parse_args(enum KeybindFnID fn,
 		void **fn_args, KeybindFnLegacyArgDeleter *deleter, strtoknState *parse_state) {
 
 	// Defaults:
@@ -116,7 +116,7 @@ void KeybindRoutineLegacy_deinit(KeybindRoutineLegacy *routine) {
 	free(routine->fn_arg_deleters);
 }
 
-enum KeybindMap_ERR KeybindRoutineLegacy_push(KeybindRoutineLegacy *routine, strtoknState *parse_state, size_t n) {
+enum Keybind_ERR KeybindRoutineLegacy_push(KeybindRoutineLegacy *routine, strtoknState *parse_state, size_t n) {
 	// Parse function ident
 	// {function} (
 	if (strtokn_s(parse_state, "(") != 0) {
@@ -134,7 +134,7 @@ enum KeybindMap_ERR KeybindRoutineLegacy_push(KeybindRoutineLegacy *routine, str
 	}
 
 	routine->fns[n] = KeybindFnID_get_fn(fn_id);
-	enum KeybindMap_ERR err = KeybindFnLegacy_parse_args(fn_id,
+	enum Keybind_ERR err = KeybindFnLegacy_parse_args(fn_id,
 			&routine->fn_args[n], &routine->fn_arg_deleters[n], parse_state);
 	if (err != Keybind_OK) {
 		return err;

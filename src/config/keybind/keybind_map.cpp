@@ -39,7 +39,7 @@ void KeybindMap_free(KeybindMap *keybinds) {
 }
 
 
-enum KeybindMap_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *line) {
+enum Keybind_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *line) {
 	// Ensure UTF-8 support
 	setlocale(LC_ALL, "");
 	// Split by whitespace
@@ -94,7 +94,7 @@ enum KeybindMap_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *l
 	}
 	// Parse routine
 	for (size_t i = 0; i < routine->n_fns; i++) {
-		enum KeybindMap_ERR err = KeybindRoutineLegacy_push(routine.get(), &parse_state, i);
+		enum Keybind_ERR err = KeybindRoutineLegacy_push(routine.get(), &parse_state, i);
 		if (err != Keybind_OK) {
 			return err;
 		}
@@ -106,7 +106,7 @@ enum KeybindMap_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *l
 	return Keybind_OK;
 }
 
-enum KeybindMap_ERR KeybindMap_call_keybind(KeybindMap *keybinds, wchar_t keycode) {
+enum Keybind_ERR KeybindMap_call_keybind(KeybindMap *keybinds, wchar_t keycode) {
 	const bool exists = keybinds->map.find(keycode) != keybinds->map.end();
 	if (!exists) {
 		return Keybind_NOT_FOUND;

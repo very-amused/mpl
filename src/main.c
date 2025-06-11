@@ -86,9 +86,9 @@ int main(int argc, const char **argv) {
 		case mpl_KEYPRESS:
 		{
 			EventBody_Keypress key = evt.body_inline;
-			enum KeybindMap_ERR err = KeybindMap_call_keybind(config.keybinds, key);
+			enum Keybind_ERR err = KeybindMap_call_keybind(config.keybinds, key);
 			if (err != Keybind_OK) {
-				LOG(Verbosity_VERBOSE, "Keybind error: %s\n", KeybindMap_ERR_name(err));
+				LOG(Verbosity_VERBOSE, "Keybind error: %s\n", Keybind_ERR_name(err));
 			} else {
 				break;
 			}

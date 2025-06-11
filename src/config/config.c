@@ -54,9 +54,9 @@ static int mplConfig_parse_line(mplConfig *conf, const char *line,
 	// Handle keybind lines
 	static const char KEYBIND_PREFIX[] = "bind";
 	if (strncmp(line, KEYBIND_PREFIX, sizeof(KEYBIND_PREFIX)-1) == 0) {
-		enum KeybindMap_ERR err = KeybindMap_parse_mapping(conf->keybinds, line);
+		enum Keybind_ERR err = KeybindMap_parse_mapping(conf->keybinds, line);
 		if (err != Keybind_OK) {
-			strncpy(strerr, KeybindMap_ERR_name(err), strerr_len);
+			strncpy(strerr, Keybind_ERR_name(err), strerr_len);
 			return 1;
 		} 
 		return 0;
