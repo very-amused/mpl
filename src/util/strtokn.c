@@ -6,6 +6,8 @@ int strtokn(size_t *offset, size_t *tok_len,
 	// Move offset past previous token + delimiter
 	if (*tok_len > 0) {
 		*offset += *tok_len + sizeof(char);
+	} else if (*offset > 0) {
+		*offset += sizeof(char);
 	}
 	// Max token length
 	const size_t max_len = s_len - *offset;
