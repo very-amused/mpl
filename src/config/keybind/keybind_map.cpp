@@ -51,11 +51,11 @@ enum KeybindMap_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *l
 	};
 	static const char DELIMS[] = " \n\t\r";
 
-#define NEXT() if (strtokn_s(&parse_state, DELIMS) != 0) return KeybindMap_SYNTAX_ERR
+#define NEXT() if (strtokn_s(&parse_state, DELIMS) != 0) return Keybind_SYNTAX_ERR
 	// bind
 	NEXT();
 	if (strncmp(&line[parse_state.offset], "bind", parse_state.tok_len) != 0) {
-		return KeybindMap_SYNTAX_ERR;
+		return Keybind_SYNTAX_ERR;
 	}
 
 	// {keyname}
@@ -95,7 +95,7 @@ enum KeybindMap_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *l
 	// Parse routine
 	for (size_t i = 0; i < routine->n_fns; i++) {
 		enum KeybindMap_ERR err = KeybindRoutineLegacy_push(routine.get(), &parse_state, i);
-		if (err != KeybindMap_OK) {
+		if (err != Keybind_OK) {
 			return err;
 		}
 	}
@@ -103,13 +103,13 @@ enum KeybindMap_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *l
 	// Add the routine to our keybind map
 	keybinds->map[keycode] = std::move(routine);
 
-	return KeybindMap_OK;
+	return Keybind_OK;
 }
 
 enum KeybindMap_ERR KeybindMap_call_keybind(KeybindMap *keybinds, wchar_t keycode) {
 	const bool exists = keybinds->map.find(keycode) != keybinds->map.end();
 	if (!exists) {
-		return KeybindMap_NOT_FOUND;
+		return Keybind_NOT_FOUND;
 	}
 
 	KeybindRoutineLegacy *routine = keybinds->map[keycode].get();
@@ -117,7 +117,7 @@ enum KeybindMap_ERR KeybindMap_call_keybind(KeybindMap *keybinds, wchar_t keycod
 		routine->fns[i](routine->fn_args[i]);
 	}
 
-	return KeybindMap_OK;
+	return Keybind_OK;
 }
 
 }

@@ -34,7 +34,6 @@ enum KeybindFnID KeybindFnID_from_ident(const char *ident) {
 	return -1;
 }
 
-// Get the actual routine function ptr associated with a KeybindFnID
 KeybindFnRoutine KeybindFnID_get_fn(const enum KeybindFnID fn_id) {
 	switch (fn_id) {
 	case kbfn_play_toggle:
@@ -53,16 +52,16 @@ KeybindFnRoutine KeybindFnID_get_fn(const enum KeybindFnID fn_id) {
 /* #region Arg parsing for keybind functions */
 static enum KeybindMap_ERR argparse_noArgs(strtoknState *parse_state) {
 	if (strtokn_s(parse_state, ")") == -1) {
-		return KeybindMap_SYNTAX_ERR;
+		return Keybind_SYNTAX_ERR;
 	} else if (parse_state->tok_len > 0) {
-		return KeybindMap_INVALID_ARG;
+		return Keybind_INVALID_ARG;
 	}
-	return KeybindMap_OK;
+	return Keybind_OK;
 }
 static enum KeybindMap_ERR argparse_seekArgs(void **fn_args, KeybindFnLegacyArgDeleter *deleter, strtoknState *parse_state) {
 	// 1 arg: milliseconds (int32_t)
 	if (strtokn_s(parse_state, ")") == -1) {
-		return KeybindMap_SYNTAX_ERR;
+		return Keybind_SYNTAX_ERR;
 	}
 	struct seekArgs *args = malloc(sizeof(struct seekArgs));
 	char arg_str[parse_state->tok_len + 1];
@@ -70,10 +69,10 @@ static enum KeybindMap_ERR argparse_seekArgs(void **fn_args, KeybindFnLegacyArgD
 	arg_str[parse_state->tok_len] = '\0';
 	if (sscanf(arg_str, "%d", &args->ms) != 1) {
 		free(args);
-		return KeybindMap_INVALID_ARG;
+		return Keybind_INVALID_ARG;
 	}
 	*fn_args = args;
-	return KeybindMap_OK;
+	return Keybind_OK;
 }
 /* #endregion */
 
@@ -95,7 +94,7 @@ enum KeybindMap_ERR KeybindFnLegacy_parse_args(enum KeybindFnID fn,
 		return argparse_seekArgs(fn_args, deleter, parse_state);
 	}
 
-	return KeybindMap_NOT_FOUND;
+	return Keybind_NOT_FOUND;
 }
 
 
@@ -121,7 +120,7 @@ enum KeybindMap_ERR KeybindRoutineLegacy_push(KeybindRoutineLegacy *routine, str
 	// Parse function ident
 	// {function} (
 	if (strtokn_s(parse_state, "(") != 0) {
-		return KeybindMap_SYNTAX_ERR;
+		return Keybind_SYNTAX_ERR;
 	}
 	char fn_ident[parse_state->tok_len + 1];
 	strncpy(fn_ident, &parse_state->s[parse_state->offset], parse_state->tok_len);
@@ -131,23 +130,23 @@ enum KeybindMap_ERR KeybindRoutineLegacy_push(KeybindRoutineLegacy *routine, str
 	// Get function ID from ident
 	enum KeybindFnID fn_id = KeybindFnID_from_ident(fn_ident);
 	if ((int)fn_id == -1) {
-		return KeybindMap_INVALID_FN;
+		return Keybind_INVALID_FN;
 	}
 
 	routine->fns[n] = KeybindFnID_get_fn(fn_id);
 	enum KeybindMap_ERR err = KeybindFnLegacy_parse_args(fn_id,
 			&routine->fn_args[n], &routine->fn_arg_deleters[n], parse_state);
-	if (err != KeybindMap_OK) {
+	if (err != Keybind_OK) {
 		return err;
 	}
 
 	// Parse through the next function separator
 	if (n == routine->n_fns-1) {
-		return KeybindMap_OK;
+		return Keybind_OK;
 	}
 	static const char FUNCTION_DELIMS[] = ";";
 	if (strtokn_s(parse_state, FUNCTION_DELIMS) == -1) {
-		return KeybindMap_SYNTAX_ERR;
+		return Keybind_SYNTAX_ERR;
 	}
 
 	// Eat any whitespace after delim
@@ -176,10 +175,10 @@ enum KeybindMap_ERR KeybindRoutineLegacy_push(KeybindRoutineLegacy *routine, str
 				parse_state->offset += parse_state->tok_len;
 				parse_state->tok_len = 0;
 			}
-			return KeybindMap_OK;
+			return Keybind_OK;
 		}
 		parse_state->tok_len++;
 	}
 
-	return KeybindMap_SYNTAX_ERR; // fn()) [mismatched parens]
+	return Keybind_SYNTAX_ERR; // fn()) [mismatched parens]
 }

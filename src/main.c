@@ -36,7 +36,7 @@ int main(int argc, const char **argv) {
 
 	// Parse mpl.conf
 	mplConfig config;
-	assert(mplConfig_parse(&config, "../test/mpl.conf") == KeybindMap_OK);
+	assert(mplConfig_parse(&config, "../test/mpl.conf") == Keybind_OK);
 
 	// Form URL from file argv
 	const char *file = argv[argc-1];
@@ -87,7 +87,7 @@ int main(int argc, const char **argv) {
 		{
 			EventBody_Keypress key = evt.body_inline;
 			enum KeybindMap_ERR err = KeybindMap_call_keybind(config.keybinds, key);
-			if (err != KeybindMap_OK) {
+			if (err != Keybind_OK) {
 				LOG(Verbosity_VERBOSE, "Keybind error: %s\n", KeybindMap_ERR_name(err));
 			} else {
 				break;

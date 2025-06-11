@@ -34,11 +34,11 @@ enum KeybindMap_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *l
 	size_t offset = 0, tok_len = 0;
 	static const char DELIMS[] = " \n\t\r";
 
-#define NEXT() if (strtokn(&offset, &tok_len, line, line_len, DELIMS) != 0) return KeybindMap_SYNTAX_ERR
+#define NEXT() if (strtokn(&offset, &tok_len, line, line_len, DELIMS) != 0) return Keybind_SYNTAX_ERR
 	// bind
 	NEXT();
 	if (strncmp(&line[offset], "bind", tok_len) != 0) {
-		return KeybindMap_SYNTAX_ERR;
+		return Keybind_SYNTAX_ERR;
 	}
 
 	// {keyname}
@@ -54,7 +54,7 @@ enum KeybindMap_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *l
 	LOG(Verbosity_DEBUG, "\tkeycode is unsigned ASCII: %s\n", is_uascii(keycode) ? "true" : "false");
 	if (!is_uascii(keycode)) {
 		free(keyname);
-		return KeybindMap_NON_ASCII;
+		return Keybind_NON_ASCII;
 	}
 
 	// =
@@ -62,7 +62,7 @@ enum KeybindMap_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *l
 	
 	// {function} (
 	if (strtokn(&offset, &tok_len, line, line_len, "(") != 0) {
-		return KeybindMap_SYNTAX_ERR;
+		return Keybind_SYNTAX_ERR;
 	}
 	char *fn_ident = strndup(&line[offset], tok_len);
 
@@ -76,20 +76,20 @@ enum KeybindMap_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *l
 	free(fn_ident);
 	
 
-	return KeybindMap_OK;
+	return Keybind_OK;
 }
 
 enum KeybindMap_ERR KeybindMap_call_keybind(KeybindMap *keybinds, wchar_t keycode) {
 	// Ensure we're dealing with an ASCII keycode to prevent overflow
 	unsigned char ascii_keycode = keycode;
 	if (keycode != ascii_keycode) {
-		return KeybindMap_NON_ASCII;
+		return Keybind_NON_ASCII;
 	}
 
 	const bool exists = keybinds->map[ascii_keycode];
 	if (!exists) {
-		return KeybindMap_NOT_FOUND;
+		return Keybind_NOT_FOUND;
 	}
 
-	return KeybindMap_OK;
+	return Keybind_OK;
 }
