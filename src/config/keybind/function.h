@@ -47,7 +47,6 @@ typedef void (*KeybindFnArgDeleter)(void *);
 //
 // Sets *fn_args to point to the function's argument struct.
 // Sets *deleter to point to the function's KeybindFnArgDeleter.
-// FIXME: compact strtokn state into a struct
 enum KeybindMap_ERR KeybindFn_parse_args(enum KeybindFnID fn,
 		void **fn_args, KeybindFnArgDeleter *deleter, strtoknState *parse_state);
 

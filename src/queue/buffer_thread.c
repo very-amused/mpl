@@ -106,7 +106,6 @@ buffer_loop:
 		const int rd = atomic_load(&track->buffer->rd);
 		const int wr = atomic_load(&track->buffer->wr);
 		// Keep half the buffer full of past frames to enable bidirectional buffer seeks 
-		// FIXME: potential performance issues
 		if (AudioBuffer_max_read(track->buffer, rd, wr, false) >= buf_ahead_max) {
 			sem_wait(&track->buffer->rd_sem);
 			continue;

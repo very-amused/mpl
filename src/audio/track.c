@@ -108,6 +108,7 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url) {
 
 	// Drain any padding samples at the start
 	LOG(Verbosity_DEBUG, "Track start_padding: %zu\n", t->start_padding);
+#if 0
 	while (t->start_padding > 0) {
 		status = av_read_frame(t->avf_ctx, t->av_packet); // Despite its name, av_read_frame reads packets
 		if (status < 0) {
@@ -122,12 +123,16 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url) {
 
 		do {
 			status = avcodec_receive_frame(t->avc_ctx, t->av_frame);
+			if (status >= 0) {
+				t->start_padding--;
+			}
 		} while (status >= 0);
 		if (t->start_padding > 0 && status != AVERROR(EAGAIN)) {
 			return AudioTrack_FRAME_ERR;
 		}
 	}
 	while (avcodec_receive_frame(t->avc_ctx, t->av_frame) >= 0) {} // Just in case, drain any remaining frames from the packet's buffer
+#endif
 	av_packet_unref(t->av_packet);
 	av_frame_unref(t->av_frame);
 
