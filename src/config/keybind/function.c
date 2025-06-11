@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-enum KeybindFnID KeybindFn_getid(const char *ident) {
+enum KeybindFnID KeybindFnLegacy_getid(const char *ident) {
 	switch (ident[0]) {
 	case 'p':
 		if (strcmp(ident, "play_toggle") == 0) {
@@ -34,16 +34,16 @@ enum KeybindFnID KeybindFn_getid(const char *ident) {
 	return -1;
 }
 
-KeybindFn KeybindFn_getfn(enum KeybindFnID fn) {
+KeybindFnLegacy KeybindFnLegacy_getfn(enum KeybindFnID fn) {
 	switch (fn) {
 	case kbfn_play_toggle:
 		return play_toggle;
 	case kbfn_quit:
 		return quit;
 	case kbfn_seek:
-		return (KeybindFn)seek;
+		return (KeybindFnLegacy)seek;
 	case kbfn_seek_snap:
-		return (KeybindFn)seek_snap;
+		return (KeybindFnLegacy)seek_snap;
 	}
 	return NULL;
 }
@@ -57,7 +57,7 @@ static enum KeybindMap_ERR argparse_noArgs(strtoknState *parse_state) {
 	}
 	return KeybindMap_OK;
 }
-static enum KeybindMap_ERR argparse_seekArgs(void **fn_args, KeybindFnArgDeleter *deleter, strtoknState *parse_state) {
+static enum KeybindMap_ERR argparse_seekArgs(void **fn_args, KeybindFnLegacyArgDeleter *deleter, strtoknState *parse_state) {
 	// 1 arg: milliseconds (int32_t)
 	if (strtokn_s(parse_state, ")") == -1) {
 		return KeybindMap_SYNTAX_ERR;
@@ -75,8 +75,8 @@ static enum KeybindMap_ERR argparse_seekArgs(void **fn_args, KeybindFnArgDeleter
 }
 /* #endregion */
 
-enum KeybindMap_ERR KeybindFn_parse_args(enum KeybindFnID fn,
-		void **fn_args, KeybindFnArgDeleter *deleter, strtoknState *parse_state) {
+enum KeybindMap_ERR KeybindFnLegacy_parse_args(enum KeybindFnID fn,
+		void **fn_args, KeybindFnLegacyArgDeleter *deleter, strtoknState *parse_state) {
 
 	// Defaults:
 	*fn_args = NULL;
@@ -97,14 +97,14 @@ enum KeybindMap_ERR KeybindFn_parse_args(enum KeybindFnID fn,
 }
 
 
-void KeybindRoutine_init(KeybindRoutine *routine) {
-	memset(routine, 0, sizeof(KeybindRoutine));
+void KeybindRoutineLegacy_init(KeybindRoutineLegacy *routine) {
+	memset(routine, 0, sizeof(KeybindRoutineLegacy));
 }
 
-void KeybindRoutine_deinit(KeybindRoutine *routine) {
+void KeybindRoutineLegacy_deinit(KeybindRoutineLegacy *routine) {
 	// Run destructors to deinitialize and free function args
 	for (size_t i = 0; i < routine->n_fns; i++) {
-		KeybindFnArgDeleter del = routine->fn_arg_deleters[i];
+		KeybindFnLegacyArgDeleter del = routine->fn_arg_deleters[i];
 		void *args = routine->fn_args[i];
 		del(args);
 	}
@@ -115,7 +115,7 @@ void KeybindRoutine_deinit(KeybindRoutine *routine) {
 	free(routine->fn_arg_deleters);
 }
 
-enum KeybindMap_ERR KeybindRoutine_push(KeybindRoutine *routine, strtoknState *parse_state, size_t n) {
+enum KeybindMap_ERR KeybindRoutineLegacy_push(KeybindRoutineLegacy *routine, strtoknState *parse_state, size_t n) {
 	// Parse function ident
 	// {function} (
 	if (strtokn_s(parse_state, "(") != 0) {
@@ -127,13 +127,13 @@ enum KeybindMap_ERR KeybindRoutine_push(KeybindRoutine *routine, strtoknState *p
 	LOG(Verbosity_DEBUG, "fn_ident: %s\n", fn_ident);
 
 	// Get function ID from ident
-	enum KeybindFnID fn_id = KeybindFn_getid(fn_ident);
+	enum KeybindFnID fn_id = KeybindFnLegacy_getid(fn_ident);
 	if ((int)fn_id == -1) {
 		return KeybindMap_INVALID_FN;
 	}
 
-	routine->fns[n] = KeybindFn_getfn(fn_id);
-	enum KeybindMap_ERR err = KeybindFn_parse_args(fn_id,
+	routine->fns[n] = KeybindFnLegacy_getfn(fn_id);
+	enum KeybindMap_ERR err = KeybindFnLegacy_parse_args(fn_id,
 			&routine->fn_args[n], &routine->fn_arg_deleters[n], parse_state);
 	if (err != KeybindMap_OK) {
 		return err;
