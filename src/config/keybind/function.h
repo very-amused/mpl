@@ -61,6 +61,13 @@ enum Keybind_ERR KeybindFn_parse(KeybindFn *fn, strtoknState *parse_state);
 // and calling [args_deleter(args)]
 void KeybindFn_deinit(KeybindFn *fn);
 
+static const char Keybind_DELIM = ';';
+
+// Consume KeybindFn_DELIM and any surrounding whitespace,
+// leaving `parse_state` ready for [KeybindFn_parse] to be called again
+// NOTE: may return Keybind_EOF, which must be checked for
+enum Keybind_ERR KeybindFn_consume_delim(strtoknState *parse_state);
+
 /* #region Legacy routines */
 
 // A function call that can be used in a keybind routine

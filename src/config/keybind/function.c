@@ -155,6 +155,28 @@ void KeybindFn_deinit(KeybindFn *fn) {
 	fn->args_deleter(fn->args);
 }
 
+// Consume KeybindFn_DELIM and any surrounding whitespace,
+// leaving `parse_state` ready for [KeybindFn_parse] to be called again
+// NOTE: may return Keybind_EOF, which must be checked for
+enum Keybind_ERR KeybindFn_consume_delim(strtoknState *parse_state) {
+	// Eat whitespace
+	static const char WHITESPACE[] = " \n\t\r";
+	if (strtokn_consume_s(parse_state, WHITESPACE) == -1) {
+		return Keybind_EOF;
+	}
+	if (parse_state->s[parse_state->offset] != Keybind_DELIM) {
+		return Keybind_SYNTAX_ERR;
+	}
+	if (strtokn_consume_s(parse_state, WHITESPACE) == -1) {
+		return Keybind_EOF;
+	}
+	// Walk back 1 before the next non-whitespace char, so we continue parsing from the right place
+	parse_state->tok_len = 0;
+	parse_state->offset--;
+
+	return Keybind_OK;
+}
+
 enum Keybind_ERR KeybindFnLegacy_parse_args(enum KeybindFnID fn,
 		void **fn_args, KeybindFnLegacyArgDeleter *deleter, strtoknState *parse_state) {
 
