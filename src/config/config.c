@@ -11,6 +11,14 @@
 #include <stddef.h>
 #include <fcntl.h>
 
+void mplConfig_init(mplConfig *conf) {
+	// Empty keybind map
+	conf->keybinds = KeybindMap_new();
+}
+void mplConfig_deinit(mplConfig *conf) {
+	KeybindMap_free(conf->keybinds);
+}
+
 // Parse a line of mpl.conf
 // Returns 0 on success, nonzero on error
 // Writes error message into *strerr on error
@@ -98,9 +106,6 @@ int mplConfig_parse(mplConfig *conf, const char *path) {
 	return 0;
 }
 
-void mplConfig_deinit(mplConfig *conf) {
-	KeybindMap_free(conf->keybinds);
-}
 
 static int mplConfig_parse_line(mplConfig *conf, const char *line,
 		char *strerr, const size_t strerr_len) {
