@@ -13,7 +13,7 @@
 #include <locale.h>
 
 struct KeybindMap {
-	KeybindFn *map[255]; // TODO: we should map KeybindRoutine's
+	KeybindFnArray *map[255];
 };
 
 KeybindMap *KeybindMap_new() {
@@ -23,9 +23,10 @@ KeybindMap *KeybindMap_new() {
 }
 
 void KeybindMap_free(KeybindMap *keybinds) {
-	for (size_t i = 0; i < sizeof(keybinds->map); i++) {
+	static const size_t MAP_LEN = sizeof(keybinds->map) / sizeof(keybinds->map[0]);
+	for (size_t i = 0; i < MAP_LEN; i++) {
 		if (keybinds->map[i]) {
-			KeybindFn_deinit(keybinds->map[i]);
+			KeybindFnArray_deinit(keybinds->map[i]);
 		}
 		free(keybinds->map[i]);
 	}
@@ -68,33 +69,38 @@ enum Keybind_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *line
 
 	// =
 	NEXT();
+
+#undef NEXT
 	
-	// {function} (args...)
-	KeybindFn *routine = malloc(sizeof(KeybindFn));
-	enum Keybind_ERR status = KeybindFn_parse(routine, &parse_state);
+	// {function}({args}...); {function2}({args2}...)
+	KeybindFnArray *fn_arr = malloc(sizeof(KeybindFnArray));
+	enum Keybind_ERR status = KeybindFnArray_parse(fn_arr, &parse_state);
 	if (status != Keybind_OK) {
-		KeybindFn_deinit(routine);
-		free(routine);
+		KeybindFnArray_deinit(fn_arr);
+		free(fn_arr);
 		return status;
 	}
-	keybinds->map[keycode] = routine;
-	
-#undef NEXT
+	keybinds->map[keycode] = fn_arr;
 
 	return Keybind_OK;
 }
 
 enum Keybind_ERR KeybindMap_call_keybind(KeybindMap *keybinds, wchar_t keycode) {
 	// Ensure we're dealing with an ASCII keycode to prevent overflow
-	unsigned char ascii_keycode = keycode;
-	if (keycode != ascii_keycode) {
+	if (keycode > (unsigned char)-1) {
 		return Keybind_NON_ASCII;
 	}
 
-	const bool exists = keybinds->map[ascii_keycode];
-	if (!exists) {
+	const KeybindFnArray *fn_arr = keybinds->map[keycode];
+	if (!fn_arr) {
 		return Keybind_NOT_FOUND;
 	}
+
+	// Call keybind functions
+	for (size_t i = 0; i < fn_arr->n; i++) {
+		KeybindFn_call(fn_arr->fns[i]);
+	}
+
 
 	return Keybind_OK;
 }
