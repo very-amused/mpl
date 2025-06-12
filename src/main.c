@@ -36,7 +36,16 @@ int main(int argc, const char **argv) {
 
 	// Parse mpl.conf
 	mplConfig config;
-	assert(mplConfig_parse(&config, "../test/mpl.conf") == Keybind_OK);
+	char *config_path = NULL;
+	size_t config_path_len;
+	if (mplConfig_find_path(&config_path, &config_path_len) == 0) {
+		mplConfig_parse(&config, config_path);
+	} else {
+		// TODO: mplConfig_init_defaults()
+		LOG(Verbosity_NORMAL, "Missing default config! exiting.\n");
+		exit(1);
+	}
+	free(config_path);
 
 	// Form URL from file argv
 	const char *file = argv[argc-1];

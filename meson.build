@@ -35,6 +35,9 @@ if get_option('buildtype') == 'debug'
 	cflags += '-fno-omit-frame-pointer'
 	cflags += '-DMPL_DEBUG'
 endif
+if get_option('test_config')
+	cflags += '-DMPL_TEST_CONFIG'
+endif
 
 subdir('src')
 
