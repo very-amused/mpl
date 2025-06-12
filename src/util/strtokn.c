@@ -2,7 +2,42 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+void strtokn_init(StrtoknState *state, const char *s, size_t s_len) {
+	state->s = s;
+	state->s_len = s_len;
 
+	state->offset = state->tok_len = 0;
+	state->delim_read = false;
+}
+
+int strtokn_s(StrtoknState *state, const char *delims) {
+	// Move offset past previous token + delim
+	state->offset += state->tok_len;
+	if (state->delim_read) {
+		state->offset += sizeof(char);
+	}
+	// Reset token length
+	state->tok_len = 0;
+	// Compute max token length we can parse and token start
+	const size_t max_len = state->s_len - state->offset;
+	const char *start = state->s + state->offset;
+
+	// Search until the next token is found or the string ends
+	while (state->tok_len < max_len) {
+		const char c = start[state->tok_len];
+		for (const char *delim = &delims[0]; *delim != '\0'; delim++) {
+			if (c == *delim) {
+				state->delim_read = true;
+				return 0;
+			}
+		}
+		state->tok_len++;
+	}
+
+	return -1;
+}
+
+#if 0
 int strtokn(size_t *offset, size_t *tok_len,
 		const char *s, const size_t s_len, const char *delims) {
 	// Move offset past previous token + delimiter
@@ -31,6 +66,7 @@ int strtokn(size_t *offset, size_t *tok_len,
 
 	return -1;
 }
+#endif
 
 int strtokn_consume(size_t *offset, size_t *tok_len,
 		const char *s, const size_t s_len, const char *consume) {
@@ -70,10 +106,7 @@ int strtokn_consume(size_t *offset, size_t *tok_len,
 	return -1;
 }
 
-int strtokn_s(strtoknState *state, const char *delims) {
-	return strtokn(&state->offset, &state->tok_len, state->s, state->s_len, delims);
-}
 
-int strtokn_consume_s(strtoknState *state, const char *consume) {
+int strtokn_consume_s(StrtoknState *state, const char *consume) {
 	return strtokn_consume(&state->offset, &state->tok_len, state->s, state->s_len, consume);
 }

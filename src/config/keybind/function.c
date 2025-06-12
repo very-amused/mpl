@@ -50,7 +50,7 @@ KeybindFnRoutine KeybindFnID_get_fn(const enum KeybindFnID fn_id) {
 
 
 /* #region Arg parsing for keybind functions */
-static enum Keybind_ERR argparse_noArgs(KeybindFn *_, strtoknState *parse_state) {
+static enum Keybind_ERR argparse_noArgs(KeybindFn *_, StrtoknState *parse_state) {
 	if (strtokn_s(parse_state, ")") == -1) {
 		return Keybind_SYNTAX_ERR;
 	} else if (parse_state->tok_len > 0) {
@@ -58,7 +58,7 @@ static enum Keybind_ERR argparse_noArgs(KeybindFn *_, strtoknState *parse_state)
 	}
 	return Keybind_OK;
 }
-static enum Keybind_ERR argparse_seekArgs(KeybindFn *fn, strtoknState *parse_state) {
+static enum Keybind_ERR argparse_seekArgs(KeybindFn *fn, StrtoknState *parse_state) {
 	// 1 arg: milliseconds (int32_t)
 	if (strtokn_s(parse_state, ")") == -1) {
 		return Keybind_SYNTAX_ERR;
@@ -75,7 +75,7 @@ static enum Keybind_ERR argparse_seekArgs(KeybindFn *fn, strtoknState *parse_sta
 	return Keybind_OK;
 }
 
-static enum Keybind_ERR argparse_legacy_noArgs(strtoknState *parse_state) {
+static enum Keybind_ERR argparse_legacy_noArgs(StrtoknState *parse_state) {
 	if (strtokn_s(parse_state, ")") == -1) {
 		return Keybind_SYNTAX_ERR;
 	} else if (parse_state->tok_len > 0) {
@@ -83,7 +83,7 @@ static enum Keybind_ERR argparse_legacy_noArgs(strtoknState *parse_state) {
 	}
 	return Keybind_OK;
 }
-static enum Keybind_ERR argparse_legacy_seekArgs(void **fn_args, KeybindFnLegacyArgDeleter *deleter, strtoknState *parse_state) {
+static enum Keybind_ERR argparse_legacy_seekArgs(void **fn_args, KeybindFnLegacyArgDeleter *deleter, StrtoknState *parse_state) {
 	// 1 arg: milliseconds (int32_t)
 	if (strtokn_s(parse_state, ")") == -1) {
 		return Keybind_SYNTAX_ERR;
@@ -104,7 +104,7 @@ static enum Keybind_ERR argparse_legacy_seekArgs(void **fn_args, KeybindFnLegacy
 
 // Parse function arguments from `parse_state`
 // Returns Keybind_INVALID_FN if fn->id doesn't have a parse case defined
-static enum Keybind_ERR KeybindFn_parse_args(KeybindFn *fn, strtoknState *parse_state) {
+static enum Keybind_ERR KeybindFn_parse_args(KeybindFn *fn, StrtoknState *parse_state) {
 	// Defaults are fn->args = NULL and fn->args_deleter = free
 	// (set earlier in KeybindFn_parse)
 	switch (fn->id) {
@@ -115,9 +115,10 @@ static enum Keybind_ERR KeybindFn_parse_args(KeybindFn *fn, strtoknState *parse_
 		case kbfn_seek_snap:
 			return argparse_seekArgs(fn, parse_state);
 	}
+	return Keybind_INVALID_FN;
 }
 
-enum Keybind_ERR KeybindFn_parse(KeybindFn *fn, strtoknState *parse_state) {
+enum Keybind_ERR KeybindFn_parse(KeybindFn *fn, StrtoknState *parse_state) {
 	// Set zero state so KeybindFn_deinit can be called if anything fails
 	fn->ident = NULL;
 	fn->id = -1;
@@ -158,7 +159,7 @@ void KeybindFn_deinit(KeybindFn *fn) {
 // Consume KeybindFn_DELIM and any surrounding whitespace,
 // leaving `parse_state` ready for [KeybindFn_parse] to be called again
 // NOTE: may return Keybind_EOF, which must be checked for
-enum Keybind_ERR KeybindFn_consume_delim(strtoknState *parse_state) {
+enum Keybind_ERR KeybindFn_consume_delim(StrtoknState *parse_state) {
 	// Eat whitespace
 	static const char WHITESPACE[] = " \n\t\r";
 	if (strtokn_consume_s(parse_state, WHITESPACE) == -1) {
@@ -178,7 +179,7 @@ enum Keybind_ERR KeybindFn_consume_delim(strtoknState *parse_state) {
 }
 
 enum Keybind_ERR KeybindFnLegacy_parse_args(enum KeybindFnID fn,
-		void **fn_args, KeybindFnLegacyArgDeleter *deleter, strtoknState *parse_state) {
+		void **fn_args, KeybindFnLegacyArgDeleter *deleter, StrtoknState *parse_state) {
 
 	// Defaults:
 	*fn_args = NULL;
@@ -217,7 +218,7 @@ void KeybindRoutineLegacy_deinit(KeybindRoutineLegacy *routine) {
 	free(routine->fn_arg_deleters);
 }
 
-enum Keybind_ERR KeybindRoutineLegacy_push(KeybindRoutineLegacy *routine, strtoknState *parse_state, size_t n) {
+enum Keybind_ERR KeybindRoutineLegacy_push(KeybindRoutineLegacy *routine, StrtoknState *parse_state, size_t n) {
 	// Parse function ident
 	// {function} (
 	if (strtokn_s(parse_state, "(") != 0) {

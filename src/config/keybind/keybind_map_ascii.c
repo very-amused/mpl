@@ -1,4 +1,5 @@
-#include "config/keybind/keycode.h"
+#include "function.h"
+#include "keycode.h"
 #include "error.h"
 #include "keybind_map.h"
 #include "util/log.h"
@@ -12,16 +13,22 @@
 #include <locale.h>
 
 struct KeybindMap {
-	bool map[255];
+	KeybindFn *map[255]; // TODO: we should map KeybindRoutine's
 };
 
 KeybindMap *KeybindMap_new() {
 	KeybindMap *keybinds = malloc(sizeof(KeybindMap));
-	memset(keybinds->map, false, sizeof(KeybindMap));
+	memset(keybinds->map, 0, sizeof(KeybindMap));
 	return keybinds;
 }
 
 void KeybindMap_free(KeybindMap *keybinds) {
+	for (size_t i = 0; i < sizeof(keybinds->map); i++) {
+		if (keybinds->map[i]) {
+			KeybindFn_deinit(keybinds->map[i]);
+		}
+		free(keybinds->map[i]);
+	}
 	free(keybinds);
 }
 
@@ -30,20 +37,23 @@ enum Keybind_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *line
 	setlocale(LC_ALL, "");
 
 	// Split by whitespace
-	const size_t line_len = strlen(line);
-	size_t offset = 0, tok_len = 0;
+	StrtoknState parse_state;
+	strtokn_init(&parse_state, line, strlen(line));
 	static const char DELIMS[] = " \n\t\r";
 
-#define NEXT() if (strtokn(&offset, &tok_len, line, line_len, DELIMS) != 0) return Keybind_SYNTAX_ERR
+#define NEXT() if (strtokn_s(&parse_state, DELIMS) != 0) return Keybind_SYNTAX_ERR
 	// bind
 	NEXT();
-	if (strncmp(&line[offset], "bind", tok_len) != 0) {
+	if (strncmp(&line[parse_state.offset], "bind", parse_state.tok_len) != 0) {
 		return Keybind_SYNTAX_ERR;
 	}
 
 	// {keyname}
 	NEXT();
-	char *keyname = strndup(&line[offset], tok_len);
+	char keyname[parse_state.tok_len+1];
+	strncpy(keyname, &line[parse_state.offset], parse_state.tok_len);
+	keyname[parse_state.tok_len] = '\0';
+	// Parse keycode
 	const wchar_t keycode = parse_keycode(keyname);
 	LOG(Verbosity_DEBUG, "Parsed keycode:\n\tkeyname: %s\n", keyname);
 	if (iswprint(keycode)) {
@@ -53,28 +63,23 @@ enum Keybind_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *line
 	}
 	LOG(Verbosity_DEBUG, "\tkeycode is unsigned ASCII: %s\n", is_uascii(keycode) ? "true" : "false");
 	if (!is_uascii(keycode)) {
-		free(keyname);
 		return Keybind_NON_ASCII;
 	}
 
 	// =
 	NEXT();
 	
-	// {function} (
-	if (strtokn(&offset, &tok_len, line, line_len, "(") != 0) {
-		return Keybind_SYNTAX_ERR;
+	// {function} (args...)
+	KeybindFn *routine = malloc(sizeof(KeybindFn));
+	enum Keybind_ERR status = KeybindFn_parse(routine, &parse_state);
+	if (status != Keybind_OK) {
+		KeybindFn_deinit(routine);
+		free(routine);
+		return status;
 	}
-	char *fn_ident = strndup(&line[offset], tok_len);
-
+	keybinds->map[keycode] = routine;
 	
 #undef NEXT
-
-	keybinds->map[keycode] = true;
-
-	// TODO: unused
-	free(keyname);
-	free(fn_ident);
-	
 
 	return Keybind_OK;
 }

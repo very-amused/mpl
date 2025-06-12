@@ -56,7 +56,7 @@ typedef struct KeybindFn {
 
 // Initialize a KeybindFn, parsing from `parse_state`;
 // `parse_state` will be left with a stored token delimited the function's closing paren
-enum Keybind_ERR KeybindFn_parse(KeybindFn *fn, strtoknState *parse_state);
+enum Keybind_ERR KeybindFn_parse(KeybindFn *fn, StrtoknState *parse_state);
 // Deinitialize a KeybindFn, freeing owned memory
 // and calling [args_deleter(args)]
 void KeybindFn_deinit(KeybindFn *fn);
@@ -66,7 +66,7 @@ static const char Keybind_DELIM = ';';
 // Consume KeybindFn_DELIM and any surrounding whitespace,
 // leaving `parse_state` ready for [KeybindFn_parse] to be called again
 // NOTE: may return Keybind_EOF, which must be checked for
-enum Keybind_ERR KeybindFn_consume_delim(strtoknState *parse_state);
+enum Keybind_ERR KeybindFn_consume_delim(StrtoknState *parse_state);
 
 /* #region Legacy routines */
 
@@ -86,7 +86,7 @@ typedef void (*KeybindFnLegacyArgDeleter)(void *);
 // Sets *fn_args to point to the function's argument struct.
 // Sets *deleter to point to the function's KeybindFnArgDeleter.
 enum Keybind_ERR KeybindFnLegacy_parse_args(enum KeybindFnID fn,
-		void **fn_args, KeybindFnLegacyArgDeleter *deleter, strtoknState *parse_state);
+		void **fn_args, KeybindFnLegacyArgDeleter *deleter, StrtoknState *parse_state);
 
 typedef struct KeybindRoutineLegacy {
 	// Number of functions (defined in config/functions.h)
@@ -115,6 +115,6 @@ void KeybindRoutineLegacy_deinit(KeybindRoutineLegacy *routine);
 
 // Push the nth KeybindFn to the back of the keybind routine.
 // Returns -1 if we've hit the end of the line being parsed
-enum Keybind_ERR KeybindRoutineLegacy_push(KeybindRoutineLegacy *routine, strtoknState *parse_state, size_t n);
+enum Keybind_ERR KeybindRoutineLegacy_push(KeybindRoutineLegacy *routine, StrtoknState *parse_state, size_t n);
 
 /* #endregion */

@@ -43,12 +43,8 @@ enum Keybind_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *line
 	// Ensure UTF-8 support
 	setlocale(LC_ALL, "");
 	// Split by whitespace
-	strtoknState parse_state = {
-		.offset = 0,
-		.tok_len = 0,
-		.s = line,
-		.s_len = strlen(line)
-	};
+	StrtoknState parse_state;
+	strtokn_init(&parse_state, line, strlen(line));
 	static const char DELIMS[] = " \n\t\r";
 
 #define NEXT() if (strtokn_s(&parse_state, DELIMS) != 0) return Keybind_SYNTAX_ERR
@@ -77,7 +73,7 @@ enum Keybind_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *line
 	std::unique_ptr<KeybindRoutineLegacy> routine(new KeybindRoutineLegacy);
 	// Count how many functions we're calling in this routine
 	{
-		strtoknState count_state = parse_state;
+		StrtoknState count_state = parse_state;
 		while (strtokn_s(&count_state, ")") != -1) {
 			routine->n_fns++;
 		}
