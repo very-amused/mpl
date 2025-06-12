@@ -130,9 +130,9 @@ enum Keybind_ERR KeybindFn_parse(KeybindFn *fn, StrtoknState *parse_state) {
 	if (strtokn(parse_state, "(") == -1) {
 		return Keybind_SYNTAX_ERR;
 	}
-	fn->ident = malloc((parse_state->s_len + 1) * sizeof(char));
-	strncpy(fn->ident, &parse_state->s[parse_state->offset], parse_state->s_len);
-	fn->ident[parse_state->s_len] = '\0';
+	fn->ident = malloc((parse_state->tok_len + 1) * sizeof(char));
+	strncpy(fn->ident, &parse_state->s[parse_state->offset], parse_state->tok_len);
+	fn->ident[parse_state->tok_len] = '\0';
 
 	// Get function ID
 	fn->id = KeybindFnID_from_ident(fn->ident);
@@ -154,6 +154,14 @@ void KeybindFn_deinit(KeybindFn *fn) {
 	free(fn->ident);
 	// Delete args
 	fn->args_deleter(fn->args);
+}
+
+void KeybindFn_call(const KeybindFn *fn) {
+	fn->routine(fn->args);
+}
+
+void KeybindFnArray_init(KeybindFnArray *arr) {
+	memset(arr, 0, sizeof(KeybindFnArray));
 }
 
 enum Keybind_ERR KeybindFnArray_parse(KeybindFnArray *arr, StrtoknState *parse_state) {

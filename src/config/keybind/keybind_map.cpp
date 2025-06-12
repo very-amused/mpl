@@ -17,6 +17,13 @@ extern "C" {
 #include <string>
 #include <memory>
 
+KeybindFnArray::KeybindFnArray() {
+	KeybindFnArray_init(this);
+}
+KeybindFnArray::~KeybindFnArray() {
+	KeybindFnArray_deinit(this);
+}
+
 KeybindRoutineLegacy::KeybindRoutineLegacy() {
 	KeybindRoutineLegacy_init(this);
 }
@@ -27,7 +34,7 @@ KeybindRoutineLegacy::~KeybindRoutineLegacy() {
 extern "C" {
 
 struct KeybindMap {
-	std::unordered_map<wchar_t, std::unique_ptr<KeybindRoutineLegacy>> map;
+	std::unordered_map<wchar_t, std::unique_ptr<KeybindFnArray>> map;
 };
 
 KeybindMap *KeybindMap_new() {
@@ -69,35 +76,15 @@ enum Keybind_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *line
 	// =
 	NEXT();
 
-	// Construct our routine for this keybind
-	std::unique_ptr<KeybindRoutineLegacy> routine(new KeybindRoutineLegacy);
-	// Count how many functions we're calling in this routine
-	{
-		StrtoknState count_state = parse_state;
-		while (strtokn(&count_state, ")") != -1) {
-			routine->n_fns++;
-		}
-	}
-	// Allocate routine arrays
-	routine->fns = (KeybindFnLegacy *)malloc(routine->n_fns * sizeof(KeybindFnLegacy));
-	routine->fn_args = (void **)malloc(routine->n_fns * sizeof(void *));
-	routine->fn_arg_deleters = (KeybindFnLegacyArgDeleter *)malloc(routine->n_fns * sizeof(KeybindFnLegacyArgDeleter));
-	// TODO: Safer KeybindRoutine initialization
-	for (size_t i = 0; i < routine->n_fns; i++) {
-		routine->fns[i] = NULL;
-		routine->fn_args[i] = NULL;
-		routine->fn_arg_deleters[i] = free;
-	}
-	// Parse routine
-	for (size_t i = 0; i < routine->n_fns; i++) {
-		enum Keybind_ERR err = KeybindRoutineLegacy_push(routine.get(), &parse_state, i);
-		if (err != Keybind_OK) {
-			return err;
-		}
+	// Construct our function array for this keybind
+	std::unique_ptr<KeybindFnArray> fn_arr(new KeybindFnArray);
+	enum Keybind_ERR err = KeybindFnArray_parse(fn_arr.get(), &parse_state);
+	if (err != Keybind_OK) {
+		return err;
 	}
 
 	// Add the routine to our keybind map
-	keybinds->map[keycode] = std::move(routine);
+	keybinds->map[keycode] = std::move(fn_arr);
 
 	return Keybind_OK;
 }
@@ -108,9 +95,9 @@ enum Keybind_ERR KeybindMap_call_keybind(KeybindMap *keybinds, wchar_t keycode) 
 		return Keybind_NOT_FOUND;
 	}
 
-	KeybindRoutineLegacy *routine = keybinds->map[keycode].get();
-	for (size_t i = 0; i < routine->n_fns; i++) {
-		routine->fns[i](routine->fn_args[i]);
+	KeybindFnArray *fn_arr = keybinds->map[keycode].get();
+	for (size_t i = 0; i < fn_arr->n; i++) {
+		KeybindFn_call(fn_arr->fns[i]);
 	}
 
 	return Keybind_OK;

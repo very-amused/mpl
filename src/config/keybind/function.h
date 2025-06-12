@@ -61,6 +61,9 @@ enum Keybind_ERR KeybindFn_parse(KeybindFn *fn, StrtoknState *parse_state);
 // and calling [args_deleter(args)]
 void KeybindFn_deinit(KeybindFn *fn);
 
+// Call fn->routine with fn->args
+void KeybindFn_call(const KeybindFn *fn);
+
 // Delimiter between KeybindFn's used in mpl.conf
 static const char Keybind_DELIM = ';';
 
@@ -68,7 +71,17 @@ static const char Keybind_DELIM = ';';
 typedef struct KeybindFnArray {
 	size_t n;
 	KeybindFn **fns;
+#ifdef __cplusplus
+	// Attach RAII to _parse and _deinit methods
+	// Initialize to zero value
+	KeybindFnArray();
+	~KeybindFnArray();
+#endif
 } KeybindFnArray;
+
+// Initialize a KeybindFnArray to its zero value
+// NOTE: should only be used in C++ for RAII purposes. KeybindFnArray_parse is the preferred KeybindFnArray initializer.
+void KeybindFnArray_init(KeybindFnArray *arr);
 
 // Initialize a KeybindFnArray, parsing from `state_state`.
 // `parse_state` will be left at the end of its string
