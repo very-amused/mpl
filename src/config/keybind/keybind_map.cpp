@@ -47,7 +47,7 @@ enum Keybind_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *line
 	strtokn_init(&parse_state, line, strlen(line));
 	static const char DELIMS[] = " \n\t\r";
 
-#define NEXT() if (strtokn_s(&parse_state, DELIMS) != 0) return Keybind_SYNTAX_ERR
+#define NEXT() if (strtokn(&parse_state, DELIMS) != 0) return Keybind_SYNTAX_ERR
 	// bind
 	NEXT();
 	if (strncmp(&line[parse_state.offset], "bind", parse_state.tok_len) != 0) {
@@ -74,7 +74,7 @@ enum Keybind_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *line
 	// Count how many functions we're calling in this routine
 	{
 		StrtoknState count_state = parse_state;
-		while (strtokn_s(&count_state, ")") != -1) {
+		while (strtokn(&count_state, ")") != -1) {
 			routine->n_fns++;
 		}
 	}

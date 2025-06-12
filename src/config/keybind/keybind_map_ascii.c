@@ -41,7 +41,7 @@ enum Keybind_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *line
 	strtokn_init(&parse_state, line, strlen(line));
 	static const char DELIMS[] = " \n\t\r";
 
-#define NEXT() if (strtokn_s(&parse_state, DELIMS) != 0) return Keybind_SYNTAX_ERR
+#define NEXT() if (strtokn(&parse_state, DELIMS) != 0) return Keybind_SYNTAX_ERR
 	// bind
 	NEXT();
 	if (strncmp(&line[parse_state.offset], "bind", parse_state.tok_len) != 0) {

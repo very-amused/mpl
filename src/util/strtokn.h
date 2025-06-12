@@ -4,17 +4,6 @@
 
 /* strtokn: good string tokenization functions for parsing */
 
-/* strtok if it was good.
-*offset and *tok_len must both be 0 when first called,
-and will be set to offset and length values (relative to s) of the next split token
-Returns 0 on success, -1 on EOF
-
-(c) 2024 Keith Scroggs;
-Originally implemented in argon2_mariadb */
-#if 0
-int strtokn(size_t *offset, size_t *tok_len,
-		const char *s, const size_t s_len, const char *delims);
-#endif
 
 // State for the strtokn family of functions
 // Initialize with [strtokn_init]
@@ -38,8 +27,16 @@ void strtokn_init(StrtoknState *state, const char *s, const size_t s_len);
 int strtokn_consume(size_t *offset, size_t *tok_len,
 		const char *s, const size_t s_len, const char *consume);
 
-// Call strtokn with a state struct
-int strtokn_s(StrtoknState *state, const char *delims);
+/*
+strtok if it was good. initialize state with [strtokn_init] before first call.
+each call will result in state->offset and state->tok_len being set to offset and length values
+(relative to state->s) of the next split token.
+Returns 0 on success, -1 on EOF
+
+(c) 2024 Keith Scroggs;
+Originally implemented in argon2_mariadb
+*/
+int strtokn(StrtoknState *state, const char *delims);
 
 // Call strtokn_consume with a state struct
 int strtokn_consume_s(StrtoknState *state, const char *consume);

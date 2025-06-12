@@ -10,7 +10,7 @@ void strtokn_init(StrtoknState *state, const char *s, size_t s_len) {
 	state->delim_read = false;
 }
 
-int strtokn_s(StrtoknState *state, const char *delims) {
+int strtokn(StrtoknState *state, const char *delims) {
 	// Move offset past previous token + delim
 	state->offset += state->tok_len;
 	if (state->delim_read) {
@@ -36,37 +36,6 @@ int strtokn_s(StrtoknState *state, const char *delims) {
 
 	return -1;
 }
-
-#if 0
-int strtokn(size_t *offset, size_t *tok_len,
-		const char *s, const size_t s_len, const char *delims) {
-	// Move offset past previous token + delimiter
-	if (*tok_len > 0) {
-		*offset += *tok_len + sizeof(char);
-	} else if (*offset > 0) {
-		*offset += sizeof(char);
-	}
-	// Max token length
-	const size_t max_len = s_len - *offset;
-	// Token start
-	const char *start = s + *offset;
-	// Reset current token length
-	*tok_len = 0;
-
-	// Search until the next token is found or the string ends
-	while (*tok_len < max_len) {
-		const char c = start[*tok_len];
-		for (const char *delim = &delims[0]; *delim != '\0'; delim++) {
-			if (c == *delim) {
-				return 0;
-			}
-		}
-		(*tok_len)++;
-	}
-
-	return -1;
-}
-#endif
 
 int strtokn_consume(size_t *offset, size_t *tok_len,
 		const char *s, const size_t s_len, const char *consume) {

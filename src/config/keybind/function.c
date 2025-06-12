@@ -51,7 +51,7 @@ KeybindFnRoutine KeybindFnID_get_fn(const enum KeybindFnID fn_id) {
 
 /* #region Arg parsing for keybind functions */
 static enum Keybind_ERR argparse_noArgs(KeybindFn *_, StrtoknState *parse_state) {
-	if (strtokn_s(parse_state, ")") == -1) {
+	if (strtokn(parse_state, ")") == -1) {
 		return Keybind_SYNTAX_ERR;
 	} else if (parse_state->tok_len > 0) {
 		return Keybind_INVALID_ARG;
@@ -60,7 +60,7 @@ static enum Keybind_ERR argparse_noArgs(KeybindFn *_, StrtoknState *parse_state)
 }
 static enum Keybind_ERR argparse_seekArgs(KeybindFn *fn, StrtoknState *parse_state) {
 	// 1 arg: milliseconds (int32_t)
-	if (strtokn_s(parse_state, ")") == -1) {
+	if (strtokn(parse_state, ")") == -1) {
 		return Keybind_SYNTAX_ERR;
 	}
 	struct seekArgs *args = malloc(sizeof(struct seekArgs));
@@ -76,7 +76,7 @@ static enum Keybind_ERR argparse_seekArgs(KeybindFn *fn, StrtoknState *parse_sta
 }
 
 static enum Keybind_ERR argparse_legacy_noArgs(StrtoknState *parse_state) {
-	if (strtokn_s(parse_state, ")") == -1) {
+	if (strtokn(parse_state, ")") == -1) {
 		return Keybind_SYNTAX_ERR;
 	} else if (parse_state->tok_len > 0) {
 		return Keybind_INVALID_ARG;
@@ -85,7 +85,7 @@ static enum Keybind_ERR argparse_legacy_noArgs(StrtoknState *parse_state) {
 }
 static enum Keybind_ERR argparse_legacy_seekArgs(void **fn_args, KeybindFnLegacyArgDeleter *deleter, StrtoknState *parse_state) {
 	// 1 arg: milliseconds (int32_t)
-	if (strtokn_s(parse_state, ")") == -1) {
+	if (strtokn(parse_state, ")") == -1) {
 		return Keybind_SYNTAX_ERR;
 	}
 	struct seekArgs *args = malloc(sizeof(struct seekArgs));
@@ -127,7 +127,7 @@ enum Keybind_ERR KeybindFn_parse(KeybindFn *fn, StrtoknState *parse_state) {
 	fn->args_deleter = free;
 
 	// Parse function ident
-	if (strtokn_s(parse_state, "(") == -1) {
+	if (strtokn(parse_state, "(") == -1) {
 		return Keybind_SYNTAX_ERR;
 	}
 	fn->ident = malloc((parse_state->s_len + 1) * sizeof(char));
@@ -221,7 +221,7 @@ void KeybindRoutineLegacy_deinit(KeybindRoutineLegacy *routine) {
 enum Keybind_ERR KeybindRoutineLegacy_push(KeybindRoutineLegacy *routine, StrtoknState *parse_state, size_t n) {
 	// Parse function ident
 	// {function} (
-	if (strtokn_s(parse_state, "(") != 0) {
+	if (strtokn(parse_state, "(") != 0) {
 		return Keybind_SYNTAX_ERR;
 	}
 	char fn_ident[parse_state->tok_len + 1];
@@ -247,7 +247,7 @@ enum Keybind_ERR KeybindRoutineLegacy_push(KeybindRoutineLegacy *routine, Strtok
 		return Keybind_OK;
 	}
 	static const char FUNCTION_DELIMS[] = ";";
-	if (strtokn_s(parse_state, FUNCTION_DELIMS) == -1) {
+	if (strtokn(parse_state, FUNCTION_DELIMS) == -1) {
 		return Keybind_SYNTAX_ERR;
 	}
 
