@@ -36,16 +36,8 @@ int main(int argc, const char **argv) {
 
 	// Parse mpl.conf
 	mplConfig config;
-	mplConfig_init(&config); // initialize empty but valid config state
-	char *config_path = NULL;
-	size_t config_path_len;
-	if (mplConfig_find_path(&config_path, &config_path_len) == 0) {
-		mplConfig_parse(&config, config_path);
-	} else {
-		// TODO: embed default mpl.conf
-		LOG(Verbosity_NORMAL, "Missing default config! exiting.\n");
-		exit(1);
-	}
+	char *config_path = mplConfig_find_path();
+	mplConfig_parse(&config, config_path);
 	free(config_path);
 
 	// Form URL from file argv

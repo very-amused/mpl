@@ -24,13 +24,6 @@ KeybindFnArray::~KeybindFnArray() {
 	KeybindFnArray_deinit(this);
 }
 
-KeybindRoutineLegacy::KeybindRoutineLegacy() {
-	KeybindRoutineLegacy_init(this);
-}
-KeybindRoutineLegacy::~KeybindRoutineLegacy() {
-	KeybindRoutineLegacy_deinit(this);
-}
-
 extern "C" {
 
 struct KeybindMap {

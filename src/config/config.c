@@ -3,8 +3,10 @@
 #include "keybind/keybind_map.h"
 #include "util/log.h"
 #include "util/path.h"
+#include "util/strtokn.h"
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -37,41 +39,51 @@ static bool is_readable(const char *path) {
 }
 #endif
 
-int mplConfig_find_path(char **path, size_t *path_len) {
+#ifdef __unix__
+// included via default_config.s
+extern const char mpl_default_config[];
+extern const uint64_t mpl_default_config_len;
+#endif
+
+static const char *get_default_config() {
+#ifdef __unix__
+	return mpl_default_config;
+#else
+	// TODO: WIN32
+	return NULL;
+#endif
+}
+
+static const size_t get_default_config_len() {
+#ifdef __unix__
+	return mpl_default_config_len;
+#else
+	// TODO: WIN32
+	return NULL;
+#endif
+}
+
+char *mplConfig_find_path() {
 #ifdef MPL_TEST_CONFIG
 	static const char testpath[] = "../test/mpl.conf";
-	*path_len = sizeof(testpath) - 1;
-	*path = strndup(testpath, *path_len);
-	return 0;
+	return strndup(testpath, sizeof(testpath)-1);
 #else
 	// temp path buffers we use to check file existence before setting *path and *path_len
-	char *tmp;
-	size_t tmp_len;
+	char *path;
+	size_t path_len;
 
-	// 1. $XDG_CONFIG_HOME/mpl/mpl.conf
-	const char *xdg_config_home = getenv("XDG_CONFIG_HOME");
-	if (xdg_config_home) {
-		const char *parts[] = {xdg_config_home, "mpl", "mpl.conf"};
-		path_join(&tmp, &tmp_len, parts, sizeof(parts) / sizeof(parts[0]));
-		if (is_readable(tmp)) {
-			*path = tmp;
-			*path_len = tmp_len;
-			return 0;
-		}
-	}
-	// 2. $HOME/.config/mpl/mpl.conf
+	// $HOME/mpl/mpl.conf
 	const char *home = getenv("HOME");
 	if (home) {
 		const char *parts[] = {home, ".config", "mpl", "mpl.conf"};
-		path_join(&tmp, &tmp_len, parts, sizeof(parts) / sizeof(parts[0]));
-		if (is_readable(tmp)) {
-			*path = tmp;
-			*path_len = tmp_len;
-			return 0;
+		path_join(&path, &path_len, parts, sizeof(parts) / sizeof(parts[0]));
+		if (is_readable(path)) {
+			return path;
 		}
+		free(path);
 	}
 
-	return -1;
+	return NULL;
 #endif
 }
 
@@ -79,9 +91,31 @@ int mplConfig_parse(mplConfig *conf, const char *path) {
 	// Error message buffer
 	char strerr[50];
 
-	// Initialize config values
-	conf->keybinds = KeybindMap_new();
-	
+	// Initialize config (zero val)
+	mplConfig_init(conf);
+
+	if (!path) {
+		// Make editable copy of default config we can insert null terminators in
+		const char *default_config = get_default_config();
+		const size_t default_config_len = get_default_config_len();
+		char *lines = strndup(default_config, default_config_len);
+		// Parse default config
+		StrtoknState parse_state;
+		strtokn_init(&parse_state, default_config, default_config_len);
+		int lineno = 1;
+		while (strtokn(&parse_state, "\n") != -1) {
+			// Parse line
+			lines[parse_state.offset + parse_state.tok_len] = '\0';
+			const char *line = &lines[parse_state.offset];
+			if (mplConfig_parse_line(conf, line, strerr, sizeof(strerr)) != 0) {
+				LOG(Verbosity_NORMAL, "Error parsing config at line %d: %s\n", lineno, strerr);
+			}
+			lineno++;
+		}
+		free(lines);
+		return 0;
+	}
+
 	// Open file
 	FILE *fp = fopen(path, "r");
 	if (!fp) {
