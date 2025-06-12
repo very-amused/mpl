@@ -2,7 +2,6 @@
 #include "config/functions.h"
 #include "error.h"
 #include "util/strtokn.h"
-#include "util/log.h"
 
 #include <stdio.h>
 #include <string.h>

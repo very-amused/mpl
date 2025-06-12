@@ -3,7 +3,6 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <wchar.h>
-#include <locale.h>
 
 const wchar_t parse_keycode(const char *keyname) {
 	switch (keyname[0]) {
