@@ -156,26 +156,54 @@ void KeybindFn_deinit(KeybindFn *fn) {
 	fn->args_deleter(fn->args);
 }
 
-// Consume KeybindFn_DELIM and any surrounding whitespace,
-// leaving `parse_state` ready for [KeybindFn_parse] to be called again
-// NOTE: may return Keybind_EOF, which must be checked for
-enum Keybind_ERR KeybindFn_consume_delim(StrtoknState *parse_state) {
-	// Eat whitespace
+enum Keybind_ERR KeybindFnArray_parse(KeybindFnArray *arr, StrtoknState *parse_state) {
+	// Zero members so KeybindFnArray_deinit is valid to call after a parse error
+	memset(arr, 0, sizeof(KeybindFnArray));
+	// Count closing parens to compute array size
+	StrtoknState count_state = *parse_state;
+	while (strtokn(&count_state, ")") != -1) {
+		arr->n++;
+	}
+
+	// Allocate and zero array
+	arr->fns = malloc(arr->n * sizeof(KeybindFn *));
+	memset(arr->fns, 0, arr->n * sizeof(KeybindFn *));
+	// TODO: we've gotten pretty bad about checking malloc's, a whole-codebase QC for allocation error handling is needed down the road
+
 	static const char WHITESPACE[] = " \n\t\r";
-	if (strtokn_consume_s(parse_state, WHITESPACE) == -1) {
-		return Keybind_EOF;
+
+	// Parse each KeybindFn
+	for (size_t i = 0; i < arr->n; i++) {
+		arr->fns[i] = malloc(sizeof(KeybindFn));
+		enum Keybind_ERR err = KeybindFn_parse(arr->fns[i], parse_state);
+		if (err != Keybind_OK) {
+			return err;
+		}
+		if (i == arr->n-1) {
+			break;
+		}
+		// Advance past function separator
+		static const char DELIMS[] = {Keybind_DELIM, '\0'};
+		if (strtokn(parse_state, DELIMS) != 0) {
+			return Keybind_SYNTAX_ERR;
+		}
+		// Consume whitespace until next function start
+		if (strtokn_consume_s(parse_state, WHITESPACE) != 0) {
+			return Keybind_SYNTAX_ERR;
+		}
 	}
-	if (parse_state->s[parse_state->offset] != Keybind_DELIM) {
-		return Keybind_SYNTAX_ERR;
-	}
-	if (strtokn_consume_s(parse_state, WHITESPACE) == -1) {
-		return Keybind_EOF;
-	}
-	// Walk back 1 before the next non-whitespace char, so we continue parsing from the right place
-	parse_state->tok_len = 0;
-	parse_state->offset--;
 
 	return Keybind_OK;
+}
+
+void KeybindFnArray_deinit(KeybindFnArray *arr) {
+	for (size_t i = 0; i < arr->n; i++) {
+		if (arr->fns[i]) {
+			KeybindFn_deinit(arr->fns[i]);
+		}
+		free(arr->fns[i]);
+	}
+	free(arr->fns);
 }
 
 enum Keybind_ERR KeybindFnLegacy_parse_args(enum KeybindFnID fn,

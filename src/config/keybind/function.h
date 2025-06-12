@@ -61,12 +61,21 @@ enum Keybind_ERR KeybindFn_parse(KeybindFn *fn, StrtoknState *parse_state);
 // and calling [args_deleter(args)]
 void KeybindFn_deinit(KeybindFn *fn);
 
+// Delimiter between KeybindFn's used in mpl.conf
 static const char Keybind_DELIM = ';';
 
-// Consume KeybindFn_DELIM and any surrounding whitespace,
-// leaving `parse_state` ready for [KeybindFn_parse] to be called again
-// NOTE: may return Keybind_EOF, which must be checked for
-enum Keybind_ERR KeybindFn_consume_delim(StrtoknState *parse_state);
+// A sequence of callable KeybindFn's
+typedef struct KeybindFnArray {
+	size_t n;
+	KeybindFn **fns;
+} KeybindFnArray;
+
+// Initialize a KeybindFnArray, parsing from `state_state`.
+// `parse_state` will be left at the end of its string
+enum Keybind_ERR KeybindFnArray_parse(KeybindFnArray *arr, StrtoknState *parse_state);
+
+// Deinitialize a KeybindFnArray for freeing
+void KeybindFnArray_deinit(KeybindFnArray *arr);
 
 /* #region Legacy routines */
 
