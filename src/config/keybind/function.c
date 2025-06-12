@@ -196,7 +196,7 @@ enum Keybind_ERR KeybindFnArray_parse(KeybindFnArray *arr, StrtoknState *parse_s
 			return Keybind_SYNTAX_ERR;
 		}
 		// Consume whitespace until next function start
-		if (strtokn_consume_s(parse_state, WHITESPACE) != 0) {
+		if (strtokn_consume(parse_state, WHITESPACE) != 0) {
 			return Keybind_SYNTAX_ERR;
 		}
 	}

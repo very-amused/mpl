@@ -34,9 +34,4 @@ int strtokn(StrtoknState *state, const char *delims);
 // Consume (ignore) every character in [consume] (starting at *offset+*tok_len) until a a char NOT in [consume] is reached, which will be the token returned.
 //
 // Returns 0 on success, -1 on EOF
-int strtokn_consume(size_t *offset, size_t *tok_len,
-		const char *s, const size_t s_len, const char *consume);
-
-
-// Call strtokn_consume with a state struct
-int strtokn_consume_s(StrtoknState *state, const char *consume);
+int strtokn_consume(StrtoknState *state, const char *consume);
