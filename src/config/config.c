@@ -1,9 +1,11 @@
 #include "config.h"
+#include "config/internal/state.h"
 #include "error.h"
 #include "keybind/keybind_map.h"
 #include "util/log.h"
 #include "util/path.h"
 #include "util/strtokn.h"
+#include "direct_eval/eval.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -39,29 +41,6 @@ static bool is_readable(const char *path) {
 }
 #endif
 
-#ifdef __unix__
-// included via default_config.s
-extern const char mpl_default_config[];
-extern uint64_t mpl_default_config_len;
-#endif
-
-static const char *get_default_config() {
-#ifdef __unix__
-	return mpl_default_config;
-#else
-	// TODO: WIN32
-	return NULL;
-#endif
-}
-
-static const size_t get_default_config_len() {
-#ifdef __unix__
-	return mpl_default_config_len;
-#else
-	// TODO: WIN32
-	return NULL;
-#endif
-}
 
 char *mplConfig_find_path() {
 #ifdef MPL_TEST_CONFIG
@@ -93,6 +72,9 @@ int mplConfig_parse(mplConfig *conf, const char *path) {
 
 	// Initialize config (zero val)
 	mplConfig_init(conf);
+	// Initialize state for direct-eval functions we may parse,
+	// which have the ability to direct manipulate our config
+	evalState_init(conf);
 
 	if (!path) {
 		// Make editable copy of default config we can insert null terminators in
@@ -154,6 +136,6 @@ static int mplConfig_parse_line(mplConfig *conf, const char *line,
 		return 0;
 	}
 
-	// TODO: support more than just keybinds
-	return 1;
+	// Try to parse a direct eval statement
+	return parse_direct_eval(line);
 }

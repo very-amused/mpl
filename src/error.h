@@ -109,7 +109,6 @@ static inline const char *Verbosity_name(enum Verbosity lvl) {
 
 #define KEYBIND_ERR(VARIANT) \
 	VARIANT(Keybind_OK) \
-	VARIANT(Keybind_EOF) /* EOF encountered while parsing */ \
 	VARIANT(Keybind_NOT_FOUND) /* A binding was not found for the provided key */ \
 	VARIANT(Keybind_SYNTAX_ERR) /* Syntax error while parsing a keybind definition */ \
 	VARIANT(Keybind_INVALID_FN) /* A function was called that doesn't exist */ \
