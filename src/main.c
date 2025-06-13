@@ -91,13 +91,14 @@ int main(int argc, const char **argv) {
 			enum Keybind_ERR err = KeybindMap_call_keybind(config.keybinds, key);
 			if (err != Keybind_OK) {
 				LOG(Verbosity_VERBOSE, "Keybind error: %s\n", Keybind_ERR_name(err));
-			} else {
-				break;
 			}
+			break;
+#if 0
 			if (call_keybind(key) != 0) {
 				LOG(Verbosity_VERBOSE, "Unknown key: %lc\n", key);
 			}
 			break;
+#endif
 		}
 		case mpl_TIMECODE:
 		{
