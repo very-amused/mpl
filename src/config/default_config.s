@@ -1,4 +1,4 @@
-.section rodata
+.section .rodata
 
 .global mpl_default_config
 .type mpl_default_config, @object

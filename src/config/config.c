@@ -42,7 +42,7 @@ static bool is_readable(const char *path) {
 #ifdef __unix__
 // included via default_config.s
 extern const char mpl_default_config[];
-extern const uint64_t mpl_default_config_len;
+extern uint64_t mpl_default_config_len;
 #endif
 
 static const char *get_default_config() {
@@ -98,6 +98,8 @@ int mplConfig_parse(mplConfig *conf, const char *path) {
 		// Make editable copy of default config we can insert null terminators in
 		const char *default_config = get_default_config();
 		const size_t default_config_len = get_default_config_len();
+		LOG(Verbosity_DEBUG, "default_config[0]: %c\n", default_config[0]);
+		LOG(Verbosity_DEBUG, "default_config_len: %zu\n", default_config_len);
 		char *lines = strndup(default_config, default_config_len);
 		// Parse default config
 		StrtoknState parse_state;
