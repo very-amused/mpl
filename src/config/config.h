@@ -3,6 +3,8 @@
 
 #include "keybind/keybind_map.h"
 
+static const char CONFIG_COMMENT = '#';
+
 typedef struct mplConfig {
 	KeybindMap *keybinds;
 } mplConfig;
