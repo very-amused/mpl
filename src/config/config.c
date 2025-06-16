@@ -1,4 +1,5 @@
 #include "config.h"
+#include "config/internal/state.h"
 #include "internal/parse.h"
 #include "keybind/keybind_map.h"
 #include "util/path.h"
@@ -20,6 +21,11 @@ void mplConfig_deinit(mplConfig *conf) {
 }
 
 int mplConfig_parse(mplConfig *conf, const char *path) {
+	// Initialize config state to its zero value
+	mplConfig_init(conf);
+	// Initialize macro state so we can parse macros
+	macroState_init(conf);
+
 	return mplConfig_parse_internal(conf, path, PARSE_ALL);
 }
 

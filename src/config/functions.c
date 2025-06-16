@@ -1,6 +1,7 @@
 #include "functions.h"
 #include "audio/seek.h"
 #include "config.h"
+#include "config/internal/parse.h"
 #include "config/internal/state.h"
 #include "queue/queue.h"
 #include "queue/state.h"
@@ -48,38 +49,6 @@ void macroState_init(mplConfig *config) {
 	macro_state.config = config;
 }
 
-// FIXME: we can make this a lot simpler by adding some basic flags on mplConfig_parse_line in config.c, namely a stmt_type binary OR flag
 void include_default_keybinds(void * _) {
-	KeybindMap *keybinds = macro_state.config->keybinds;
-	// Set up parsing for default config
-	const char *default_config = get_default_config();
-	const size_t default_config_len = get_default_config_len();
-	StrtoknState parse_state;
-	strtokn_init(&parse_state, default_config, default_config_len);
-	// Copy into mutable buffer so we can null-terminate
-	char *lines = strndup(default_config, default_config_len);
-
-	// Parse keybinds from default mpl.conf
-	int lineno = 1;
-	while (strtokn(&parse_state, "\n") != -1) {
-		// Null terminate
-		lines[parse_state.offset + parse_state.tok_len] = '\0';
-
-		// Handle keybind lines
-		static const char KEYBIND_PREFIX[] = "bind";
-		if (strncmp(&lines[parse_state.offset], KEYBIND_PREFIX, sizeof(KEYBIND_PREFIX)-1) != 0) {
-			lineno++;
-			continue;
-		}
-		enum Keybind_ERR err = KeybindMap_parse_mapping(keybinds, &lines[parse_state.offset]);
-		if (err != Keybind_OK) {
-			LOG(Verbosity_NORMAL, "Error: line %d of default mpl.conf contains an invalid keybind: %s. This error should never be seen!\n",
-					lineno, Keybind_ERR_name(err));
-		}
-
-		lineno++;
-		continue;
-	}
-
-	free(lines);
+	mplConfig_parse_internal(macro_state.config, NULL, PARSE_KEYBINDS);
 }

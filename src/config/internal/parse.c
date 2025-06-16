@@ -41,12 +41,8 @@ static int mplConfig_parse_line(mplConfig *conf, char *line,
 	}
 
 	// Handle macro lines
-	if ((flags & PARSE_MACROS) == PARSE_MACROS) {
-		int err = macro_eval(line);
-		if (err != 0) {
-			strncpy(strerr, "failed to evaluate macro", strerr_len);
-			return 1;
-		}
+	if ((flags & PARSE_MACROS) == PARSE_MACROS &&
+			macro_eval(line) == 0) {
 		return 0;
 	}
 
@@ -59,11 +55,6 @@ int mplConfig_parse_internal(mplConfig *conf, const char *path, const configPars
 	static char strerr[50];
 	// Line buffer
 	static char linebuf[BUFSIZ];
-
-	// Initialize config state to its zero value
-	mplConfig_init(conf);
-	// Initialize macro state so we can parse macros
-	macroState_init(conf);
 
 	if (!path) {
 		// Parse our default config
