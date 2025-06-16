@@ -5,19 +5,19 @@
 
 static const char CONFIG_COMMENT = '#';
 
-typedef struct mplConfig {
+typedef struct Config {
 	KeybindMap *keybinds;
-} mplConfig;
+} Config;
 
 // Find a valid path to parse mpl.conf from. Allocates *path using malloc, returns NULL if no config was found.
-char *mplConfig_find_path();
+char *Config_find_path();
 
 // Initialize config zero value
-void mplConfig_init(mplConfig *conf);
+void Config_init(Config *conf);
 // Deinitialize config state
-void mplConfig_deinit(mplConfig *conf);
+void Config_deinit(Config *conf);
 // Parse mpl.conf at *path, or apply MPL's built-in default config if path == NULL
-int mplConfig_parse(mplConfig *conf, const char *path);
+int Config_parse(Config *conf, const char *path);
 
 /* The default mpl.conf (from this repo's root) is compiled directly into MPL
 using the following symbols/resources: */

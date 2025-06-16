@@ -35,9 +35,9 @@ int main(int argc, const char **argv) {
 	LOG(Verbosity_VERBOSE, "Logging enabled: %s\n", Verbosity_name(CLI_opts.verbosity));
 
 	// Parse mpl.conf
-	mplConfig config;
-	char *config_path = mplConfig_find_path();
-	mplConfig_parse(&config, config_path);
+	Config config;
+	char *config_path = Config_find_path();
+	Config_parse(&config, config_path);
 	free(config_path);
 
 	// Form URL from file argv
@@ -134,7 +134,7 @@ quit:
 	Queue_deinit(&queue);
 	free(url);
 	LOG(Verbosity_DEBUG, "Deinitializing config\n");
-	mplConfig_deinit(&config);
+	Config_deinit(&config);
 
 	return 0;
 }

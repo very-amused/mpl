@@ -15,7 +15,7 @@
 //
 // Returns 0 on success, nonzero on error
 // Writes error message into *strerr on error
-static int mplConfig_parse_line(mplConfig *conf, char *line,
+static int Config_parse_line(Config *conf, char *line,
 		const configParseFlags flags,
 		char *strerr, const size_t strerr_len) {
 	// Discard comments
@@ -50,7 +50,7 @@ static int mplConfig_parse_line(mplConfig *conf, char *line,
 	return 1;
 }
 
-int mplConfig_parse_internal(mplConfig *conf, const char *path, const configParseFlags flags) {
+int Config_parse_internal(Config *conf, const char *path, const configParseFlags flags) {
 	// Error message buffer
 	static char strerr[50];
 	// Line buffer
@@ -74,7 +74,7 @@ int mplConfig_parse_internal(mplConfig *conf, const char *path, const configPars
 			linebuf[parse_state.tok_len] = '\0';
 
 			// Parse line
-			if (mplConfig_parse_line(conf, linebuf, flags, strerr, sizeof(strerr)) != 0) {
+			if (Config_parse_line(conf, linebuf, flags, strerr, sizeof(strerr)) != 0) {
 				LOG(Verbosity_NORMAL, "Error parsing config at line %d: %s\n", lineno, strerr);
 			}
 			lineno++;
@@ -92,7 +92,7 @@ int mplConfig_parse_internal(mplConfig *conf, const char *path, const configPars
 	size_t line_len = 0;
 	int lineno = 1;
 	while (getline(&line, &line_len, fp) != EOF) {
-		if (mplConfig_parse_line(conf, line, flags, strerr, sizeof(strerr)) != 0) {
+		if (Config_parse_line(conf, line, flags, strerr, sizeof(strerr)) != 0) {
 			LOG(Verbosity_NORMAL, "Error parsing config at line %d: %s\n", lineno, strerr);
 		}
 		lineno++;

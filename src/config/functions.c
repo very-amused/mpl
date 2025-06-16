@@ -7,8 +7,6 @@
 #include "queue/state.h"
 #include "ui/event.h"
 #include "ui/event_queue.h"
-#include "util/strtokn.h"
-#include "util/log.h"
 
 
 /* Bindable functions */
@@ -45,10 +43,10 @@ void seek_snap(const struct seekArgs *args) {
 
 static struct macroState macro_state;
 
-void macroState_init(mplConfig *config) {
+void macroState_init(Config *config) {
 	macro_state.config = config;
 }
 
 void include_default_keybinds(void * _) {
-	mplConfig_parse_internal(macro_state.config, NULL, PARSE_KEYBINDS);
+	Config_parse_internal(macro_state.config, NULL, PARSE_KEYBINDS);
 }

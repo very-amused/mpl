@@ -13,5 +13,5 @@ static const configParseFlags
 
 // Parse mpl.conf at *path, or apply MPL's built-in default config if path == NULL.
 //
-// WARNING: mplConfig_init(conf) and macroState_init(conf) MUST be called once before this function can be used. Failing to do so results in UB
-int mplConfig_parse_internal(mplConfig *conf, const char *path, const configParseFlags flags);
+// WARNING: Config_init(conf) and macroState_init(conf) MUST be called once before this function can be used. Failing to do so results in UB
+int Config_parse_internal(Config *conf, const char *path, const configParseFlags flags);

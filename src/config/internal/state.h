@@ -12,7 +12,7 @@ struct configState {
 // State passed only to macros
 // Macros are functions that manipulate the state of mpl.conf (rather than controlling MPL)
 struct macroState {
-	mplConfig *config;
+	Config *config;
 };
 
 
@@ -25,4 +25,4 @@ struct macroState {
 void configState_init(Queue *track_queue, EventQueue *evt_queue);
 // Initialize configuration state to passed to macro functions defined in
 // config/functions.h
-void macroState_init(mplConfig *config);
+void macroState_init(Config *config);

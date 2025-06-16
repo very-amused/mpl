@@ -12,21 +12,21 @@
 #include <stddef.h>
 #include <fcntl.h>
 
-void mplConfig_init(mplConfig *conf) {
+void Config_init(Config *conf) {
 	// Empty keybind map
 	conf->keybinds = KeybindMap_new();
 }
-void mplConfig_deinit(mplConfig *conf) {
+void Config_deinit(Config *conf) {
 	KeybindMap_free(conf->keybinds);
 }
 
-int mplConfig_parse(mplConfig *conf, const char *path) {
+int Config_parse(Config *conf, const char *path) {
 	// Initialize config state to its zero value
-	mplConfig_init(conf);
+	Config_init(conf);
 	// Initialize macro state so we can parse macros
 	macroState_init(conf);
 
-	return mplConfig_parse_internal(conf, path, PARSE_ALL);
+	return Config_parse_internal(conf, path, PARSE_ALL);
 }
 
 // Try to open *path as readable and immediately close it, returns whether we succeeded
@@ -42,7 +42,7 @@ static bool is_readable(const char *path) {
 #endif
 
 
-char *mplConfig_find_path() {
+char *Config_find_path() {
 #ifdef MPL_TEST_CONFIG
 	static const char testpath[] = "../test/mpl.conf";
 	return strndup(testpath, sizeof(testpath)-1);
