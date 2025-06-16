@@ -9,9 +9,9 @@ struct configState {
 	EventQueue *evt_queue; // used to send exit messages
 };
 
-// State passed ONLY to direct-eval functions
-// These functions manipulate the state of mpl.conf (rather than controlling MPL)
-struct evalState {
+// State passed only to macros
+// Macros are functions that manipulate the state of mpl.conf (rather than controlling MPL)
+struct macroState {
 	mplConfig *config;
 };
 
@@ -23,6 +23,6 @@ struct evalState {
 // NOTE: configState holds non-owning references and is only used on the main thread,
 // so there is no configState_deinit()
 void configState_init(Queue *track_queue, EventQueue *evt_queue);
-// Initialize direct-eval state to passed to direct-eval functions defined in
+// Initialize configuration state to passed to macro functions defined in
 // config/functions.h
-void evalState_init(mplConfig *config);
+void macroState_init(mplConfig *config);

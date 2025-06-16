@@ -5,7 +5,7 @@
 #include "util/log.h"
 #include "util/path.h"
 #include "util/strtokn.h"
-#include "direct_eval/eval.h"
+#include "macro/macro.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -72,9 +72,9 @@ int mplConfig_parse(mplConfig *conf, const char *path) {
 
 	// Initialize config (zero val)
 	mplConfig_init(conf);
-	// Initialize state for direct-eval functions we may parse,
+	// Initialize state for macros we may parse,
 	// which have the ability to direct manipulate our config
-	evalState_init(conf);
+	macroState_init(conf);
 
 	if (!path) {
 		// Make editable copy of default config we can insert null terminators in
@@ -136,6 +136,6 @@ static int mplConfig_parse_line(mplConfig *conf, const char *line,
 		return 0;
 	}
 
-	// Try to parse a direct eval statement
-	return parse_direct_eval(line);
+	// Try to evaluate the line as a macro
+	return macro_eval(line);
 }

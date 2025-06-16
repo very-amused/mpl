@@ -2,8 +2,8 @@
 #include "util/log.h"
 #include <string.h>
 
-int parse_direct_eval(const char *line) {
-	static const char eval_msg[] = "Evaluating direct-eval statement '%s' in mpl.conf\n";
+int macro_eval(const char *line) {
+	static const char eval_msg[] = "Evaluating macro '%s' in mpl.conf\n";
 
 	switch (line[0]) {
 	case 'i':

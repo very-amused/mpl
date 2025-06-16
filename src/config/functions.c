@@ -40,17 +40,17 @@ void seek_snap(const struct seekArgs *args) {
 	Queue_seek_snap(config_state.queue, args->ms);
 }
 
-/* Direct eval functions */
+/* Macro functions */
 
-static struct evalState eval_state;
+static struct macroState macro_state;
 
-void evalState_init(mplConfig *config) {
-	eval_state.config = config;
+void macroState_init(mplConfig *config) {
+	macro_state.config = config;
 }
 
 // FIXME: we can make this a lot simpler by adding some basic flags on mplConfig_parse_line in config.c, namely a stmt_type binary OR flag
 void include_default_keybinds(void * _) {
-	KeybindMap *keybinds = eval_state.config->keybinds;
+	KeybindMap *keybinds = macro_state.config->keybinds;
 	// Set up parsing for default config
 	const char *default_config = get_default_config();
 	const size_t default_config_len = get_default_config_len();

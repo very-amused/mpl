@@ -8,4 +8,4 @@ src_config += files('default_config.s')
 src += src_config
 
 subdir('keybind')
-subdir('direct_eval')
+subdir('macro')
