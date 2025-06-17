@@ -35,3 +35,6 @@ int strtokn(StrtoknState *state, const char *delims);
 //
 // Returns 0 on success, -1 on EOF
 int strtokn_consume(StrtoknState *state, const char *consume);
+
+// Whitespace characters, useful for parsing
+static const char WHITESPACE[] = " \n\t\r";

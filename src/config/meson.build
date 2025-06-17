@@ -1,4 +1,4 @@
-src_config = files('functions.c', 'config.c')
+src_config = files('functions.c', 'config.c', 'settings.c')
 # WARNING: due to meson not understanding .incbin and
 # **not providing an escape hatch to directly declare incremental build depfiles**,
 # changes to the default mpl.conf do NOT trigger a rebuild.

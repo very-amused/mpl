@@ -14,6 +14,7 @@
 #include "audio/pcm.h"
 #include "audio/track.h"
 #include "backend.h"
+#include "config/config.h"
 #include "error.h"
 #include "pipewire/core.h"
 #include "pipewire/keys.h"
@@ -30,6 +31,8 @@
 typedef struct Ctx {
 	// Event queue for communication with the main thread (UI)
 	EventQueue *evt_queue;
+	// Config for ab_* settings
+	const Config *config;
 
 	// Asynchronous event loop
 	struct pw_thread_loop *loop;
@@ -49,7 +52,7 @@ typedef struct Ctx {
 } Ctx;
 
 /* PipeWire AudioBackend methods */
-static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq);
+static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Config *conf);
 static void deinit(void *ctx__);
 static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *track);
 static enum AudioBackend_ERR play(void *ctx__, bool pause);
@@ -77,7 +80,7 @@ static void pw_stream_write_cb_(void *ctx__);
 // Audio stream state change callback
 static void pw_stream_state_cb_(void *ctx__, enum pw_stream_state old_state, enum pw_stream_state state, const char *errmsg);
 
-static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq) {
+static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Config *conf) {
 	Ctx *ctx = ctx__;
 
 	// Connect to event queue
@@ -85,6 +88,8 @@ static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq) {
 	if (!ctx->evt_queue) {
 		return AudioBackend_EVENT_QUEUE_ERR;
 	}
+	// Store config reference
+	ctx->config = conf;
 
 	// Initialize the Pipewire API
 	pw_init(0, NULL);

@@ -1,11 +1,13 @@
 #pragma once
 #include <stdint.h>
 
+#include "settings.h"
 #include "keybind/keybind_map.h"
 
 static const char CONFIG_COMMENT = '#';
 
 typedef struct Config {
+	Settings settings;
 	KeybindMap *keybinds;
 } Config;
 

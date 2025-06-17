@@ -129,3 +129,22 @@ static inline const char *Keybind_ERR_name(enum Keybind_ERR err) {
 }
 
 #undef KEYBIND_ERR
+
+#define SETTINGS_ERR(VARIANT) \
+	VARIANT(Settings_OK) \
+	VARIANT(Settings_UNKNOWN) /* An unknown setting is provided in mpl.conf */ \
+	VARIANT(Settings_SYNTAX_ERR) /* Syntax error while parsing a setting definition */ \
+
+// Errors return by a Settings_* method
+enum Settings_ERR {
+	SETTINGS_ERR(ENUM_VAL)
+};
+
+static inline const char *Settings_ERR_name(enum Settings_ERR err) {
+	switch (err) {
+		SETTINGS_ERR(ENUM_KEY)
+	}
+	return DEFAULT_ERR_NAME;
+}
+
+#undef SETTINGS_ERR

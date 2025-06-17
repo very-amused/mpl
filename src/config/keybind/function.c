@@ -152,8 +152,6 @@ enum Keybind_ERR KeybindFnArray_parse(KeybindFnArray *arr, StrtoknState *parse_s
 	memset(arr->fns, 0, arr->n * sizeof(KeybindFn *));
 	// TODO: we've gotten pretty bad about checking malloc's, a whole-codebase QC for allocation error handling is needed down the road
 
-	static const char WHITESPACE[] = " \n\t\r";
-
 	// Parse each KeybindFn
 	for (size_t i = 0; i < arr->n; i++) {
 		arr->fns[i] = malloc(sizeof(KeybindFn));

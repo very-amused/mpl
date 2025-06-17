@@ -2,6 +2,7 @@
 #include "config/config.h"
 #include "config/internal/state.h"
 #include "config/macro/macro.h"
+#include "config/settings.h"
 #include "error.h"
 #include "util/log.h"
 #include "util/strtokn.h"
@@ -18,6 +19,13 @@
 static int Config_parse_line(Config *conf, char *line,
 		const configParseFlags flags,
 		char *strerr, const size_t strerr_len) {
+	// Trim line ending
+	char *cr = strchr(line, '\r'), *lf = strchr(line, '\n');
+	if (cr) {
+		*cr = '\0';
+	} else if (lf) {
+		*lf = '\0';
+	}
 	// Discard comments
 	char *comment = strchr(line, CONFIG_COMMENT);
 	if (comment) {
@@ -38,6 +46,17 @@ static int Config_parse_line(Config *conf, char *line,
 			return 1;
 		} 
 		return 0;
+	}
+
+	// Handle settings lines
+	if ((flags & PARSE_SETTINGS) == PARSE_SETTINGS){
+		enum Settings_ERR err = Settings_parse_setting(&conf->settings, line);
+		if (err == Settings_OK) {
+			return 0;
+		} else if (err != Settings_SYNTAX_ERR) {
+			strncpy(strerr, Settings_ERR_name(err), strerr_len);
+			return 1;
+		}
 	}
 
 	// Handle macro lines

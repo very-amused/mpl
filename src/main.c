@@ -52,7 +52,7 @@ int main(int argc, const char **argv) {
 	// Initialize queue w/ track
 	Queue queue;
 	Queue_init(&queue);
-	Queue_connect_audio(&queue, NULL, ui.evt_queue);
+	Queue_connect_audio(&queue, NULL, ui.evt_queue, &config);
 	if (Queue_prepend(&queue, Track_new(url, url_len)) != 0) {
 		goto quit;
 	}

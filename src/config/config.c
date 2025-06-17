@@ -1,5 +1,6 @@
 #include "config.h"
 #include "config/internal/state.h"
+#include "config/settings.h"
 #include "internal/parse.h"
 #include "keybind/keybind_map.h"
 #include "util/path.h"
@@ -13,6 +14,8 @@
 #include <fcntl.h>
 
 void Config_init(Config *conf) {
+	// Default settings
+	Settings_init(&conf->settings);
 	// Empty keybind map
 	conf->keybinds = KeybindMap_new();
 }

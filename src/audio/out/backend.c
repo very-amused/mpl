@@ -1,3 +1,4 @@
+#include "config/config.h"
 #include "ui/event_queue.h"
 #include <string.h>
 
@@ -6,7 +7,7 @@
 #include "util/log.h"
 
 // Initialize an AudioBackend for playback
-enum AudioBackend_ERR AudioBackend_init(AudioBackend *ab, const EventQueue *eq) {
+enum AudioBackend_ERR AudioBackend_init(AudioBackend *ab, const EventQueue *eq, const Config *conf) {
 	// Allocate and zero ctx
 	ab->ctx = malloc(ab->ctx_size);
 	if (ab->ctx == NULL) {
@@ -17,7 +18,7 @@ enum AudioBackend_ERR AudioBackend_init(AudioBackend *ab, const EventQueue *eq) 
 	// including error states occuring at any point in ab->init
 	memset(ab->ctx, 0, ab->ctx_size);
 
-	return ab->init(ab->ctx, eq);
+	return ab->init(ab->ctx, eq, conf);
 }
 
 // Deinitialize an AudioBackend

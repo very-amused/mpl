@@ -10,12 +10,14 @@
 #include <pulse/error.h>
 #include <stdatomic.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stddef.h>
 
 #include "audio/buffer.h"
 #include "audio/pcm.h"
 #include "audio/track.h"
 #include "backend.h"
+#include "config/config.h"
 #include "error.h"
 #include "ui/event.h"
 #include "ui/event_queue.h"
@@ -41,10 +43,13 @@ typedef struct Ctx {
 	// Playback buffer for current and next audio track
 	AudioBuffer *playback_buffer;
 	AudioBuffer *next_buffer;
+
+	// Configuration from mpl.conf
+	const Config *config;
 } Ctx;
 
 /* PulseAudio AudioBackend methods */
-static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq);
+static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Config *conf);
 static void deinit(void *ctx__);
 static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *track);
 static enum AudioBackend_ERR play(void *ctx__, bool pause);
@@ -80,7 +85,7 @@ static void pa_stream_state_cb_(pa_stream *stream, void *userdata);
 // Operation completion callback
 static void pa_stream_success_cb_(pa_stream *stream, int success, void *userdata);
 
-static enum AudioBackend_ERR init(void *userdata, const EventQueue *eq) {
+static enum AudioBackend_ERR init(void *userdata, const EventQueue *eq, const Config *conf) {
 	Ctx *ctx = userdata;
 
 	// Connect to event queue
@@ -88,6 +93,8 @@ static enum AudioBackend_ERR init(void *userdata, const EventQueue *eq) {
 	if (!ctx->evt_queue) {
 		return AudioBackend_EVENT_QUEUE_ERR;
 	}
+	// Store config ref
+	ctx->config = conf;
 
 	/* Set up our PulseAudio event loop and connection objects */
 
@@ -224,7 +231,8 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 
 	// Connect the stream
 
-	pa_buffer_attr buf_attr = AudioPCM_pulseaudio_buffer_attr(pcm);
+	const uint32_t buffer_ms = ctx->config->settings.ab_buffer_ms;
+	pa_buffer_attr buf_attr = AudioPCM_pulseaudio_buffer_attr(pcm, buffer_ms);
 	int status = pa_stream_connect_playback(
 			ctx->stream,
 			NULL,

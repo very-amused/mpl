@@ -69,10 +69,10 @@ pa_channel_map AudioPCM_pulseaudio_channel_map(const AudioPCM *pcm) {
 	return cm;
 }
 
-pa_buffer_attr AudioPCM_pulseaudio_buffer_attr(const AudioPCM *pcm) {
+pa_buffer_attr AudioPCM_pulseaudio_buffer_attr(const AudioPCM *pcm, uint32_t ab_buffer_ms) {
 	pa_buffer_attr buf_attr = {
 		.maxlength = -1,
-		.tlength = AudioPCM_buffer_size(pcm, MPL_PA_BUF_MS),
+		.tlength = AudioPCM_buffer_size(pcm, ab_buffer_ms),
 		.prebuf = 0, // Disable prebuffering threshold. Stream must manually be corked to start
 		.fragsize = -1,
 		.minreq = -1
