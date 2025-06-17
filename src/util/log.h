@@ -1,8 +1,9 @@
 #pragma once
-#include "ui/cli.h"
-#include <stdio.h>
+#include "ui/cli_args.h" // IWYU pragma: keep
 
-#define LOG(lvl, ...) if (CLI_opts.verbosity >= lvl) fprintf(stderr, __VA_ARGS__)
+#include <stdio.h> // IWYU pragma: keep
+
+#define LOG(lvl, ...) if (CLI_args.verbosity >= lvl) fprintf(stderr, __VA_ARGS__)
 
 // Configure libav logging facilities
 void configure_av_log();

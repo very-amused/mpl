@@ -9,7 +9,6 @@
 #include "state.h"
 #include "track.h"
 #include "error.h"
-#include "ui/event.h"
 #include "util/log.h"
 
 #include <pthread.h>

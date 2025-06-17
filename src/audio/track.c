@@ -1,5 +1,4 @@
 #include <ctype.h>
-#include <errno.h>
 #include <libavutil/mathematics.h>
 #include <libavutil/rational.h>
 #include <semaphore.h>

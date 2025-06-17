@@ -1,11 +1,11 @@
 #include "config/config.h"
 #include "config/internal/state.h"
-#include "config/keybind/keybind.h"
 #include "config/keybind/keybind_map.h"
 #include "error.h"
 #include "queue/queue.h"
 #include "track.h"
 #include "ui/cli.h"
+#include "ui/cli_args.h"
 #include "ui/event.h"
 #include "ui/event_queue.h"
 #include "ui/timecode.h"
@@ -19,26 +19,27 @@
 int main(int argc, const char **argv) {
 	printf("This is MPL v%s\n", MPL_VERSION);
 
-	// Parse CLI args 
+	// Parse CLI args
 	if (argc < 2) {
 		fprintf(stderr, "usage: mpl [-v] [-vv] {file}\n");
 		return 1;
 	}
-	UserInterface_CLI_opts ui_opts;
-	UserInterface_CLI_opts_parse(&ui_opts, argc, argv);
+	CLI_args_parse(argc, argv);
 	configure_av_log(); // Configure libav logging
-
-
-	// Fire up CLI user interface and the main EventQueue
-	UserInterface_CLI ui;
-	UserInterface_CLI_init(&ui, &ui_opts);
-	LOG(Verbosity_VERBOSE, "Logging enabled: %s\n", Verbosity_name(CLI_opts.verbosity));
+	LOG(Verbosity_VERBOSE, "Logging enabled: %s\n", Verbosity_name(CLI_args.verbosity));
 
 	// Parse mpl.conf
 	Config config;
 	char *config_path = Config_find_path();
 	Config_parse(&config, config_path);
 	free(config_path);
+
+	// Fire up CLI user interface and the main EventQueue
+	UserInterface_CLI ui;
+	if (UserInterface_CLI_init(&ui) != 0) {
+		LOG(Verbosity_NORMAL, "Failed to initialize user interface, exiting\n");
+		return 1;
+	}
 
 	// Form URL from file argv
 	const char *file = argv[argc-1];
