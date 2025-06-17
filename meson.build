@@ -1,4 +1,4 @@
-project('MPL', 'c', 'cpp', version: '0.0.2', meson_version : '>=1.6.0',
+project('MPL', 'c', 'cpp', version: '0.0.3', meson_version : '>=1.6.0',
 	license : 'GPL-3.0-only',
 	license_files: ['LICENSE'])
 
