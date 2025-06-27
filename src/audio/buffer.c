@@ -9,12 +9,12 @@
 
 #include "buffer.h"
 #include "audio/seek.h"
+#include "config/settings.h"
 #include "error.h"
 
-int AudioBuffer_init(AudioBuffer *buf, const AudioPCM *pcm) {
-	// To start, we're going to use a fixed buffer time length of 30s.
-	// Later, we'll use track header info to decide how big the initial buffer allocation is.
-	static const size_t TIME_LEN = 60;
+int AudioBuffer_init(AudioBuffer *buf, const AudioPCM *pcm, const Settings *settings) {
+	// The number of seconds of track audio we can hold in our buffer
+	const size_t TIME_LEN = 2 * settings->at_buffer_ahead;
 
 	// Compute line and buffer sizes
 	buf->size = av_samples_get_buffer_size(

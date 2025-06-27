@@ -23,15 +23,17 @@
 #include "../error.h"
 #include "audio/buffer.h"
 #include "audio/pcm.h"
+#include "config/settings.h"
 #include "util/rational.h"
 #include "util/log.h"
 
 
-enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url) {
+enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url, const Settings *settings) {
 	char av_err[AV_ERROR_MAX_STRING_SIZE]; // libav* library error message buffer
 
 	// Zero pointers to ensure AudioTrack_deinit is safe
 	memset(t, 0, sizeof(AudioTrack));
+	t->settings = settings;
 
 	// Create av format demuxing context
 	int status = avformat_open_input(&t->avf_ctx, url, NULL, NULL);
@@ -75,7 +77,7 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url) {
 	if (duration.den == 1) {
 		t->duration_timecode = duration.num;
 	} else {
-		fprintf(stderr, "Warning: Unable to compute duration timecode without loss of precision.\n");
+		LOG(Verbosity_VERBOSE, "Warning: Unable to compute duration timecode without loss of precision.\n");
 		t->duration_timecode = mplRational_d(&duration);
 	}
 	t->start_padding = codec_params->initial_padding;
@@ -83,7 +85,7 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url) {
 
 	// Allocate playback buffer
 	t->buffer = malloc(sizeof(AudioBuffer));
-	if (t->buffer == NULL || AudioBuffer_init(t->buffer, &t->pcm) != 0) {
+	if (t->buffer == NULL || AudioBuffer_init(t->buffer, &t->pcm, t->settings) != 0) {
 		return AudioTrack_BUFFER_ERR;
 	}
 

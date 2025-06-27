@@ -2,6 +2,7 @@
 #include "audio/out/backend.h"
 #include "audio/seek.h"
 #include "config/config.h"
+#include "config/settings.h"
 #include "lock.h"
 #include "state.h"
 #include "track.h"
@@ -22,11 +23,14 @@ typedef struct Queue {
 	BufferThread *buffer_thread;
 
 	enum Queue_PLAYBACK_STATE playback_state;
+
+	// User settings
+	const Settings *settings;
 } Queue;
 
 
 // Initialize an empty queue.
-int Queue_init(Queue *q);
+int Queue_init(Queue *q, const Settings *settings);
 // Deinitialize a queue and disconnect audio output.
 void Queue_deinit(Queue *q);
 

@@ -1,4 +1,5 @@
 #pragma once
+#include "config/config.h"
 #include "pcm.h"
 #include "seek.h"
 
@@ -27,7 +28,7 @@ struct RingBuffer {
 typedef struct RingBuffer AudioBuffer;
 
 // Initialize an AudioBuffer for use
-int AudioBuffer_init(AudioBuffer *buf, const AudioPCM *pcm);
+int AudioBuffer_init(AudioBuffer *buf, const AudioPCM *pcm, const Settings *settings);
 // Deinitialize an AudioBuffer for freeing
 void AudioBuffer_deinit(AudioBuffer *buf);
 

@@ -44,7 +44,7 @@ static int Config_parse_line(Config *conf, char *line,
 		if (err != Keybind_OK) {
 			strncpy(strerr, Keybind_ERR_name(err), strerr_len);
 			return 1;
-		} 
+		}
 		return 0;
 	}
 
@@ -99,7 +99,7 @@ int Config_parse_internal(Config *conf, const char *path, const configParseFlags
 			lineno++;
 		}
 		return 0;
-	} 
+	}
 
 	// Parse config from file
 	FILE *fp = fopen(path, "r");

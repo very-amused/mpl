@@ -22,7 +22,7 @@ struct QueueNode {
 };
 
 // Initialize an empty queue
-int Queue_init(Queue *q) {
+int Queue_init(Queue *q, const Settings *settings) {
 	q->head = malloc(sizeof(QueueNode));
 	q->head->prev = q->head->next = q->head;
 	q->cur = q->tail = q->head;
@@ -35,6 +35,8 @@ int Queue_init(Queue *q) {
 
 	// Initialize buffer thread
 	q->buffer_thread = BufferThread_new();
+
+	q->settings = settings;
 
 	return 0;
 }
@@ -135,14 +137,13 @@ int Queue_clear(Queue *q) {
 }
 
 int Queue_select(Queue *q, QueueNode *node) {
-
 	q->cur = node;
 	// FIXME: if the queue is playing we want to enqueue and then skip with the backend. otherwise we do what's below
 
 	// Initialize track audio if needed
 	if (!node->track->audio) {
 		node->track->audio = malloc(sizeof(AudioTrack));
-		enum AudioTrack_ERR at_err = AudioTrack_init(node->track->audio, node->track->url);
+		enum AudioTrack_ERR at_err = AudioTrack_init(node->track->audio, node->track->url, q->settings);
 		if (at_err != AudioTrack_OK) {
 			fprintf(stderr, "Failed to initialize AudioTrack for track %s: %s\n", node->track->url, AudioTrack_ERR_name(at_err));
 			free(node->track->audio);

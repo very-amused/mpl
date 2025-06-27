@@ -1,6 +1,7 @@
 #pragma once
 #include "audio/seek.h"
 #include "buffer.h"
+#include "config/settings.h"
 #include "track_meta.h"
 #include "ui/event.h"
 
@@ -32,10 +33,13 @@ typedef struct AudioTrack {
 	// Metadata
 	EventBody_Timecode duration_timecode; // Duration in sample frames
 	size_t start_padding, end_padding; // The number of sample frames at the start and end of the track used for padding. These must be discarded for gapless playback.
+
+	// User settings
+	const Settings *settings;
 } AudioTrack;
 
 // Initialize an AudioTrack and update metadata if meta != NULL
-enum AudioTrack_ERR AudioTrack_init(AudioTrack *at, const char *url);
+enum AudioTrack_ERR AudioTrack_init(AudioTrack *at, const char *url, const Settings *settings);
 void AudioTrack_deinit(AudioTrack *at);
 
 // Retrieve metadata from an AudioTrack's decoding context, storing the result in *meta
