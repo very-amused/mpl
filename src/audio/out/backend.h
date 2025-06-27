@@ -1,6 +1,7 @@
 #pragma once
 #include "audio/track.h"
 #include "config/config.h"
+#include "config/settings.h"
 #include "error.h"
 #include "ui/event_queue.h"
 #include <stddef.h>
@@ -20,7 +21,7 @@ typedef struct AudioBackend {
 
 	// Initialize the audio backend for playback.
 	// The backend will open a nonblocking, write-only connection to EventQueue *eq.
-	enum AudioBackend_ERR (*init)(void *ctx, const EventQueue *eq, const Config *conf);
+	enum AudioBackend_ERR (*init)(void *ctx, const EventQueue *eq, const Settings *settings);
 	// Deinitialize the audio backend
 	void (*deinit)(void *ctx);
 
@@ -52,7 +53,7 @@ typedef struct AudioBackend {
 
 // Initialize an AudioBackend for playback
 // The backend will open a nonblocking, write-only connection to EventQueue *eq.
-enum AudioBackend_ERR AudioBackend_init(AudioBackend *ab, const EventQueue *eq, const Config *conf);
+enum AudioBackend_ERR AudioBackend_init(AudioBackend *ab, const EventQueue *eq, const Settings *settings);
 // Deinitialize an AudioBackend
 void AudioBackend_deinit(AudioBackend *ab);
 

@@ -295,7 +295,7 @@ enum Queue_PLAYBACK_STATE Queue_get_playback_state(const Queue *q) {
 	return q->playback_state;
 }
 
-int Queue_connect_audio(Queue *q, AudioBackend *ab, const EventQueue *eq, const Config *conf) {
+int Queue_connect_audio(Queue *q, AudioBackend *ab, const EventQueue *eq) {
 	// Set q->backend to a defined AudioBackend
 	if (ab) {
 		q->backend = ab;
@@ -304,7 +304,7 @@ int Queue_connect_audio(Queue *q, AudioBackend *ab, const EventQueue *eq, const 
 	}
 
 	// Initialize the backend
-	return AudioBackend_init(q->backend, eq, conf);
+	return AudioBackend_init(q->backend, eq, q->settings);
 }
 
 // Disconnect the queue from the system's audio backend. Frees q->backend

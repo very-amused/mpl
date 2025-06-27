@@ -7,7 +7,7 @@
 #include "util/log.h"
 
 // Initialize an AudioBackend for playback
-enum AudioBackend_ERR AudioBackend_init(AudioBackend *ab, const EventQueue *eq, const Config *conf) {
+enum AudioBackend_ERR AudioBackend_init(AudioBackend *ab, const EventQueue *eq, const Settings *settings) {
 	// Allocate and zero ctx
 	ab->ctx = malloc(ab->ctx_size);
 	if (ab->ctx == NULL) {
@@ -18,7 +18,7 @@ enum AudioBackend_ERR AudioBackend_init(AudioBackend *ab, const EventQueue *eq, 
 	// including error states occuring at any point in ab->init
 	memset(ab->ctx, 0, ab->ctx_size);
 
-	return ab->init(ab->ctx, eq, conf);
+	return ab->init(ab->ctx, eq, settings);
 }
 
 // Deinitialize an AudioBackend
