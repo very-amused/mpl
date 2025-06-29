@@ -1,5 +1,4 @@
 #pragma once
-#include "spa/pod/pod.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <libavutil/samplefmt.h>
@@ -29,6 +28,7 @@ pa_buffer_attr AudioPCM_pulseaudio_buffer_attr(const AudioPCM *pcm, uint32_t ab_
 #ifdef AO_PIPEWIRE
 #include <spa/param/audio/format.h>
 #include <spa/param/audio/raw.h>
+#include <spa/pod/pod.h>
 
 struct spa_audio_info_raw AudioPCM_pipewire_info(const AudioPCM *pcm);
 #endif

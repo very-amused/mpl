@@ -27,22 +27,17 @@ using the following symbols/resources: */
 // included via default_config.s
 extern const char mpl_default_config[];
 extern uint64_t mpl_default_config_len;
+#else
+static const char mpl_default_config[] = {
+#embed "mpl.conf"
+};
+static const uint64_t mpl_default_config_len = sizeof(mpl_default_config);
 #endif
 
 static inline const char *get_default_config() {
-#ifdef __unix__
 	return mpl_default_config;
-#else
-	// TODO: WIN32
-	return NULL;
-#endif
 }
 
 static inline const size_t get_default_config_len() {
-#ifdef __unix__
 	return mpl_default_config_len;
-#else
-	// TODO: WIN32
-	return NULL;
-#endif
 }

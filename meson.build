@@ -1,4 +1,5 @@
-project('MPL', 'c', 'cpp', version: '0.0.4', meson_version : '>=1.6.0',
+project('MPL', 'c', 'cpp',
+	version: '0.0.4', meson_version : '>=1.6.0',
 	license : 'GPL-3.0-only',
 	license_files: ['LICENSE'])
 
@@ -18,9 +19,15 @@ deps += pipewire
 src = []
 include = include_directories('src')
 
-# Preprocessor defines
+# Preprocessor defines and compiler overrides
 cflags = []
 cflags += '-DMPL_VERSION="@0@"'.format(meson.project_version())
+override_options = []
+# if we don't have .incbin, we need #embed
+if build_machine.system() != 'linux'
+	cflags += '--embed-dir=@0@'.format(meson.project_source_root())
+	override_options += 'c_std=c23'
+endif
 if pulseaudio.found()
 	cflags += '-DAO_PULSEAUDIO'
 endif
@@ -44,5 +51,5 @@ subdir('src')
 executable('mpl', src,
 	include_directories : include,
 	dependencies : deps,
-	c_args : cflags, link_args: cflags,
+	c_args : cflags, link_args : cflags, override_options : override_options,
 	install  : true)
