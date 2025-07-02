@@ -4,7 +4,6 @@
 #include "error.h"
 
 #include <fcntl.h>
-#include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <stdlib.h>
@@ -147,17 +146,7 @@ int EventQueue_recv(EventQueue *eq, Event *evt) {
 	MSG w32_msg;
 	int status = GetMessage(&w32_msg, (HWND)-1, MSG_ID_BASE, MSG_ID_MAX);
 	if (status == -1) {
-		// TODO: better win32 error code handling in error.h
-		wchar_t *strerr = NULL;
-		FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_ALLOCATE_BUFFER,
-			NULL,
-			GetLastError(),
-			MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-			strerr,
-			0,
-			NULL);
-		fwprintf(stderr, L"EventQueue message receive: %s\n", strerr);
-		LocalFree(strerr);
+		w32_perror(L"EventQueue message receive");
 		return status;
 	} else if (status == 0) {
 		LOG(Verbosity_NORMAL, "EventQueue message receive: got WM_QUIT, relaying as %s\n", MPL_EVENT_name(mpl_QUIT));
@@ -181,7 +170,6 @@ EventQueue *EventQueue_connect(const EventQueue *eq1, int oflags) {
 		free(eq);
 		return NULL;
 	}
-
 #else
 	memcpy(eq, eq1, sizeof(EventQueue));
 	if ((oflags & O_RDWR) == O_RDWR) {

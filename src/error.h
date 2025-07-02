@@ -4,6 +4,24 @@
 #define av_perror(e, buf) av_strerror(e, buf, sizeof(buf)); \
 	fprintf(stderr, "libav error: %s\n", buf)
 
+#ifndef __unix__
+#include <Windows.h>
+#include <wchar.h>
+
+static inline void w32_perror(const wchar_t *msg) {
+	wchar_t *strerr = NULL;
+	FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_ALLOCATE_BUFFER,
+		NULL,
+		GetLastError(),
+		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+		strerr,
+		0,
+		NULL);
+	fwprintf(stderr, L"%s: %s\n", msg, strerr);
+	LocalFree(strerr);
+}
+#endif
+
 #define ENUM_KEY(NAME) case NAME: return #NAME;
 #define ENUM_VAL(NAME) NAME,
 
