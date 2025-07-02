@@ -1,0 +1,8 @@
+{
+    "C_Cpp.default.configurationProvider": "mesonbuild.mesonbuild",
+    "files.associations": {
+        "stdbool.h": "c",
+        "error.h": "c"
+    },
+    "mesonbuild.configureOnOpen": false
+}
