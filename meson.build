@@ -14,6 +14,9 @@ pulseaudio = dependency('libpulse', version : '>=16.0.0', required : get_option(
 pipewire = dependency('libpipewire-0.3', version : '>=0.3.0', required : get_option('pipewire'))
 deps += pulseaudio
 deps += pipewire
+# POSIX threading API
+pthread = dependency('threads')
+deps += pthread
 
 # Source and header files
 src = []

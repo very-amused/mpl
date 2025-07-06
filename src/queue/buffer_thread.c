@@ -3,11 +3,9 @@
 #include <stdlib.h>
 #include <time.h>
 
-#ifdef __unix__
 #include <pthread.h>
 #include <semaphore.h>
-#include <unistd.h>
-#endif
+
 
 #include "buffer_thread.h"
 #include "audio/track.h"
