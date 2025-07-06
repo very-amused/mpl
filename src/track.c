@@ -1,8 +1,10 @@
 #include "track.h"
 #include "audio/track.h"
 #include "track_meta.h"
-#include <string.h>
+
 #include <stdatomic.h>
+#include <string.h>
+#include "string_win32.h"
 
 Track *Track_new(const char *url, const size_t url_len) {
 	Track *t = malloc(sizeof(Track));

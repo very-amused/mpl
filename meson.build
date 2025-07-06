@@ -20,7 +20,11 @@ deps += pthread
 
 # Source and header files
 src = []
-include = include_directories('src')
+include = []
+include += include_directories('src')
+if build_machine.system() == 'windows'
+	include += include_directories('src/util/compat')
+endif
 
 # Preprocessor defines and compiler overrides
 cflags = []

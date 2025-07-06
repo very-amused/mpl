@@ -18,6 +18,8 @@
 #include <libavutil/dict.h>
 #include <stdlib.h>
 #include <string.h>
+#include "string_win32.h"
+
 
 #include "track.h"
 #include "../error.h"
