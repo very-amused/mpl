@@ -6,12 +6,12 @@
 #include "error.h"
 #include "util/log.h"
 #include "util/strtokn.h"
+#include "util/compat/string_win32.h"
 
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "string_win32.h"
 
 // Parse a line of mpl.conf
 //

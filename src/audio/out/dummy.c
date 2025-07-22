@@ -45,3 +45,23 @@ AudioBackend AB_dummy = {
 
   .ctx_size = sizeof(Ctx)
 };
+
+static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Settings *settings) {
+	return AudioBackend_CONNECT_ERR;
+}
+
+static void deinit(void *ctx__) {}
+
+static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *track) {
+	return AudioBackend_CONNECT_ERR;
+}
+
+static enum AudioBackend_ERR play(void *ctx__, bool pause) {
+	return AudioBackend_CONNECT_ERR;
+}
+
+static void lock(void *ctx__) {}
+
+static void unlock(void *ctx__) {}
+
+static void seek(void *ctx__) {}

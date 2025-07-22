@@ -61,8 +61,6 @@ static UINT MPL_EVENT_w32id(enum MPL_EVENT evt) {
 
 EventQueue *EventQueue_new() {
 	EventQueue *eq = malloc(sizeof(EventQueue));
-	eq->open = false;
-	eq->perm_recv = eq->perm_send = true;
 
 #ifdef __unix__
 	// Generate mq name
@@ -74,6 +72,9 @@ EventQueue *EventQueue_new() {
 		return NULL;
 	}
 #else
+	eq->open = false;
+	eq->perm_recv = eq->perm_send = true;
+
 	// Get main thread ID
 	// (needed to post messages from other threads to this one via PostThreadMessage)
 	eq->main_thread_id = GetCurrentThreadId();

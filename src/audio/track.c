@@ -18,7 +18,6 @@
 #include <libavutil/dict.h>
 #include <stdlib.h>
 #include <string.h>
-#include "string_win32.h"
 
 
 #include "track.h"
@@ -28,6 +27,7 @@
 #include "config/settings.h"
 #include "util/rational.h"
 #include "util/log.h"
+#include "util/compat/string_win32.h"
 
 
 enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url, const Settings *settings) {
