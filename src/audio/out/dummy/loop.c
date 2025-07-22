@@ -5,7 +5,8 @@
 #include "audio/pcm.h"
 
 struct DummyLoop {
-	// Thread that runs the loop's clock asynchronously from the main thread
+	// Thread that runs the loop,
+	// controlling the DummyServer and writing data to its AudioBuffer
 	pthread_t thread;
 	// Lock over the loop's data. The loop holds this itself most of the time,
 	// and the main thread only locks it to call DummyLoop_* methods.
