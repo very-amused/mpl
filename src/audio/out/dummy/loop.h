@@ -26,6 +26,13 @@ void DummyLoop_init(DummyLoop *loop, const AudioBuffer *ab_buf);
 // Stop a DummyLoop and free its resources
 void DummyLoop_deinit(DummyLoop *loop);
 
-// Start the loop, which begins reading frames from ab_buf
+// Play/pause a DummyLoop, blocking until the play/pause state is set as requested.
+// NOTE: initially start the loop with [DummyLoop_start]
+void DummyLoop_play(DummyLoop *loop, bool play);
+
+// Initially start the loop, which begins reading frames from ab_buf
 // Returns 0 on success, nonzero on error
+//
+// Once the loop is started, use DummyLoop_play() to pause/unpause it
 int DummyLoop_start(DummyLoop *loop);
+
