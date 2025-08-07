@@ -26,4 +26,5 @@ void DummyLoop_init(DummyLoop *loop);
 void DummyLoop_deinit(DummyLoop *loop);
 
 // Start the loop, which begins reading frames from ab_buf
+// Returns 0 on success, nonzero on error
 int DummyLoop_start(DummyLoop *loop, const AudioBuffer *ab_buf);

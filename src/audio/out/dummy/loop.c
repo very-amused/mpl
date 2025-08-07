@@ -10,4 +10,5 @@ void DummyLoop_deinit(DummyLoop *loop) {
 
 int DummyLoop_start(DummyLoop *loop, const AudioBuffer *ab_buf) {
 	// TODO
+	return 0;
 }
