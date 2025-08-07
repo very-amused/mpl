@@ -6,7 +6,7 @@
 // A dummy audio loop thread that uses an internal ring buffer to read audio frames at a fixed rate,
 // emulating an AudioBackend async-loop setup
 typedef struct DummyLoop {
-	pthread_t thread;
+	pthread_t *thread;
 
 	/* Playing/pausing loop: */
 	sem_t play; // Play/pause the loop thread. After posting, spin on t->paused to verify result
@@ -20,11 +20,12 @@ typedef struct DummyLoop {
 	const AudioBuffer *ab_buf;
 } DummyLoop;
 
-// Initialize a DummyLoop for use; does not start
-void DummyLoop_init(DummyLoop *loop);
+// Initialize a DummyLoop for use; does not start.
+// ab_buf is the audio backend's internal buffer which the loop will read from (once started)
+void DummyLoop_init(DummyLoop *loop, const AudioBuffer *ab_buf);
 // Stop a DummyLoop and free its resources
 void DummyLoop_deinit(DummyLoop *loop);
 
 // Start the loop, which begins reading frames from ab_buf
 // Returns 0 on success, nonzero on error
-int DummyLoop_start(DummyLoop *loop, const AudioBuffer *ab_buf);
+int DummyLoop_start(DummyLoop *loop);
