@@ -5,11 +5,7 @@
 #include "config/settings.h"
 #include "audio/track.h"
 #include "error.h"
-
-/* Dummy AudioBackend loop context, allows us to simulate the event loop of an actual AB */
-typedef struct DummyLoop {
-
-} DummyLoop;
+#include "dummy/loop.h"
 
 /* Dummy AudioBackend context, this is basically test state for the AudioBackend APIs */
 typedef struct Ctx {

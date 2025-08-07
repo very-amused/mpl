@@ -1,20 +1,29 @@
-#pragma once
-
+#include "audio/buffer.h"
 #include <pthread.h>
+#include <semaphore.h>
+#include <stdbool.h>
 
-// Dummy asynchronous loop that consumes audio frames on a clock on a separate thread.
-// Like all async loops, most API methods require holding a lock over the loop
-typedef struct DummyLoop DummyLoop;
+// A dummy audio loop thread that uses an internal ring buffer to read audio frames at a fixed rate,
+// emulating an AudioBackend async-loop setup
+typedef struct DummyLoop {
+	pthread_t thread;
 
-// Allocate and initialize a DummyLoop for use
-// NOTE: the loop is inactive until started with [DummyLoop_start]
-DummyLoop *DummyLoop_new();
-// Deinitialize and free a DummyLoop
-// NOTE: the loop must be stopped with DummyLoop_stop beforehand
-void DummyLoop_free(DummyLoop *loop);
+	/* Playing/pausing loop: */
+	sem_t play; // Play/pause the loop thread. After posting, spin on t->paused to verify result
+	sem_t cancel; // Tell the thread to exit
+	bool paused; // Bool indicating whether the thread is paused (waiting on t->play)
+	pthread_mutex_t paused_lock; // Lock for t->paused
+	pthread_cond_t paused_cv; // CV broadcasting t->pause updates
 
-// Start a DummyLoop, making it ready for all methods to be called (i.e DummyLoop_play)
-// Returns 0 on success, nonzero on error
-int DummyLoop_start(DummyLoop *loop);
-// Stop a DummyLoop, causing its clock to stop running
-void DummyLoop_stop(DummyLoop *loop);
+	// Dummy AudioBackend buffer that we read from
+	// TODO: how many frames do we read each loop iter?
+	const AudioBuffer *ab_buf;
+} DummyLoop;
+
+// Initialize a DummyLoop for use; does not start
+void DummyLoop_init(DummyLoop *loop);
+// Stop a DummyLoop and free its resources
+void DummyLoop_deinit(DummyLoop *loop);
+
+// Start the loop, which begins reading frames from ab_buf
+int DummyLoop_start(DummyLoop *loop, const AudioBuffer *ab_buf);
