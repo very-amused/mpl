@@ -15,7 +15,7 @@ typedef struct DummyLoop {
 	pthread_mutex_t paused_lock; // Lock for t->paused
 	pthread_cond_t paused_cv; // CV broadcasting t->pause updates
 
-	// Dummy AudioBackend buffer that we read from
+	// Dummy AudioBackend buffer that we 'read' from
 	// TODO: how many frames do we read each loop iter?
 	const AudioBuffer *ab_buf;
 } DummyLoop;
