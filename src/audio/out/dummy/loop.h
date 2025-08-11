@@ -1,3 +1,4 @@
+#pragma once
 #include "audio/buffer.h"
 #include <pthread.h>
 #include <semaphore.h>
