@@ -1,3 +1,5 @@
+#include <stdatomic.h>
+
 #include "server_thread.h"
 #include "audio/buffer.h"
 #include "audio/pcm.h"
@@ -6,6 +8,32 @@
 #ifndef BUFSIZ
 #define BUFSIZ 8192
 #endif
+
+static void *DummyServerThread_routine(void *args);
+
+int DummyServerThread_init(DummyServerThread *thr, const AudioPCM *pcm, const Settings *settings) {
+	thr->buffer = malloc(sizeof(AudioBuffer));
+	thr->pcm = pcm;
+	thr->settings = settings;
+	if (AudioBuffer_init(thr->buffer, thr->pcm, thr->settings) != 0) {
+		DummyServerThread_deinit(thr);
+		return 1;
+	}
+
+	thr->exit = false;
+
+	return pthread_create(&thr->thread, NULL, DummyServerThread_routine, thr);
+}
+
+void DummyServerThread_deinit(DummyServerThread *thr) {
+	// Stop thread
+	atomic_store(&thr->exit, true);
+	pthread_join(thr->thread, NULL);
+
+	// Free buffer
+	AudioBuffer_deinit(thr->buffer);
+	free(thr->buffer);
+}
 
 static void *DummyServerThread_routine(void *args) {
 	DummyServerThread *thr = args;
@@ -18,23 +46,5 @@ static void *DummyServerThread_routine(void *args) {
 	// uint64_t samples_per_sec = pcm->sample_rate * AudioPCM_
 
 	// Start reading from thr->buffer
-	// TODO
-}
-
-int DummyServerThread_init(DummyServerThread *thr, const AudioPCM *pcm, const Settings *settings) {
-	thr->buffer = malloc(sizeof(AudioBuffer));
-	thr->pcm = pcm;
-	thr->settings = settings;
-	if (AudioBuffer_init(thr->buffer, thr->pcm, thr->settings) != 0) {
-		DummyServerThread_deinit(thr);
-		return 1;
-	}
-
-
-
-	return 0;
-}
-
-void DummyServerThread_deinit(DummyServerThread *thr) {
 	// TODO
 }

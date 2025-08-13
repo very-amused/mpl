@@ -1,5 +1,6 @@
 #pragma once
 #include <pthread.h>
+#include <stdatomic.h>
 
 #include "audio/buffer.h"
 #include "audio/pcm.h"
@@ -11,6 +12,9 @@ typedef struct DummyServerThread {
 	AudioBuffer *buffer; // internal server buffer
 	const AudioPCM *pcm;
 	const Settings *settings;
+
+	// Exit signal (no CV needed since we never sleep [for now])
+	atomic_bool exit;
 } DummyServerThread;
 
 // Initialize and start a dummy audio server
