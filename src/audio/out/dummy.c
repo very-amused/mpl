@@ -5,15 +5,12 @@
 #include "config/settings.h"
 #include "audio/track.h"
 #include "error.h"
-#include "dummy/loop.h"
 
 /* Dummy AudioBackend context, this is basically test state for the AudioBackend APIs */
 typedef struct Ctx {
   // Needed to send timecodes and track_end to the main thread
   EventQueue *evt_queue;
 
-  // Asynchronous event loop
-  DummyLoop *loop;
 } Ctx;
 
 /* Dummy Audiobackend methods */
