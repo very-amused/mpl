@@ -62,9 +62,18 @@ pa_sample_spec AudioPCM_pulseaudio_spec(const AudioPCM *pcm) {
 
 pa_channel_map AudioPCM_pulseaudio_channel_map(const AudioPCM *pcm) {
 	pa_channel_map cm;
-	pa_channel_map_init_stereo(&cm);
 
-	// FIXME FIXME FIXME
+	// TODO: support >2 channels
+	switch (pcm->n_channels) {
+	case 2:
+		pa_channel_map_init_stereo(&cm);
+		break;
+	case 1:
+		pa_channel_map_init_mono(&cm);
+		break;
+	default:
+		pa_channel_map_init(&cm);
+	}
 
 	return cm;
 }

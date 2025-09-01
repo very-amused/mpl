@@ -96,6 +96,12 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url, const Settin
 	if (t->avc_ctx == NULL) {
 		return AudioTrack_BAD_ALLOC;
 	}
+	// Set decoder params from container metadata
+	status = avcodec_parameters_to_context(t->avc_ctx, stream->codecpar);
+	if (status < 0) {
+		av_perror(status, av_err);
+		return AudioTrack_CODEC_ERR;
+	}
 	status = avcodec_open2(t->avc_ctx, t->codec, NULL);
 	if (status < 0) {
 		av_perror(status, av_err);
