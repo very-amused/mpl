@@ -1,5 +1,5 @@
 project('MPL', 'c', 'cpp',
-	version: '0.0.4', meson_version : '>=1.6.0',
+	version: '0.4.1', meson_version : '>=1.6.0',
 	license : 'GPL-3.0-only',
 	license_files: ['LICENSE'])
 
