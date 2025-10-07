@@ -1,8 +1,5 @@
 src_audio_out = files('backend.c')
 
-if get_option('buildtype') == 'debug'
-	src_audio_out += files('dummy.c', 'dummy/loop.c', 'dummy/callback.c')
-endif
 if pulseaudio.found()
 	src_audio_out += files('pulseaudio.c')
 endif
