@@ -17,6 +17,12 @@ deps += pipewire
 # POSIX threading API
 pthread = dependency('threads')
 deps += pthread
+# Fake Audio Server for Testing (FAST)
+if get_option('ao_fast')
+	libfast_proj = subproject('libfast')
+	fast = libfast_proj.get_variable('libfast_dep')
+	deps += fast
+endif
 
 # Source and header files
 src = []

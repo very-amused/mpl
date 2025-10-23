@@ -7,3 +7,4 @@ option('ascii_keybinds', type: 'boolean', value: false)
 
 # Options for MPL development - don't enable these unless you know what you're doing:
 option('test_config', type: 'boolean', value: false) # Read ../test/mpl.conf instead of the usual config locations
+option('ao_fast', type: 'boolean', value: false) # Support libFAST fake audio output for testing
