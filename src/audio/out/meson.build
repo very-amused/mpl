@@ -6,5 +6,8 @@ endif
 if pipewire.found()
 	src_audio_out += files('pipewire.c')
 endif
+if get_option('ao_fast')
+	src_audio_out += files('debug_fast.c')
+endif
 
 src += src_audio_out
