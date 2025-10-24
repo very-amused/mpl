@@ -10,6 +10,8 @@ typedef struct AudioPCM {
 	uint8_t n_channels;
 } AudioPCM;
 
+// Get the size, in bytes, of a single audio sample of PCM data
+uint32_t AudioPCM_sample_size(const AudioPCM *pcm);
 // Get the buffer size, in bytes, for a buffer holding {ms} milliseconds of PCM data.
 uint32_t AudioPCM_buffer_size(const AudioPCM *pcm, const uint32_t ms);
 // Convert a number of bytes to a floating point number of seconds

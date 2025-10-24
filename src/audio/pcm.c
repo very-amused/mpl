@@ -4,6 +4,10 @@
 #include <stdint.h>
 #include <stdio.h>
 
+uint32_t AudioPCM_sample_size(const AudioPCM *pcm) {
+	return av_get_bytes_per_sample(pcm->sample_fmt);
+}
+
 uint32_t AudioPCM_buffer_size(const AudioPCM *pcm, const uint32_t ms) {
 	return av_samples_get_buffer_size(
 			NULL,

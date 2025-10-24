@@ -8,6 +8,7 @@
 typedef struct Settings {
 	uint32_t at_buffer_ahead; // number of seconds to buffer ahead for each track
 
+	char *audio_backend; // Name of audio backend to use (e.g "pulseaudio", "fast") TODO implement
 	uint32_t ab_buffer_ms; // number of ms to buffer with the audio backend (i.e pulseaudio)
 } Settings;
 
