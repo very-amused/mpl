@@ -175,7 +175,9 @@ int Queue_select(Queue *q, QueueNode *node) {
 }
 
 int Queue_play(Queue *q, bool pause) {
+	LOG(Verbosity_VERBOSE, "p1 in Queue_play\n");
 	int status = AudioBackend_play(q->backend, pause);
+	LOG(Verbosity_VERBOSE, "p2 in Queue_play\n");
 	if (status != 0) {
 		return status;
 	}
@@ -300,7 +302,11 @@ int Queue_connect_audio(Queue *q, AudioBackend *ab, const EventQueue *eq) {
 	if (ab) {
 		q->backend = ab;
 	} else {
+#ifdef AO_FAST
+		q->backend = &AB_FAST;
+#else
 		q->backend = &AB_PulseAudio;
+#endif
 	}
 
 	// Initialize the backend

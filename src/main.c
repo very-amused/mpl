@@ -56,7 +56,9 @@ int main(int argc, const char **argv) {
 	if (Queue_prepend(&queue, Track_new(url, url_len)) != 0) {
 		goto quit;
 	}
+	fprintf(stderr, "Queue_play before\n");
 	Queue_play(&queue, 0);
+	fprintf(stderr, "Queue_play called\n");
 
 	// Display metadata
 	const Track *track = Queue_cur_track(&queue);

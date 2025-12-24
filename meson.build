@@ -47,6 +47,9 @@ endif
 if pipewire.found()
 	cflags += '-DAO_PIPEWIRE'
 endif
+if get_option('ao_fast')
+	cflags += '-DAO_FAST'
+endif
 
 # Debug options
 if get_option('buildtype') == 'debug'

@@ -5,6 +5,8 @@
 #include "error.h"
 #include "fast.h"
 
+#include "loop.h"
+#include "server.h"
 #include "stream.h"
 #include "ui/event.h"
 #include "ui/event_queue.h"
@@ -19,7 +21,11 @@ typedef struct Ctx {
 	// Event queue for communication w/ the main thread (UI)
 	EventQueue *evt_queue;
 
-	// FAST audio sink
+	// FAST server (runtime wrapper)
+	FastServer *server;
+	// FAST loop (callback handler)
+	FastLoop *loop;
+	// FAST stream (audio sink)
 	FastStream *stream;
 
 	// Playback buffer for current and next audio track
@@ -63,6 +69,7 @@ static void FastStream_write_cb_(FastStream *stream, size_t n_bytes, void *userd
 
 static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Settings *settings) {
 	Ctx *ctx = ctx__;
+	LOG(Verbosity_DEBUG, "init called for FAST backend\n");
 
 	// Connect to event queue
 	ctx->evt_queue = EventQueue_connect(eq, O_WRONLY | O_NONBLOCK);
@@ -72,6 +79,17 @@ static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Setti
 	// Store config ref
 	ctx->settings = settings;
 
+	// Initialize FAST
+	ctx->server = FastServer_new();
+	if (!ctx->server) {
+		return AudioBackend_CONNECT_ERR;
+	}
+	ctx->loop = FastLoop_new(ctx->server);
+	if (!ctx->loop) {
+		return AudioBackend_LOOP_STALL;
+	}
+
+	LOG(Verbosity_DEBUG, "init COMPLETE for FAST backend\n");
 	return AudioBackend_OK;
 }
 
@@ -100,7 +118,7 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 		.buffer_ms = ctx->settings->ab_buffer_ms
 	};
 
-	ctx->stream = FastStream_new(&settings);
+	ctx->stream = FastStream_new(ctx->loop, &settings);
 	if (!ctx->stream) {
 		return AudioBackend_STREAM_ERR;
 	}
@@ -123,18 +141,23 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 static enum AudioBackend_ERR play(void *ctx__, bool pause) {
 	Ctx *ctx = ctx__;
 
+	LOG(Verbosity_DEBUG, "p1 in AB_FAST->play()");
+	// FIXME: stalling on FastStream play
 	if (FastStream_play(ctx->stream, !pause) != 0) {
 		return AudioBackend_PLAY_ERR;
 	}
+	LOG(Verbosity_DEBUG, "p2 in AB_FAST->play()");
 
 	return AudioBackend_OK;
 }
 
 static void lock(void *ctx__) {
-	// TODO: we have no way to isolate and lock/unlock the callback loop
+	Ctx *ctx = ctx__;
+	FastLoop_lock(ctx->loop);
 }
 static void unlock(void *ctx__) {
-	// TODO: we have no way to isolate and lock/unlock the callback loop
+	Ctx *ctx = ctx__;
+	FastLoop_unlock(ctx->loop);
 }
 static void seek(void *ctx__) {
 	Ctx *ctx = ctx__;
@@ -143,9 +166,7 @@ static void seek(void *ctx__) {
 		return;
 	}
 
-	// FIXME FIXME FIXME: cannot implement seeks without
-	// 1. lock/unlock routines
-	// 2. a begin_write method to *give us the max write size*
+	// FIXME FIXME FIXME: FAST does not yet implement seeks without
 }
 
 static void FastStream_write_cb_(FastStream *stream, size_t n_bytes, void *userdata) {
