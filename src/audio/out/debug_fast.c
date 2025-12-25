@@ -69,7 +69,6 @@ static void FastStream_write_cb_(FastStream *stream, size_t n_bytes, void *userd
 
 static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Settings *settings) {
 	Ctx *ctx = ctx__;
-	LOG(Verbosity_DEBUG, "init called for FAST backend\n");
 
 	// Connect to event queue
 	ctx->evt_queue = EventQueue_connect(eq, O_WRONLY | O_NONBLOCK);
@@ -89,7 +88,6 @@ static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Setti
 		return AudioBackend_LOOP_STALL;
 	}
 
-	LOG(Verbosity_DEBUG, "init COMPLETE for FAST backend\n");
 	return AudioBackend_OK;
 }
 
@@ -141,12 +139,9 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 static enum AudioBackend_ERR play(void *ctx__, bool pause) {
 	Ctx *ctx = ctx__;
 
-	LOG(Verbosity_DEBUG, "p1 in AB_FAST->play()");
-	// FIXME: stalling on FastStream play
 	if (FastStream_play(ctx->stream, !pause) != 0) {
 		return AudioBackend_PLAY_ERR;
 	}
-	LOG(Verbosity_DEBUG, "p2 in AB_FAST->play()");
 
 	return AudioBackend_OK;
 }
