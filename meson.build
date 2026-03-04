@@ -54,8 +54,10 @@ endif
 # Debug options
 if get_option('buildtype') == 'debug'
 	cflags += '-O0'
-	cflags += '-fsanitize=address'
-	cflags += '-fno-omit-frame-pointer'
+	if build_machine.system() == 'linux'
+		cflags += '-fsanitize=address'
+		cflags += '-fno-omit-frame-pointer'
+	endif
 	cflags += '-DMPL_DEBUG'
 endif
 if get_option('test_config')
