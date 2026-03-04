@@ -12,6 +12,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
+#include <time.h>
 
 #include "audio/buffer.h"
 #include "audio/pcm.h"

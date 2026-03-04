@@ -15,6 +15,7 @@
 #include "audio/track.h"
 #include "backend.h"
 #include "util/log.h"
+#include "util/minmax.h"
 
 // FAST backend context
 typedef struct Ctx {
@@ -31,6 +32,13 @@ typedef struct Ctx {
 	// Playback buffer for current and next audio track
 	AudioBuffer *playback_buffer;
 	AudioBuffer *next_buffer;
+
+	// Audio transfer buffer for current and next audio track
+	// (FAST doesn't do rotate buffers on a queue, so we manage transfer bufs manually)
+	unsigned char *playback_tb;
+	size_t playback_tb_cap;
+	unsigned char *next_tb;
+	size_t next_tb_cap;
 
 	// Configuration from mpl.conf
 	const Settings *settings;
@@ -67,6 +75,9 @@ AudioBackend AB_FAST = {
 // Audio data write callback
 static void FastStream_write_cb_(FastStream *stream, size_t n_bytes, void *userdata);
 
+/* Transfer buffer management */
+static void realloc_buf(unsigned char **buf, size_t *buf_cap, size_t newsize);
+
 static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Settings *settings) {
 	Ctx *ctx = ctx__;
 
@@ -93,9 +104,16 @@ static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Setti
 
 static void deinit(void *ctx__) {
 	Ctx *ctx = ctx__;
-	if (ctx->stream) {
-		FastStream_free(ctx->stream);
-	}
+
+	FastLoop_lock(ctx->loop);
+	FastStream_free(ctx->stream);
+	FastLoop_free(ctx->loop);
+	FastServer_free(ctx->server);
+	// Free transfer buffers
+	free(ctx->playback_tb);
+	free(ctx->next_tb);
+	// Disconnect the event queue
+	EventQueue_free(ctx->evt_queue);
 }
 
 static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
@@ -105,6 +123,10 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 	if (ctx->stream) {
 		return AudioBackend_STREAM_EXISTS;
 	}
+
+	FastLoop_lock(ctx->loop);
+#define DEINIT() \
+	FastLoop_unlock(ctx->loop)
 
 	// Set up stream
 	const AudioPCM *pcm = &t->pcm;
@@ -118,20 +140,41 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 
 	ctx->stream = FastStream_new(ctx->loop, &settings);
 	if (!ctx->stream) {
+		DEINIT();
 		return AudioBackend_STREAM_ERR;
 	}
 
 	// Set up callbacks
 	FastStream_set_write_cb(ctx->stream, FastStream_write_cb_, ctx);
 
+#undef DEINIT
+#define DEINIT() \
+	FastStream_free(ctx->stream); \
+	ctx->stream = NULL; \
+	FastLoop_unlock(ctx->loop)
+
 	// We don't need to connect the stream to anything, since it's a null sink
 
-	// Connect and fill(?) framebuffer
-	// FIXME: could this be related to the start of audio cutoff bug?
+	// Connect and fill framebuffer
 	ctx->playback_buffer = t->buffer;
-	// TODO: We need a FastStream_begin_write method.
-	// TODO 2: or do we ?
+	size_t tb_size = AudioBuffer_max_read(ctx->playback_buffer, -1, -1, false);
+	if (FastStream_begin_write(ctx->stream, &tb_size) != 0) {
+		DEINIT();
+		return AudioBackend_FB_WRITE_ERR;
+	}
 
+	realloc_buf(&ctx->playback_tb, &ctx->playback_tb_cap, tb_size);
+	unsigned char *tb = ctx->playback_tb;
+	tb_size = AudioBuffer_read(ctx->playback_buffer, tb, tb_size, false);
+
+	if (FastStream_write(ctx->stream, tb, tb_size) != 0) {
+		DEINIT();
+		return AudioBackend_FB_WRITE_ERR;
+	}
+
+#undef DEINIT
+
+	FastLoop_unlock(ctx->loop);
 
 	return AudioBackend_OK;
 }
@@ -172,13 +215,9 @@ static void FastStream_write_cb_(FastStream *stream, size_t n_bytes, void *userd
 	}
 
 	// Copy from track buffer to transfer buffer
-	void *tb;
-	size_t tb_size = n_bytes;
-	tb = malloc(tb_size); // TODO: replace w/ begin_write
-	if (!tb) {
-		LOG(Verbosity_NORMAL, "Warning: failed to populate transfer buffer\n");
-		return;
-	}
+	size_t tb_size = MIN(n_bytes, AudioBuffer_max_read(ctx->playback_buffer, -1, -1, false));
+	realloc_buf(&ctx->playback_tb, &ctx->playback_tb_cap, tb_size);
+	unsigned char *tb = ctx->playback_tb;
 	tb_size = AudioBuffer_read(ctx->playback_buffer, tb, tb_size, false);
 	// Copy from transfer buffer to AB buffer
 	if (FastStream_write(ctx->stream, tb, tb_size) != 0) {
@@ -202,4 +241,12 @@ static void FastStream_write_cb_(FastStream *stream, size_t n_bytes, void *userd
 			.body_size = 0};
 		EventQueue_send(ctx->evt_queue, &end_evt);
 	}
+}
+
+static void realloc_buf(unsigned char **buf, size_t *buf_cap, size_t newsize) {
+	if (newsize <= *buf_cap) {
+		return;
+	}
+	*buf_cap = MAX(newsize, 2 * (*buf_cap));
+	*buf = realloc(*buf, *buf_cap);
 }
