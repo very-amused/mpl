@@ -82,7 +82,15 @@ static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Setti
 	Ctx *ctx = ctx__;
 
 	// Connect to event queue
-	ctx->evt_queue = EventQueue_connect(eq, O_WRONLY | O_NONBLOCK);
+	// O_NONBLOCK is undefined in MSYS2 build environments
+#ifdef O_NONBLOCK
+#define EVT_QUEUE_OPTS O_WRONLY | O_NONBLOCK
+#else
+#define EVT_QUEUE_OPTS O_WRONLY
+#endif
+	ctx->evt_queue = EventQueue_connect(eq, EVT_QUEUE_OPTS);
+#undef EVT_QUEUE_OPTS
+
 	if (!ctx->evt_queue) {
 		return AudioBackend_EVENT_QUEUE_ERR;
 	}
