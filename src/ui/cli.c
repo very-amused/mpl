@@ -1,6 +1,7 @@
 #include "cli.h"
 #include "ui/event_queue.h"
 #include "ui/input_thread.h"
+#include "util/log.h"
 #include <string.h>
 
 int UserInterface_CLI_init(UserInterface_CLI *ui) {
@@ -25,5 +26,6 @@ int UserInterface_CLI_init(UserInterface_CLI *ui) {
 
 void UserInterface_CLI_deinit(UserInterface_CLI *ui) {
 	InputThread_free(ui->input_thread);
+	LOG(Verbosity_DEBUG, "InputThread_free finished\n");
 	EventQueue_free(ui->evt_queue);
 }
