@@ -3,7 +3,7 @@
 #include "error.h"
 #include <wchar.h>
 
-// Keybind map for MPL, implemented in ~~Rust~~ C++ until I get meson playing nice
+// Keybind map for MPL, implemented in both C (unsigned ascii support) and C++ (full UTF-8 support)
 typedef struct KeybindMap KeybindMap;
 
 // Allocate and initialize a new, empty KeybindMap
