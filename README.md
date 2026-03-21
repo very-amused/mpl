@@ -10,6 +10,8 @@ cd build
 meson configure -Dbuildtype=release # debug is the default build type
 # If you're using a keyboard layout covered by unsigned (extended) ASCII:
 meson configure -Dascii_keybinds=true
+# Build with emulated audio output (no sound):
+meson configure -Dao_fast=true # useful for compatibility checking on platforms before implementing an AudioBackend
 ```
 
 All compile-time options can be seen in meson.options. Use these to customize MPL to your liking.
