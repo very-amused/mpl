@@ -10,13 +10,17 @@ typedef struct Settings {
 
 	char *audio_backend; // Name of audio backend to use (e.g "pulseaudio", "fast") TODO implement
 	uint32_t ab_buffer_ms; // number of ms to buffer with the audio backend (i.e pulseaudio)
+
+	bool ui_timecode_ms;
 } Settings;
 
 // Default values for all settings
 static const Settings default_settings = {
 	.at_buffer_ahead = 30,
 
-	.ab_buffer_ms = 100
+	.ab_buffer_ms = 100,
+
+	.ui_timecode_ms = false
 };
 
 // Initialize settings to default values
@@ -29,7 +33,8 @@ void Settings_deinit(Settings *opts);
 enum Settings_ERR Settings_parse_setting(Settings *opts, const char *line);
 
 #define SETTINGS_TYPE(VARIANT) \
-	VARIANT(Settings_U32)
+	VARIANT(Settings_U32) \
+	VARIANT(Settings_BOOL)
 
 // The type of a settings value
 enum Settings_t {

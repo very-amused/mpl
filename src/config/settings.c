@@ -1,4 +1,5 @@
 #include "settings.h"
+#include "config/keybind/function.h"
 #include "error.h"
 #include "util/log.h"
 #include "util/strtokn.h"
@@ -37,7 +38,7 @@ enum Settings_ERR Settings_parse_setting(Settings *opts, const char *line) {
 	{
 		static const char AT_BUFFER_AHEAD[] = "at_buffer_ahead";
 		static const char AB_BUFFER_MS[] = "ab_buffer_ms";
-		if ((strcmp(optname, AT_BUFFER_AHEAD)) == 0) {
+		if (strcmp(optname, AT_BUFFER_AHEAD) == 0) {
 			opt_t = Settings_U32;
 			opt_dst = (unsigned char *)&opts->at_buffer_ahead;
 		} else if (strcmp(optname, AB_BUFFER_MS) == 0) {
@@ -45,6 +46,15 @@ enum Settings_ERR Settings_parse_setting(Settings *opts, const char *line) {
 			opt_dst = (unsigned char *)&opts->ab_buffer_ms;
 		}
 		break;
+	}
+
+	case 'u':
+	{
+		static const char UI_TIMECODE_MS[] = "ui_timecode_ms";
+		if (strcmp(optname, UI_TIMECODE_MS) == 0) {
+			opt_t = Settings_BOOL;
+			opt_dst = (unsigned char *)&opts->ui_timecode_ms;
+		}
 	}
 	}
 
@@ -60,6 +70,13 @@ enum Settings_ERR Settings_parse_setting(Settings *opts, const char *line) {
 
 	// {val}
 	strtokn(&parse_state, WHITESPACE);
+	// discard semicolon terminator
+	if (parse_state.s[parse_state.offset + (parse_state.tok_len-1)] == Keybind_DELIM) {
+		parse_state.tok_len--;
+	}
+	if (!parse_state.tok_len) {
+		return Settings_SYNTAX_ERR;
+	}
 	char val_str[parse_state.tok_len + 1];
 	strncpy(val_str, &parse_state.s[parse_state.offset], parse_state.tok_len);
 	val_str[parse_state.tok_len] = '\0';
@@ -73,6 +90,20 @@ enum Settings_ERR Settings_parse_setting(Settings *opts, const char *line) {
 			return Settings_SYNTAX_ERR;
 		}
 		LOG(Verbosity_DEBUG, "Parsed setting: %s = %u (%s)\n", optname, *dst, Settings_t_name(opt_t));
+		break;
+	}
+
+	case Settings_BOOL:
+	{
+		bool *dst = (bool *)opt_dst;
+		if (strcmp(val_str, "true") == 0) {
+			*dst = true;
+		} else if (strcmp(val_str, "false") == 0) {
+			*dst = false;
+		} else {
+			return Settings_SYNTAX_ERR;
+		}
+		LOG(Verbosity_DEBUG, "Parsed setting: %s = %s (%s)\n", optname, *dst ? "true" : "false", Settings_t_name(opt_t));
 		break;
 	}
 	}

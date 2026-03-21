@@ -108,8 +108,9 @@ int main(int argc, const char **argv) {
 			AudioPCM pcm = tr->audio->pcm;
 			char timecode_buf[255];
 			char duration_buf[255];
-			fmt_timecode(timecode_buf, sizeof(timecode_buf), timecode, &pcm);
-			fmt_timecode(duration_buf, sizeof(duration_buf), tr->audio->duration_timecode, &pcm);
+			const bool show_ms = config.settings.ui_timecode_ms;
+			fmt_timecode(timecode_buf, sizeof(timecode_buf), timecode, &pcm, show_ms);
+			fmt_timecode(duration_buf, sizeof(duration_buf), tr->audio->duration_timecode, &pcm, show_ms);
 			static const char CLEAR_LINE_VT100[] = "\033[2K\r";
 			fprintf(stderr, CLEAR_LINE_VT100);
 			fprintf(stderr, "%s/%s", timecode_buf, duration_buf);
