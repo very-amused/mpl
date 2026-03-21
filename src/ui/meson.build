@@ -5,4 +5,5 @@ if build_machine.system() == 'windows'
 else
 	src_ui += files('event_queue.c')
   src_ui += files('input_thread.c')
+endif
 src += src_ui
