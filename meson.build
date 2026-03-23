@@ -47,6 +47,9 @@ endif
 if pipewire.found()
 	cflags += '-DAO_PIPEWIRE'
 endif
+if build_machine.system() == 'windows'
+  cflags += '-DAO_COREAUDIO'
+endif
 if get_option('ao_fast')
 	cflags += '-DAO_FAST'
 endif
