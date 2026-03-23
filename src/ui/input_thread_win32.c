@@ -34,36 +34,39 @@ struct InputThread {
 // Block until a character is read from *thr.
 // poll() is useless on win32, so the only way to break this is with pthread_cancel
 static char InputThread_getchar(InputThread *thr) {
-	char out;
-	DWORD n_read;
-
 	// NOTE: WaitForMultipleObjects will return the lowest index corresponding to a signal object.
 	// We want to be responsive to a shutdown signal, so we place it first in the array
 	HANDLE object_handles[] = {thr->shutdown_evt, thr->input};
 	static const DWORD n_handles = sizeof(object_handles) / sizeof(object_handles[0]);
-	LOG(Verbosity_DEBUG, "Blocking on WaitForMultipleObjects...\n");
-	DWORD status = WaitForMultipleObjects(n_handles, object_handles, false, INFINITE);
-	LOG(Verbosity_DEBUG, "Done with WaitForMultipleObjects...\n");
-	if (!(status >= WAIT_OBJECT_0 && status <= WAIT_OBJECT_0+(n_handles-1))) {
-		LOG(Verbosity_VERBOSE, "Unable to read next input char: WaitForMultipleObjects failed\n");
-		return '\0';
-	}
-	const DWORD signal_index = status - WAIT_OBJECT_0;
-	if (signal_index == 0) {
-		LOG(Verbosity_DEBUG, "Got shutdown signal in InputThread_getchar\n");
-		return EOF;
+
+	char input_key = '\0';
+	while (!input_key) {
+		LOG(Verbosity_DEBUG, "Blocking input on WaitForMultipleObjects...\n");
+		DWORD status = WaitForMultipleObjects(n_handles, object_handles, false, INFINITE);
+		LOG(Verbosity_DEBUG, "Done with WaitForMultipleObjects...\n");
+
+			
+		// This is verbose but it's better to be API-compliant than rely on UB
+		if (!(status >= WAIT_OBJECT_0 && status <= WAIT_OBJECT_0+(n_handles-1))) {
+			LOG(Verbosity_NORMAL, "WaitForMultipleObjects failed. This should never happen\n");
+			continue;
+		}
+		const DWORD signal_index = status - WAIT_OBJECT_0;
+		if (signal_index == 0) {
+			LOG(Verbosity_DEBUG, "Got shutdown signal in InputThread_getchar\n");
+			return EOF;
+		}
+
+		DWORD n_read;
+		LOG(Verbosity_DEBUG, "Blocking on ReadConsole...\n");
+		ReadConsoleA(thr->input, &input_key, sizeof(input_key), &n_read, NULL);
+		// We have to flush the input buffer to avoid the keypress event re-firing (yes, it is bad that we have to do this)
+		FlushConsoleInputBuffer(thr->input);
+		LOG(Verbosity_DEBUG, "Done with ReadConsole...\n");
 	}
 
-	LOG(Verbosity_DEBUG, "Blocking on ReadConsole...\n");
-	bool ok = ReadConsole(thr->input, &out, sizeof(out), &n_read, NULL);
-	FlushConsoleInputBuffer(thr->input);
-	LOG(Verbosity_DEBUG, "Done with ReadConsole...\n");
-	if (!ok || n_read != sizeof(out)) {
-		LOG(Verbosity_VERBOSE, "Unable to read next input char: ReadConsole failed\n");
-		return '\0';
-	}
 
-	return out;
+	return input_key;
 }
 
 static void *InputThread_loop(void *thr__) {
@@ -77,7 +80,7 @@ static void *InputThread_loop(void *thr__) {
 		return NULL;
 	}
 	const DWORD orig_console_mode = console_mode;
-	console_mode &= ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT); // TODO: check if this does what ~(ECHO | ICANON) does on linux
+	console_mode &= ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_WINDOW_INPUT | ENABLE_MOUSE_INPUT); // TODO: check if this does what ~(ECHO | ICANON) does on linux
 	ok = SetConsoleMode(thr->input, console_mode);
 	if (!ok) {
 		LOG(Verbosity_NORMAL, "Failed to set console mode. Things could get weird from here.\n");
@@ -90,14 +93,10 @@ static void *InputThread_loop(void *thr__) {
 		case InputMode_KEY:
 		{
 			EventBody_Keypress input_key = InputThread_getchar(thr);
-			LOG(Verbosity_VERBOSE, "Got inputkey %c\n", input_key);
-			if (input_key == '\0') {
-				LOG(Verbosity_VERBOSE, "Not sending mpl_KEYPRESS event because InputThread_getchar failed. This should never happen.\n");
-				continue;
-			}
 			if (input_key == EOF) {
 				goto cancel;
 			}
+			LOG(Verbosity_DEBUG, "Read keypress `%c`, sending to EventQueue\n", input_key);
 			Event evt = {.event_type = mpl_KEYPRESS, .body_size = sizeof(EventBody_Keypress), .body_inline = input_key};
 			EventQueue_send(thr->eq, &evt);
 			break;
@@ -109,10 +108,10 @@ static void *InputThread_loop(void *thr__) {
 	}
 
 cancel:
-	LOG(Verbosity_VERBOSE, "Input thread received cancel signal.\n");
+	LOG(Verbosity_VERBOSE, "Input thread received cancel signal\n");
 	ok = SetConsoleMode(thr->input, orig_console_mode);
 	if (!ok) {
-		LOG(Verbosity_NORMAL, "Failed to reset console mode.\n");
+		LOG(Verbosity_NORMAL, "Failed to reset console mode\n");
 	}
 	return NULL;
 }
