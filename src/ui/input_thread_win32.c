@@ -4,10 +4,11 @@
 #include <stdatomic.h>
 #include <stdio.h>
 
-#include <windows.h>
+#include <Windows.h>
 #include <consoleapi.h>
 #include <processenv.h>
 #include <handleapi.h>
+#include <synchapi.h>
 
 // FIXME: we need to soft exit. InputThread_loop is hanging forever since it never hits a recognized async-safe cancellation point
 
@@ -22,8 +23,8 @@ struct InputThread {
 	// EventQueue for sending input events
 	EventQueue *eq;
 
-	HANDLE input;
-	DWORD orig_console_mode; // Used to reset console in InputThread_free
+	HANDLE input; // Console input handle
+	HANDLE shutdown_evt; // Shutdown event handle used to stop the input loop
 
 	 pthread_t thread;
 	 _Atomic(enum InputMode) mode; // Input Mode
@@ -35,10 +36,29 @@ static char InputThread_getchar(InputThread *thr) {
 	char out;
 	DWORD n_read;
 
+	// NOTE: WaitForMultipleObjects will return the lowest index corresponding to a signal object.
+	// We want to be responsive to a shutdown signal, so we place it first in the array
+	HANDLE object_handles[] = {thr->shutdown_evt, thr->input};
+	static const DWORD n_handles = sizeof(object_handles) / sizeof(object_handles[0]);
+	LOG(Verbosity_DEBUG, "Blocking on WaitForMultipleObjects...\n");
+	DWORD status = WaitForMultipleObjects(n_handles, object_handles, false, INFINITE);
+	LOG(Verbosity_DEBUG, "Done with WaitForMultipleObjects...\n");
+	if (!(status >= WAIT_OBJECT_0 && status <= WAIT_OBJECT_0+(n_handles-1))) {
+		LOG(Verbosity_VERBOSE, "Unable to read next input char: WaitForMultipleObjects failed\n");
+		return '\0';
+	}
+	const DWORD signal_index = status - WAIT_OBJECT_0;
+	if (signal_index == 0) {
+		LOG(Verbosity_DEBUG, "Got shutdown signal in InputThread_getchar\n");
+		return EOF;
+	}
+
+	LOG(Verbosity_DEBUG, "Blocking on ReadConsole...\n");
 	bool ok = ReadConsole(thr->input, &out, sizeof(out), &n_read, NULL);
+	LOG(Verbosity_DEBUG, "Done with ReadConsole...\n");
 	if (!ok || n_read != sizeof(out)) {
-		LOG(Verbosity_NORMAL, "Error: failed to read next char (ReadConsole)\n");
-		out = '\0';
+		LOG(Verbosity_VERBOSE, "Unable to read next input char: ReadConsole failed\n");
+		return '\0';
 	}
 
 	return out;
@@ -48,14 +68,13 @@ static void *InputThread_loop(void *thr__) {
 	InputThread *thr = thr__;
 
 	// Uncook terminal input
-	// TODO: recook in InputThread_free
 	DWORD console_mode;
 	bool ok = GetConsoleMode(thr->input, &console_mode);
 	if (!ok) {
 		LOG(Verbosity_NORMAL, "Failed to get console mode, bailing out\n");
 		return NULL;
-	} 
-	thr->orig_console_mode = console_mode;
+	}
+	const DWORD orig_console_mode = console_mode;
 	console_mode &= ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT); // TODO: check if this does what ~(ECHO | ICANON) does on linux
 	ok = SetConsoleMode(thr->input, console_mode);
 	if (!ok) {
@@ -69,6 +88,10 @@ static void *InputThread_loop(void *thr__) {
 		case InputMode_KEY:
 		{
 			EventBody_Keypress input_key = InputThread_getchar(thr);
+			if (input_key == '\0') {
+				LOG(Verbosity_VERBOSE, "Not sending mpl_KEYPRESS event because InputThread_getchar failed. This should never happen.\n");
+				continue;
+			}
 			if (input_key == EOF) {
 				goto cancel;
 			}
@@ -84,7 +107,7 @@ static void *InputThread_loop(void *thr__) {
 
 cancel:
 	LOG(Verbosity_VERBOSE, "Input thread received cancel signal.\n");
-	ok = SetConsoleMode(thr->input, thr->orig_console_mode);
+	ok = SetConsoleMode(thr->input, orig_console_mode);
 	if (!ok) {
 		LOG(Verbosity_NORMAL, "Failed to reset console mode.\n");
 	}
@@ -96,6 +119,8 @@ InputThread *InputThread_new(EventQueue *eq) {
 	thr->eq = eq;
 	thr->mode = InputMode_KEY;
 	thr->input = GetStdHandle(STD_INPUT_HANDLE);
+	// ref https://learn.microsoft.com/en-us/windows/win32/sync/using-event-objects
+	thr->shutdown_evt = CreateEventA(NULL, true, false, NULL);
 
 	// Start input thread
 	pthread_create(&thr->thread, NULL, InputThread_loop, thr);
@@ -104,10 +129,12 @@ InputThread *InputThread_new(EventQueue *eq) {
 }
 
 void InputThread_free(InputThread *thr) {
-	// no poll on windows, so we just have to slam the brakes
-	pthread_cancel(thr->thread);
-	// Uncook input
-	LOG(Verbosity_DEBUG, "pthread_cancel exited\n");
+	LOG(Verbosity_VERBOSE, "InputThread_free called\n");
+	// Send stop signal to thread
+	if (!SetEvent(thr->shutdown_evt)) {
+		LOG(Verbosity_NORMAL, "Failed to signal InputThread shutdown. Shutdown might hang from here on.");
+	}
+	LOG(Verbosity_VERBOSE, "SetEvent called (shutdown signaled)\n");
 
 	// Join thread so we can safely free its resources
 	pthread_join(thr->thread, NULL);
