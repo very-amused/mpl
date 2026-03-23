@@ -1,3 +1,4 @@
+#include <fcntl.h>
 #include "audio/buffer.h"
 #include "audio/pcm.h"
 #include "audio/track.h"
@@ -8,6 +9,12 @@
 #include "ui/event.h"
 #include "ui/event_queue.h"
 #include "util/log.h"
+
+#include <windows.h>
+#include <combaseapi.h>
+#include <mmdeviceapi.h>
+#include <winerror.h>
+#include <unknwn.h>
 
 // CoreAudio backend context
 typedef struct Ctx {
@@ -49,3 +56,34 @@ AudioBackend AB_CoreAudio = {
 
 	.ctx_size = sizeof(Ctx)
 };
+
+static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Settings *settings) {
+	Ctx *ctx = ctx__;
+
+	// Call a windows COM destructor from C
+#define RELEASE(obj) \
+	if (obj) { \
+		obj->lpVtbl->Release(obj); \
+		obj = NULL; \
+	}
+
+	// Connect to event queue, store settings
+	ctx->evt_queue = EventQueue_connect(eq, O_WRONLY);
+	if (!ctx->evt_queue) {
+		return AudioBackend_BAD_ALLOC;
+	}
+	ctx->settings = settings;
+
+	// Instantiate audio device enumerator
+	IMMDeviceEnumerator *audiodev_enum;
+	HRESULT hr = CoCreateInstance(&CLSID_MMDeviceEnumerator, NULL,
+			CLSCTX_ALL, &IID_IMMDeviceEnumerator,
+			(void **)&audiodev_enum);
+	if (FAILED(hr)) {
+		RELEASE(audiodev_enum);
+		return AudioBackend_BAD_ALLOC;
+	}
+
+	// TOOD
+	return AudioBackend_OK;
+}
