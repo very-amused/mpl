@@ -84,6 +84,6 @@ static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Setti
 		return AudioBackend_BAD_ALLOC;
 	}
 
-	// TOOD
+	// TODO
 	return AudioBackend_OK;
 }
