@@ -1,4 +1,3 @@
-#include <fcntl.h>
 #include "audio/buffer.h"
 #include "audio/pcm.h"
 #include "audio/track.h"
@@ -10,11 +9,11 @@
 #include "ui/event_queue.h"
 #include "util/log.h"
 
+#include <fcntl.h>
 #include <windows.h>
 #include <combaseapi.h>
 #include <mmdeviceapi.h>
 #include <winerror.h>
-#include <unknwn.h>
 
 // CoreAudio backend context
 typedef struct Ctx {
@@ -83,6 +82,17 @@ static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Setti
 		RELEASE(audiodev_enum);
 		return AudioBackend_BAD_ALLOC;
 	}
+	// Get default audio output device
+	IMMDevice *audio_device;
+	hr = audiodev_enum->lpVtbl->GetDefaultAudioEndpoint(audiodev_enum, eRender, eConsole, &audio_device);
+	if (FAILED(hr)) {
+		RELEASE(audio_device);
+		RELEASE(audiodev_enum);
+		LOG(Verbosity_VERBOSE, "Failed to get default audio endpoint\n");
+		return AudioBackend_CONNECT_ERR;
+	}
+
+
 
 	// TODO
 	return AudioBackend_OK;
