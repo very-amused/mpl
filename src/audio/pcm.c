@@ -144,8 +144,9 @@ struct spa_audio_info_raw AudioPCM_pipewire_info(const AudioPCM *pcm) {
 
 #ifdef AO_COREAUDIO
 #include <windows.h>
-#include <mmreg.h>
+#include <initguid.h>
 #include <ksmedia.h>
+#include <mmreg.h>
 #include <minwindef.h>
 #include <string.h>
 

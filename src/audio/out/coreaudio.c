@@ -8,12 +8,18 @@
 #include "ui/event.h"
 #include "ui/event_queue.h"
 #include "util/log.h"
+#include "error.h"
 
+#include <stddef.h>
 #include <fcntl.h>
+#include <stdint.h>
 #include <windows.h>
+#include <initguid.h>
 #include <combaseapi.h>
 #include <mmdeviceapi.h>
 #include <audioclient.h>
+#include <audiopolicy.h>
+#include <ksmedia.h>
 #include <winerror.h>
 
 // CoreAudio backend context
@@ -25,11 +31,13 @@ typedef struct Ctx {
 	struct IMMDeviceEnumerator *audiodev_enum;
 	// Audio device we're sending to
 	IMMDevice *audio_device;
-	// Audio + AudioRender clients, these collectively fulfill the role of an audio stream.
-	// The AudioClient holds ownership over the buffer *data* (read only),
-	// while the AudioRenderClient holds ownership over the buffer *write methods* and *callbacks*
-	IAudioClient *audio_client;
-	IAudioRenderClient *render_client;
+	// Audio stream for current and next tracks
+	IAudioClient *stream;
+	IAudioRenderClient *stream_render;
+	IAudioClient *next_stream;
+	IAudioRenderClient *next_stream_render;
+	// Audio session for grouping streams w/ metadata
+	IAudioSessionControl *session;
 
 	// Playback buffer for current and next audio track
 	AudioBuffer *playback_buffer;
@@ -94,14 +102,7 @@ static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Setti
 		return AudioBackend_CONNECT_ERR;
 	}
 
-	// Initialize audio client/session (in a paused state w/ no format configured)
-	hr = ctx->audio_device->lpVtbl->Activate(ctx->audio_device, &IID_IAudioClient, CLSCTX_ALL,
-			NULL, (void **)&ctx->audio_client);
-	if (FAILED(hr)) {
-		LOG(Verbosity_VERBOSE, "Failed to create audio client\n");
-		deinit(ctx);
-		return  AudioBackend_CONNECT_ERR;
-	}
+	// Initialize audio stream. This stream will become part of a session when it's initialized with a format.
 
 	
 	return AudioBackend_OK;
@@ -111,9 +112,17 @@ static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Setti
 static void deinit(void *ctx__) {
 	Ctx *ctx = ctx__;
 
-	HRESULT hr = ctx->audio_client->lpVtbl->Stop(ctx->audio_client);
-	if (FAILED(hr)) {
-		LOG(Verbosity_VERBOSE, "Failed to stop AudioClient\n");
+	if (ctx->stream) {
+		HRESULT hr = ctx->stream->lpVtbl->Stop(ctx->stream);
+		if (FAILED(hr)) {
+			LOG(Verbosity_VERBOSE, "Failed to stop stream\n");
+		}
+	}
+	if (ctx->next_stream) {
+		HRESULT hr = ctx->next_stream->lpVtbl->Stop(ctx->next_stream);
+		if (FAILED(hr)) {
+			LOG(Verbosity_VERBOSE, "Failed to stop next_stream\n");
+		}
 	}
 
 	// Call a windows COM destructor from C
@@ -123,10 +132,129 @@ static void deinit(void *ctx__) {
 		obj = NULL; \
 	}
 
-	RELEASE(ctx->render_client);
-	RELEASE(ctx->audio_client);
+	RELEASE(ctx->stream);
+	RELEASE(ctx->stream_render);
+	RELEASE(ctx->next_stream);
+	RELEASE(ctx->next_stream_render);
+	RELEASE(ctx->session);
 	RELEASE(ctx->audio_device);
 	RELEASE(ctx->audiodev_enum);
 
 #undef RELEASE
+}
+
+static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
+	Ctx *ctx = ctx__;
+
+	// If stream is initialized, the caller must use queue() instead
+	HRESULT hr;
+	if (ctx->stream) {
+		REFERENCE_TIME dontcare;
+		hr = ctx->stream->lpVtbl->GetStreamLatency(ctx->stream, &dontcare);
+		if (!(hr == AUDCLNT_E_NOT_INITIALIZED || hr == AUDCLNT_E_DEVICE_INVALIDATED)) {
+			return AudioBackend_STREAM_EXISTS;
+		}
+	} else {
+		hr = ctx->audio_device->lpVtbl->Activate(ctx->audio_device, &IID_IAudioClient, CLSCTX_ALL,
+				NULL, (void **)&ctx->stream);
+		if (FAILED(hr)) {
+			LOG(Verbosity_VERBOSE, "Failed to activate audio stream\n");
+			return AudioBackend_STREAM_ERR; 
+		}
+	}
+
+
+
+
+	// Attach this stream to an existing session if possible
+	GUID *session_guid = NULL;
+	if (ctx->session) {
+		hr = ctx->session->lpVtbl->GetGroupingParam(ctx->session, session_guid);
+		if (FAILED(hr)) {
+			LOG(Verbosity_VERBOSE, "Failed to attach to existing audio session\n");
+			session_guid = NULL;
+		}
+	}
+
+	// Initialize stream
+	// TODO: support WASAPI exclusive mode
+	static const DWORD STREAM_FLAGS = AUDCLNT_STREAMFLAGS_EVENTCALLBACK | AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY;
+	const WAVEFORMATEXTENSIBLE wavfmt = AudioPCM_coreaudio_waveformat(&t->pcm);
+	const REFERENCE_TIME hns_buf_duration = ctx->settings->ab_buffer_ms * 10000; // 1 ms = 10000 * 100ns
+	hr = ctx->stream->lpVtbl->Initialize(
+			ctx->stream,
+			AUDCLNT_SHAREMODE_SHARED,
+			STREAM_FLAGS,
+			hns_buf_duration,
+			0,
+			(const WAVEFORMATEX *)&wavfmt,
+			session_guid);
+	if (FAILED(hr)) {
+		LOG(Verbosity_VERBOSE, "Failed to initialize audio stream\n");
+		return AudioBackend_STREAM_ERR;
+	}
+
+	// If we just created a session, save it to the AudioBackend so future streams can attach
+	if (!ctx->session) {
+		hr = ctx->stream->lpVtbl->GetService(ctx->stream, &IID_IAudioSessionControl, (void **)&ctx->session);
+		if (FAILED(hr)) {
+			LOG(Verbosity_VERBOSE, "Failed to save audio session\n");
+		}
+	}
+
+	// Load render client (what we use to write frames)
+	hr = ctx->stream->lpVtbl->GetService(ctx->stream, &IID_IAudioRenderClient, (void **)&ctx->stream_render);
+	if (FAILED(hr)) {
+		LOG(Verbosity_VERBOSE, "Failed to get audio render client\n");
+		return AudioBackend_FB_WRITE_ERR;
+	}
+
+	// Get max number of frames we can write
+	uint32_t max_frame_count;
+	hr = ctx->stream->lpVtbl->GetBufferSize(ctx->stream, &max_frame_count);
+	if (FAILED(hr)) {
+		LOG(Verbosity_VERBOSE, "Failed to get WASAPI buffer size\n");
+		return AudioBackend_FB_WRITE_ERR;
+	}
+
+	// Figure out how many frames we can actually write
+	const size_t frame_size = ctx->playback_buffer->frame_size;
+	uint32_t frame_count = AudioBuffer_max_read(ctx->playback_buffer, -1, -1, true) / frame_size;
+	if (frame_count > max_frame_count) {
+		frame_count = max_frame_count;
+	}
+
+	// Get a transfer buffer from WASAPI and write our frames
+	BYTE *tb;
+	hr = ctx->stream_render->lpVtbl->GetBuffer(ctx->stream_render, frame_count, &tb);
+	if (FAILED(hr)) {
+		LOG(Verbosity_VERBOSE, "Failed to get transfer buffer from WASAPI\n");
+		return AudioBackend_FB_WRITE_ERR;
+	}
+	size_t bytes_read = AudioBuffer_read(ctx->playback_buffer, tb, frame_count * frame_size, true);
+	const uint32_t actual_frame_count = bytes_read / frame_size;
+	if (actual_frame_count != frame_count) {
+		LOG(Verbosity_DEBUG, "Read fewer frames than expected\n");
+	}
+
+	// Release the transfer buffer to WASAPI
+	hr = ctx->stream_render->lpVtbl->ReleaseBuffer(ctx->stream_render, actual_frame_count, 0);
+	if (FAILED(hr)) {
+		LOG(Verbosity_VERBOSE, "Failed to release transfer buffer to WASAPI\n");
+	}
+
+	return AudioBackend_OK;
+}
+static enum AudioBackend_ERR play(void *ctx__, bool pause);
+
+static void lock(void *ctx__) {
+	// WASAPI uses buffer swapping, so we don't need to worry about locking
+	(void)0;
+}
+static void unlock(void *ctx__) {
+	(void)0;
+}
+
+static void seek(void *ctx__) {
+	// TODO
 }

@@ -47,8 +47,11 @@ endif
 if pipewire.found()
 	cflags += '-DAO_PIPEWIRE'
 endif
+cc = meson.get_compiler('c')
 if build_machine.system() == 'windows'
   cflags += '-DAO_COREAUDIO'
+  # Provides KSDATAFORMAT_SUBTYPE idents
+  deps += cc.find_library('ksuser', required : true)
 endif
 if get_option('ao_fast')
 	cflags += '-DAO_FAST'
