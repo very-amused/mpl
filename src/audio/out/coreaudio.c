@@ -22,14 +22,14 @@ typedef struct Ctx {
 	EventQueue *evt_queue;
 
 	// Audio device enumerator (used to find the default audio device)
-	MMDeviceEnumerator *audiodev_enum;
+	struct IMMDeviceEnumerator *audiodev_enum;
 	// Audio device we're sending to
 	IMMDevice *audio_device;
 	// Audio + AudioRender clients, these collectively fulfill the role of an audio stream.
 	// The AudioClient holds ownership over the buffer *data* (read only),
 	// while the AudioRenderClient holds ownership over the buffer *write methods* and *callbacks*
-	IAudioClient audio_client;
-	IAudioRenderClient render_client;
+	IAudioClient *audio_client;
+	IAudioRenderClient *render_client;
 
 	// Playback buffer for current and next audio track
 	AudioBuffer *playback_buffer;
@@ -68,12 +68,6 @@ AudioBackend AB_CoreAudio = {
 static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Settings *settings) {
 	Ctx *ctx = ctx__;
 
-	// Call a windows COM destructor from C
-#define RELEASE(obj) \
-	if (obj) { \
-		obj->lpVtbl->Release(obj); \
-		obj = NULL; \
-	}
 
 	// Connect to event queue, store settings
 	ctx->evt_queue = EventQueue_connect(eq, O_WRONLY);
@@ -83,30 +77,56 @@ static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Setti
 	ctx->settings = settings;
 
 	// Instantiate audio device enumerator
-	IMMDeviceEnumerator *audiodev_enum;
 	HRESULT hr = CoCreateInstance(&CLSID_MMDeviceEnumerator, NULL,
 			CLSCTX_ALL, &IID_IMMDeviceEnumerator,
-			(void **)&audiodev_enum);
+			(void **)&ctx->audiodev_enum);
 	if (FAILED(hr)) {
-		RELEASE(audiodev_enum);
+		LOG(Verbosity_VERBOSE, "Failed to create audio device enumerator\n");
+		deinit(ctx);
 		return AudioBackend_BAD_ALLOC;
 	}
 	// Get default audio output device
-	IMMDevice *audio_device;
-	hr = audiodev_enum->lpVtbl->GetDefaultAudioEndpoint(audiodev_enum, eRender, eConsole, &audio_device);
+	hr = ctx->audiodev_enum->lpVtbl->GetDefaultAudioEndpoint(
+			ctx->audiodev_enum, eRender, eConsole, &ctx->audio_device);
 	if (FAILED(hr)) {
-		RELEASE(audio_device);
-		RELEASE(audiodev_enum);
 		LOG(Verbosity_VERBOSE, "Failed to get default audio endpoint\n");
+		deinit(ctx);
 		return AudioBackend_CONNECT_ERR;
 	}
 
+	// Initialize audio client/session (in a paused state w/ no format configured)
+	hr = ctx->audio_device->lpVtbl->Activate(ctx->audio_device, &IID_IAudioClient, CLSCTX_ALL,
+			NULL, (void **)&ctx->audio_client);
+	if (FAILED(hr)) {
+		LOG(Verbosity_VERBOSE, "Failed to create audio client\n");
+		deinit(ctx);
+		return  AudioBackend_CONNECT_ERR;
+	}
 
+	
 	return AudioBackend_OK;
 }
 
 
 static void deinit(void *ctx__) {
 	Ctx *ctx = ctx__;
-	CoTaskMemFree();
+
+	HRESULT hr = ctx->audio_client->lpVtbl->Stop(ctx->audio_client);
+	if (FAILED(hr)) {
+		LOG(Verbosity_VERBOSE, "Failed to stop AudioClient\n");
+	}
+
+	// Call a windows COM destructor from C
+#define RELEASE(obj) \
+	if (obj) { \
+		obj->lpVtbl->Release(obj); \
+		obj = NULL; \
+	}
+
+	RELEASE(ctx->render_client);
+	RELEASE(ctx->audio_client);
+	RELEASE(ctx->audio_device);
+	RELEASE(ctx->audiodev_enum);
+
+#undef RELEASE
 }
