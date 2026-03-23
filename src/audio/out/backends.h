@@ -5,8 +5,8 @@
 extern AudioBackend AB_PulseAudio;
 extern AudioBackend AB_Pipewire;
 
-/* Windows AudioBackends */
-extern AudioBackend AB_CoreAudio;
+/* Windows AudioBackend */
+extern AudioBackend AB_WASAPI;
 
 /* Fake Audio Server for Testing */
 extern AudioBackend AB_FAST;

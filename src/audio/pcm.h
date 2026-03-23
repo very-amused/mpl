@@ -35,9 +35,9 @@ pa_buffer_attr AudioPCM_pulseaudio_buffer_attr(const AudioPCM *pcm, uint32_t ab_
 struct spa_audio_info_raw AudioPCM_pipewire_info(const AudioPCM *pcm);
 #endif
 
-#ifdef AO_COREAUDIO
+#ifdef AO_WASAPI
 #include <windows.h>
 #include <ksmedia.h>
 
-WAVEFORMATEXTENSIBLE AudioPCM_coreaudio_waveformat(const AudioPCM *pcm);
+WAVEFORMATEXTENSIBLE AudioPCM_wasapi_waveformat(const AudioPCM *pcm);
 #endif

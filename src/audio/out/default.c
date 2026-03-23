@@ -9,8 +9,8 @@ AudioBackend *AB_Default() {
 	return &AB_FAST;
 #elif defined(AO_PULSEAUDIO)
 	return &AB_PulseAudio;
-#elif defined(AO_COREAUDIO)
-	return &AB_CoreAudio;
+#elif defined(AO_WASAPI)
+	return &AB_WASAPI;
 #else
 	static_assert(false, "Could not find a supported AudioBackend. Consider enabling ao_fast (emulated audio output) if developing for a new platform.");
 	return NULL;

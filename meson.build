@@ -49,7 +49,7 @@ if pipewire.found()
 endif
 cc = meson.get_compiler('c')
 if build_machine.system() == 'windows'
-  cflags += '-DAO_COREAUDIO'
+  cflags += '-DAO_WASAPI'
   # Provides KSDATAFORMAT_SUBTYPE idents
   deps += cc.find_library('ksuser', required : true)
 endif

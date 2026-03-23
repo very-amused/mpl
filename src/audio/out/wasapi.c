@@ -22,7 +22,7 @@
 #include <ksmedia.h>
 #include <winerror.h>
 
-// CoreAudio backend context
+// WASAPI backend context
 typedef struct Ctx {
 	// Event queue for communicating with UI
 	EventQueue *evt_queue;
@@ -47,7 +47,7 @@ typedef struct Ctx {
 	const Settings *settings;
 } Ctx;
 
-/* CoreAudio AudioBackend methods */
+/* WASAPI AudioBackend methods */
 static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Settings *settings);
 static void deinit(void *ctx__);
 static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *track);
@@ -56,9 +56,9 @@ static void lock(void *ctx__);
 static void unlock(void *ctx__);
 static void seek(void *ctx__);
 
-/* AudioBackend implementation using CoreAudio */
-AudioBackend AB_CoreAudio = {
-	.name = "CoreAudio",
+/* AudioBackend implementation using WASAPI */
+AudioBackend AB_WASAPI = {
+	.name = "WASAPI",
 
 	.init = init,
 	.deinit = deinit,
@@ -179,7 +179,7 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 	// Initialize stream
 	// TODO: support WASAPI exclusive mode
 	static const DWORD STREAM_FLAGS = AUDCLNT_STREAMFLAGS_EVENTCALLBACK | AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY;
-	const WAVEFORMATEXTENSIBLE wavfmt = AudioPCM_coreaudio_waveformat(&t->pcm);
+	const WAVEFORMATEXTENSIBLE wavfmt = AudioPCM_wasapi_waveformat(&t->pcm);
 	const REFERENCE_TIME hns_buf_duration = ctx->settings->ab_buffer_ms * 10000; // 1 ms = 10000 * 100ns
 	hr = ctx->stream->lpVtbl->Initialize(
 			ctx->stream,

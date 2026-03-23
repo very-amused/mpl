@@ -142,7 +142,7 @@ struct spa_audio_info_raw AudioPCM_pipewire_info(const AudioPCM *pcm) {
 }
 #endif
 
-#ifdef AO_COREAUDIO
+#ifdef AO_WASAPI
 #include <windows.h>
 #include <initguid.h>
 #include <ksmedia.h>
@@ -150,7 +150,7 @@ struct spa_audio_info_raw AudioPCM_pipewire_info(const AudioPCM *pcm) {
 #include <minwindef.h>
 #include <string.h>
 
-WAVEFORMATEXTENSIBLE AudioPCM_coreaudio_waveformat(const AudioPCM *pcm) {
+WAVEFORMATEXTENSIBLE AudioPCM_wasapi_waveformat(const AudioPCM *pcm) {
 	WAVEFORMATEXTENSIBLE fmt;	
 	memset(&fmt, 0, sizeof(fmt));
 
