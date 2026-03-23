@@ -141,3 +141,76 @@ struct spa_audio_info_raw AudioPCM_pipewire_info(const AudioPCM *pcm) {
 	return info;
 }
 #endif
+
+#ifdef AO_COREAUDIO
+#include <windows.h>
+#include <mmreg.h>
+#include <ksmedia.h>
+#include <minwindef.h>
+#include <string.h>
+
+WAVEFORMATEXTENSIBLE AudioPCM_coreaudio_waveformat(const AudioPCM *pcm) {
+	WAVEFORMATEXTENSIBLE fmt;	
+	memset(&fmt, 0, sizeof(fmt));
+
+	// Set sample format
+	GUID subformat;
+	WORD sample_size;
+	switch (pcm->sample_fmt) {
+		case AV_SAMPLE_FMT_U8:
+		case AV_SAMPLE_FMT_U8P:
+			subformat = KSDATAFORMAT_SUBTYPE_PCM;
+			sample_size = 8;
+			break;
+		case AV_SAMPLE_FMT_S16:
+		case AV_SAMPLE_FMT_S16P:
+			subformat = KSDATAFORMAT_SUBTYPE_PCM;
+			sample_size = 16;
+			break;
+		case AV_SAMPLE_FMT_S32:
+		case AV_SAMPLE_FMT_S32P:
+			subformat = KSDATAFORMAT_SUBTYPE_PCM;
+			sample_size = 32;
+			break;
+		case AV_SAMPLE_FMT_S64:
+		case AV_SAMPLE_FMT_S64P:
+			subformat = KSDATAFORMAT_SUBTYPE_PCM;
+			sample_size = 64;
+			break;
+		case AV_SAMPLE_FMT_FLT:
+		case AV_SAMPLE_FMT_FLTP:
+			subformat = KSDATAFORMAT_SUBTYPE_IEEE_FLOAT;
+			sample_size = 32;
+			break;
+		case AV_SAMPLE_FMT_DBL:
+		case AV_SAMPLE_FMT_DBLP:
+			subformat = KSDATAFORMAT_SUBTYPE_IEEE_FLOAT;
+			sample_size = 64; 
+			break;
+		default:
+			fmt.Format.wFormatTag = WAVE_FORMAT_UNKNOWN;
+			return fmt;
+	}
+	// Set sample format and size
+	fmt.SubFormat = subformat;
+	fmt.Samples.wValidBitsPerSample = fmt.Format.wBitsPerSample = sample_size;
+
+	// WAVEFORMATX member
+	fmt.Format.wFormatTag = WAVE_FORMAT_EXTENSIBLE;
+	fmt.Format.nChannels = pcm->n_channels;
+	fmt.Format.nSamplesPerSec = pcm->sample_rate;
+	fmt.Format.nAvgBytesPerSec = AudioPCM_buffer_size(pcm, 1000);
+
+	// Channel layout
+	// TODO: support >2 channels
+	switch (pcm->n_channels) {
+	case 1:
+		fmt.dwChannelMask = KSAUDIO_SPEAKER_MONO;
+	case 2:
+		fmt.dwChannelMask = KSAUDIO_SPEAKER_STEREO;
+		break;
+	}
+
+	return fmt;
+}
+#endif

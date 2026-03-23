@@ -13,6 +13,7 @@
 #include <windows.h>
 #include <combaseapi.h>
 #include <mmdeviceapi.h>
+#include <audioclient.h>
 #include <winerror.h>
 
 // CoreAudio backend context
@@ -20,7 +21,15 @@ typedef struct Ctx {
 	// Event queue for communicating with UI
 	EventQueue *evt_queue;
 
-	// TODO
+	// Audio device enumerator (used to find the default audio device)
+	MMDeviceEnumerator *audiodev_enum;
+	// Audio device we're sending to
+	IMMDevice *audio_device;
+	// Audio + AudioRender clients, these collectively fulfill the role of an audio stream.
+	// The AudioClient holds ownership over the buffer *data* (read only),
+	// while the AudioRenderClient holds ownership over the buffer *write methods* and *callbacks*
+	IAudioClient audio_client;
+	IAudioRenderClient render_client;
 
 	// Playback buffer for current and next audio track
 	AudioBuffer *playback_buffer;
@@ -93,7 +102,11 @@ static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Setti
 	}
 
 
-
-	// TODO
 	return AudioBackend_OK;
+}
+
+
+static void deinit(void *ctx__) {
+	Ctx *ctx = ctx__;
+	CoTaskMemFree();
 }
