@@ -10,6 +10,7 @@
 #include "util/log.h"
 #include "error.h"
 
+#include <errhandlingapi.h>
 #include <stddef.h>
 #include <fcntl.h>
 #include <stdint.h>
@@ -21,6 +22,8 @@
 #include <audiopolicy.h>
 #include <ksmedia.h>
 #include <winerror.h>
+
+#include <assert.h>
 
 // WASAPI backend context
 typedef struct Ctx {
@@ -84,6 +87,9 @@ static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Setti
 	}
 	ctx->settings = settings;
 
+	// Initialize COM library
+	CoInitializeEx(NULL, COINIT_MULTITHREADED);
+
 	// Instantiate audio device enumerator
 	HRESULT hr = CoCreateInstance(&CLSID_MMDeviceEnumerator, NULL,
 			CLSCTX_ALL, &IID_IMMDeviceEnumerator,
@@ -102,9 +108,8 @@ static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Setti
 		return AudioBackend_CONNECT_ERR;
 	}
 
-	// Initialize audio stream. This stream will become part of a session when it's initialized with a format.
-
-	
+	assert(ctx->audio_device != NULL);
+	LOG(Verbosity_DEBUG, "Successfully initialized WASAPI! ctx->audio_device=%p\n", ctx->audio_device);
 	return AudioBackend_OK;
 }
 
@@ -145,6 +150,7 @@ static void deinit(void *ctx__) {
 
 static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 	Ctx *ctx = ctx__;
+	LOG(Verbosity_DEBUG, "Breakpoint 1\n");
 
 	// If stream is initialized, the caller must use queue() instead
 	HRESULT hr;
@@ -155,8 +161,11 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 			return AudioBackend_STREAM_EXISTS;
 		}
 	} else {
+		LOG(Verbosity_DEBUG, "Breakpoint 2\n");
+		assert(ctx->audio_device != NULL);
 		hr = ctx->audio_device->lpVtbl->Activate(ctx->audio_device, &IID_IAudioClient, CLSCTX_ALL,
 				NULL, (void **)&ctx->stream);
+		LOG(Verbosity_DEBUG, "Breakpoint 3\n");
 		if (FAILED(hr)) {
 			LOG(Verbosity_VERBOSE, "Failed to activate audio stream\n");
 			return AudioBackend_STREAM_ERR; 
@@ -176,6 +185,7 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 		}
 	}
 
+
 	// Initialize stream
 	// TODO: support WASAPI exclusive mode
 	static const DWORD STREAM_FLAGS = AUDCLNT_STREAMFLAGS_EVENTCALLBACK | AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY;
@@ -187,10 +197,32 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 			STREAM_FLAGS,
 			hns_buf_duration,
 			0,
-			(const WAVEFORMATEX *)&wavfmt,
+			&wavfmt,
 			session_guid);
 	if (FAILED(hr)) {
-		LOG(Verbosity_VERBOSE, "Failed to initialize audio stream\n");
+		HRESULT err_codes = {
+			AUDCLNT_E_ALREADY_INITIALIZED,
+			AUDCLNT_E_WRONG_ENDPOINT_TYPE,
+			AUDCLNT_E_BUFFER_SIZE_NOT_ALIGNED,
+			AUDCLNT_E_BUFFER_SIZE_ERROR,
+			AUDCLNT_E_CPUUSAGE_EXCEEDED,
+			AUDCLNT_E_DEVICE_INVALIDATED,
+			AUDCLNT_E_RESOURCES_INVALIDATED,
+			AUDCLNT_E_DEVICE_IN_USE,
+			AUDCLNT_E_ENDPOINT_CREATE_FAILED,
+			AUDCLNT_E_INVALID_DEVICE_PERIOD,
+			AUDCLNT_E_UNSUPPORTED_FORMAT,
+			AUDCLNT_E_EXCLUSIVE_MODE_NOT_ALLOWED,
+			AUDCLNT_E_BUFDURATION_PERIOD_NOT_EQUAL,
+			AUDCLNT_E_SERVICE_NOT_RUNNING,
+			E_POINTER,
+			E_INVALIDARG,
+			E_OUTOFMEMORY
+		};
+		if (hr == E_INVALIDARG) {
+			LOG(Verbosity_DEBUG, "found it! it's error E_INVALIDARG\n");
+		}
+		LOG(Verbosity_VERBOSE, "Failed to initialize audio stream: 0x%lx\n", hr);
 		return AudioBackend_STREAM_ERR;
 	}
 
@@ -245,7 +277,12 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 
 	return AudioBackend_OK;
 }
-static enum AudioBackend_ERR play(void *ctx__, bool pause);
+static enum AudioBackend_ERR play(void *ctx__, bool pause) {
+	Ctx *ctx = ctx__;
+
+	HRESULT hr = pause ? ctx->stream->lpVtbl->Stop(ctx->stream) : ctx->stream->lpVtbl->Start(ctx->stream);
+	return FAILED(hr) ? AudioBackend_PLAY_ERR : AudioBackend_OK;
+}
 
 static void lock(void *ctx__) {
 	// WASAPI uses buffer swapping, so we don't need to worry about locking

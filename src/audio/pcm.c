@@ -200,13 +200,15 @@ WAVEFORMATEXTENSIBLE AudioPCM_wasapi_waveformat(const AudioPCM *pcm) {
 	fmt.Format.wFormatTag = WAVE_FORMAT_EXTENSIBLE;
 	fmt.Format.nChannels = pcm->n_channels;
 	fmt.Format.nSamplesPerSec = pcm->sample_rate;
-	fmt.Format.nAvgBytesPerSec = AudioPCM_buffer_size(pcm, 1000);
+	fmt.Format.nBlockAlign = (fmt.Format.nChannels * fmt.Format.wBitsPerSample) / 8;
+	fmt.Format.nAvgBytesPerSec = fmt.Format.nSamplesPerSec * fmt.Format.nBlockAlign;
 
 	// Channel layout
 	// TODO: support >2 channels
 	switch (pcm->n_channels) {
 	case 1:
 		fmt.dwChannelMask = KSAUDIO_SPEAKER_MONO;
+		break;
 	case 2:
 		fmt.dwChannelMask = KSAUDIO_SPEAKER_STEREO;
 		break;
