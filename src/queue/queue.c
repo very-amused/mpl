@@ -52,6 +52,22 @@ void Queue_deinit(Queue *q) {
 	Queue_clear(q);
 }
 
+int Queue_connect_audio(Queue *q, AudioBackend *ab, const EventQueue *eq) {
+	// Set q->backend to a defined AudioBackend
+	if (ab) {
+		q->backend = ab;
+	} else {
+		q->backend = AB_Default();
+	}
+
+	// Initialize the backend
+	return AudioBackend_init(q->backend, eq, q->settings);
+}
+// Disconnect the queue from the system's audio backend. Frees q->backend
+void Queue_disconnect_audio(Queue *q) {
+	AudioBackend_deinit(q->backend);
+}
+
 
 const Track *Queue_cur_track(const Queue *q) {
 	return q->cur != q->head ? q->cur->track : NULL;
@@ -293,25 +309,4 @@ int Queue_seek_snap(Queue *q, int32_t offset_ms) {
 // Get playback state from the queue and its AudioBackend
 enum Queue_PLAYBACK_STATE Queue_get_playback_state(const Queue *q) {
 	return q->playback_state;
-}
-
-int Queue_connect_audio(Queue *q, AudioBackend *ab, const EventQueue *eq) {
-	// Set q->backend to a defined AudioBackend
-	if (ab) {
-		q->backend = ab;
-	} else {
-#ifdef AO_FAST
-		q->backend = &AB_FAST;
-#else
-		q->backend = &AB_PulseAudio;
-#endif
-	}
-
-	// Initialize the backend
-	return AudioBackend_init(q->backend, eq, q->settings);
-}
-
-// Disconnect the queue from the system's audio backend. Frees q->backend
-void Queue_disconnect_audio(Queue *q) {
-	AudioBackend_deinit(q->backend);
 }
