@@ -9,6 +9,7 @@
 #include <processenv.h>
 #include <handleapi.h>
 #include <synchapi.h>
+#include <consoleapi2.h>
 
 // FIXME: we need to soft exit. InputThread_loop is hanging forever since it never hits a recognized async-safe cancellation point
 
@@ -55,6 +56,7 @@ static char InputThread_getchar(InputThread *thr) {
 
 	LOG(Verbosity_DEBUG, "Blocking on ReadConsole...\n");
 	bool ok = ReadConsole(thr->input, &out, sizeof(out), &n_read, NULL);
+	FlushConsoleInputBuffer(thr->input);
 	LOG(Verbosity_DEBUG, "Done with ReadConsole...\n");
 	if (!ok || n_read != sizeof(out)) {
 		LOG(Verbosity_VERBOSE, "Unable to read next input char: ReadConsole failed\n");
@@ -88,6 +90,7 @@ static void *InputThread_loop(void *thr__) {
 		case InputMode_KEY:
 		{
 			EventBody_Keypress input_key = InputThread_getchar(thr);
+			LOG(Verbosity_VERBOSE, "Got inputkey %c\n", input_key);
 			if (input_key == '\0') {
 				LOG(Verbosity_VERBOSE, "Not sending mpl_KEYPRESS event because InputThread_getchar failed. This should never happen.\n");
 				continue;
