@@ -147,14 +147,12 @@ struct spa_audio_info_raw AudioPCM_pipewire_info(const AudioPCM *pcm) {
 #include <initguid.h>
 #include <ksmedia.h>
 #include <mmreg.h>
+#include <mmeapi.h>
 #include <minwindef.h>
 #include <string.h>
 
 WAVEFORMATEXTENSIBLE AudioPCM_wasapi_waveformat(const AudioPCM *pcm) {
-	WAVEFORMATEXTENSIBLE fmt;	
-	memset(&fmt, 0, sizeof(fmt));
-
-	// Set sample format
+	// Get sample format and size
 	GUID subformat;
 	WORD sample_size;
 	switch (pcm->sample_fmt) {
@@ -186,23 +184,33 @@ WAVEFORMATEXTENSIBLE AudioPCM_wasapi_waveformat(const AudioPCM *pcm) {
 		case AV_SAMPLE_FMT_DBL:
 		case AV_SAMPLE_FMT_DBLP:
 			subformat = KSDATAFORMAT_SUBTYPE_IEEE_FLOAT;
-			sample_size = 64; 
+			sample_size = 64;
 			break;
 		default:
+		{
+			WAVEFORMATEXTENSIBLE fmt;
+			memset(&fmt, 0, sizeof(fmt));
 			fmt.Format.wFormatTag = WAVE_FORMAT_UNKNOWN;
 			return fmt;
+		}
 	}
-	// Set sample format and size
-	fmt.SubFormat = subformat;
-	fmt.Samples.wValidBitsPerSample = fmt.Format.wBitsPerSample = sample_size;
 
-	// WAVEFORMATX member
-	fmt.Format.wFormatTag = WAVE_FORMAT_EXTENSIBLE;
-	fmt.Format.nChannels = pcm->n_channels;
-	fmt.Format.nSamplesPerSec = pcm->sample_rate;
-	fmt.Format.nBlockAlign = (fmt.Format.nChannels * fmt.Format.wBitsPerSample) / 8;
-	fmt.Format.nAvgBytesPerSec = fmt.Format.nSamplesPerSec * fmt.Format.nBlockAlign;
+	// Basic format info
+	const WAVEFORMATEX basic_format = {
+		.wFormatTag = WAVE_FORMAT_EXTENSIBLE,
+		.nChannels = pcm->n_channels,
+		.nSamplesPerSec = pcm->sample_rate,
+		.nAvgBytesPerSec = AudioPCM_buffer_size(pcm, 1000),
+		.nBlockAlign = (pcm->n_channels * sample_size) / 8,
+		.wBitsPerSample = sample_size,
+		.cbSize = sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX)
+	};
 
+	// Extended format info (enables support for >2 channels)
+	WAVEFORMATEXTENSIBLE fmt;
+	memset(&fmt, 0, sizeof(fmt));
+	fmt.Format = basic_format;
+	fmt.Samples.wValidBitsPerSample = basic_format.wBitsPerSample;
 	// Channel layout
 	// TODO: support >2 channels
 	switch (pcm->n_channels) {
@@ -213,6 +221,8 @@ WAVEFORMATEXTENSIBLE AudioPCM_wasapi_waveformat(const AudioPCM *pcm) {
 		fmt.dwChannelMask = KSAUDIO_SPEAKER_STEREO;
 		break;
 	}
+	// Subformat (either signed or fp PCM)
+	fmt.SubFormat = subformat;
 
 	return fmt;
 }
