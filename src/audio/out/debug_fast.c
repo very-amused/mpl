@@ -3,7 +3,6 @@
 #include <stdbool.h>
 
 #include "error.h"
-#include "fast.h"
 
 #include "loop.h"
 #include "server.h"
@@ -137,7 +136,7 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 	FastLoop_unlock(ctx->loop)
 
 	// Set up stream
-	const AudioPCM *pcm = &t->pcm;
+	const AudioPCM *pcm = &t->buf_pcm;
 	const FastStreamSettings settings = {
 		.sample_size = AudioPCM_sample_size(pcm),
 		.n_channels = pcm->n_channels,

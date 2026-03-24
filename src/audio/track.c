@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <ctype.h>
 #include <libavutil/channel_layout.h>
 #include <libavutil/mathematics.h>
@@ -131,11 +132,13 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url, AudioBackend
 	// Initialize resampling if needed
 #ifdef MPL_RESAMPLE
 	if (t->resample) {
-		AVChannelLayout channel_layout;
-		av_channel_layout_default(&channel_layout, t->buf_pcm.n_channels);
+		t->av_frame_swr = av_frame_alloc();
+		if (t->av_frame_swr == NULL) {
+			return AudioTrack_BAD_ALLOC;
+		}
 		status = swr_alloc_set_opts2(&t->resample_ctx,
-				&channel_layout, t->buf_pcm.sample_fmt, t->buf_pcm.sample_fmt,
-				&channel_layout, t->src_pcm.sample_fmt, t->src_pcm.sample_rate,
+				&codec_params->ch_layout, t->buf_pcm.sample_fmt, t->buf_pcm.sample_rate,
+				&codec_params->ch_layout, t->src_pcm.sample_fmt, t->src_pcm.sample_rate,
 				0, NULL);
 		if (status < 0) {
 			av_perror(status, av_err);
@@ -145,10 +148,6 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url, AudioBackend
 		if (status < 0) {
 			av_perror(status, av_err);
 			return AudioTrack_RESAMPLE_ERR;
-		}
-		t->av_frame_swr = av_frame_alloc();
-		if (t->av_frame_swr == NULL) {
-			return AudioTrack_BAD_ALLOC;
 		}
 	}
 #endif
@@ -356,9 +355,7 @@ enum AudioTrack_ERR AudioTrack_buffer_ms(AudioTrack *t, enum AudioSeek dir, cons
 	while (n < n_bytes) {
 		size_t packet_n;
 		enum AudioTrack_ERR err = AudioTrack_buffer_packet(t, &packet_n);
-		if (err == AudioTrack_EOF) {
-			return err;
-		} else if (err != AudioTrack_OK) {
+		if (err != AudioTrack_OK) {
 			return err;
 		}
 		n += packet_n;
