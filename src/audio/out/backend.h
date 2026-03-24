@@ -27,7 +27,7 @@ typedef struct AudioBackend {
 	// Deinitialize the audio backend
 	void (*deinit)(void *ctx);
 
-#ifdef MPL_RESAMPLE
+#if defined(MPL_RESAMPLE) && !defined(MPL_RESAMPLE_PHONY)
 	// Negotiate PCM with an AudioTrack, causing the AudioTrack to perform resampling
 	// if needed for this AudioBackend to accept its PCM frames
 	//

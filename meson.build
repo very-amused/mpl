@@ -58,6 +58,9 @@ if pipewire.found()
 endif
 if enable_resampling
 	cflags += '-DMPL_RESAMPLE'
+	if get_option('test_resampling')
+		cflags += '-DMPL_RESAMPLE_PHONY'
+	endif
 endif
 cc = meson.get_compiler('c')
 if enable_wasapi

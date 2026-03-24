@@ -29,6 +29,17 @@ void AudioBackend_deinit(AudioBackend *ab) {
 	free(ab->ctx);
 }
 
+#ifdef MPL_RESAMPLE
+bool AudioBackend_negotiate_pcm(AudioBackend *ab, AudioPCM *dst_pcm, const AudioPCM *src_pcm) {
+#ifdef MPL_RESAMPLE_PHONY
+	*dst_pcm = *src_pcm;
+	return true;
+#else
+	return ab->negotiate_pcm(ab->ctx, dst_pcm, src_pcm);
+#endif
+}
+#endif
+
 enum AudioBackend_ERR AudioBackend_prepare(AudioBackend *ab, AudioTrack *track) {
 	return ab->prepare(ab->ctx, track);
 }
