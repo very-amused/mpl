@@ -1,3 +1,4 @@
+# Enable various AudioBackends
 option('pulseaudio', type : 'feature', value : 'auto')
 option('pipewire', type : 'feature', value : 'auto')
 option('wasapi', type : 'feature', value : 'auto')
@@ -9,3 +10,4 @@ option('ascii_keybinds', type : 'boolean', value : false)
 # Options for MPL development - don't enable these unless you know what you're doing:
 option('test_config', type : 'boolean', value : false) # Read ../test/mpl.conf instead of the usual config locations
 option('ao_fast', type : 'boolean', value : false) # Support libFAST fake audio output for testing
+option('test_resampling', type : 'boolean', value : false) # Enable resampling on audio backends that don't require it

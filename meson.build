@@ -7,7 +7,7 @@ is_win32 = build_machine.system() == 'windows'
 enable_wasapi = is_win32 and get_option('wasapi').allowed()
 # Only enable resampling when supporting AudioBackend's that require it.
 # We leave resampling up to the audio server whenever possible.
-enable_resampling = enable_wasapi
+enable_resampling = enable_wasapi or get_option('test_resampling')
 
 # Dependencies
 deps = []
@@ -15,7 +15,9 @@ deps = []
 deps += dependency('libavcodec', version : '>=60.0.0')
 deps += dependency('libavformat', version : '>=60.0.0')
 deps += dependency('libavutil', version : '>=58.0.0')
-deps += dependency('libswscale', version : '>=6.0.0', required : enable_resampling)
+if enable_resampling
+	deps += dependency('libswscale', version : '>=6.0.0')
+endif
 # audio output
 pulseaudio = dependency('libpulse', version : '>=16.0.0', required : get_option('pulseaudio'))
 pipewire = dependency('libpipewire-0.3', version : '>=0.3.0', required : get_option('pipewire'))

@@ -25,6 +25,10 @@ typedef struct AudioTrack {
 	const AVCodec *codec;
 	AVPacket *av_packet;
 	AVFrame *av_frame;
+
+#ifdef RESAMPLING
+	// Resampling
+#endif
 	
 	// PCM playback
 	AudioPCM pcm;
