@@ -23,8 +23,6 @@
 #include <ksmedia.h>
 #include <winerror.h>
 
-#include <assert.h>
-
 // WASAPI backend context
 typedef struct Ctx {
 	// Event queue for communicating with UI
@@ -108,8 +106,6 @@ static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Setti
 		return AudioBackend_CONNECT_ERR;
 	}
 
-	assert(ctx->audio_device != NULL);
-	LOG(Verbosity_DEBUG, "Successfully initialized WASAPI! ctx->audio_device=%p\n", ctx->audio_device);
 	return AudioBackend_OK;
 }
 
@@ -150,7 +146,6 @@ static void deinit(void *ctx__) {
 
 static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 	Ctx *ctx = ctx__;
-	LOG(Verbosity_DEBUG, "Breakpoint 1\n");
 
 	// If stream is initialized, the caller must use queue() instead
 	HRESULT hr;
@@ -161,14 +156,11 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 			return AudioBackend_STREAM_EXISTS;
 		}
 	} else {
-		LOG(Verbosity_DEBUG, "Breakpoint 2\n");
-		assert(ctx->audio_device != NULL);
 		hr = ctx->audio_device->lpVtbl->Activate(ctx->audio_device, &IID_IAudioClient, CLSCTX_ALL,
 				NULL, (void **)&ctx->stream);
-		LOG(Verbosity_DEBUG, "Breakpoint 3\n");
 		if (FAILED(hr)) {
 			LOG(Verbosity_VERBOSE, "Failed to activate audio stream\n");
-			return AudioBackend_STREAM_ERR; 
+			return AudioBackend_STREAM_ERR;
 		}
 	}
 
@@ -185,24 +177,28 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 		}
 	}
 
+	// Verify WASAPI will accept our sample format
+	const WAVEFORMATEXTENSIBLE wavfmt = AudioPCM_wasapi_waveformat(&t->pcm);
+	WAVEFORMATEX *alternate_fmt = NULL;
+	hr = ctx->stream->lpVtbl->IsFormatSupported(ctx->stream, AUDCLNT_SHAREMODE_SHARED, &(wavfmt.Format), &alternate_fmt);
+	if (FAILED(hr)) {
+		LOG(Verbosity_VERBOSE, "Sample format is not supported by WASAPI\n");
+	} else {
+	}
+
 
 	// Initialize stream
 	// TODO: support WASAPI exclusive mode
-	static const DWORD STREAM_FLAGS = AUDCLNT_STREAMFLAGS_EVENTCALLBACK | AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY;
-	const WAVEFORMATEXTENSIBLE wavfmt = AudioPCM_wasapi_waveformat(&t->pcm);
+	const DWORD STREAM_FLAGS = AUDCLNT_STREAMFLAGS_EVENTCALLBACK | AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY;
 	const REFERENCE_TIME hns_buf_duration = ctx->settings->ab_buffer_ms * 10000; // 1 ms = 10000 * 100ns
-	hr = ctx->stream->lpVtbl->Initialize(
-			ctx->stream,
+	hr = ctx->stream->lpVtbl->Initialize(ctx->stream,
 			AUDCLNT_SHAREMODE_SHARED,
 			STREAM_FLAGS,
 			hns_buf_duration,
 			0,
-			&wavfmt,
+			&(wavfmt.Format),
 			session_guid);
 	if (FAILED(hr)) {
-		if (hr == E_INVALIDARG) {
-			LOG(Verbosity_DEBUG, "found it! it's error E_INVALIDARG\n");
-		}
 		LOG(Verbosity_VERBOSE, "Failed to initialize audio stream: 0x%lx\n", hr);
 		return AudioBackend_STREAM_ERR;
 	}

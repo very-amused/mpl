@@ -40,4 +40,8 @@ struct spa_audio_info_raw AudioPCM_pipewire_info(const AudioPCM *pcm);
 #include <ksmedia.h>
 
 WAVEFORMATEXTENSIBLE AudioPCM_wasapi_waveformat(const AudioPCM *pcm);
+
+#ifdef MPL_DEBUG
+void AudioPCM_wasapi_debug(const AudioPCM *pcm, const WAVEFORMATEXTENSIBLE *fmt);
+#endif
 #endif

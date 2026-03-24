@@ -1,4 +1,5 @@
 #include "pcm.h"
+#include "util/log.h"
 
 #include <libavutil/samplefmt.h>
 #include <stdint.h>
@@ -207,7 +208,7 @@ WAVEFORMATEXTENSIBLE AudioPCM_wasapi_waveformat(const AudioPCM *pcm) {
 	};
 
 	// Extended format info (enables support for >2 channels)
-	WAVEFORMATEXTENSIBLE fmt;
+	WAVEFORMATEXTENSIBLE fmt = {0};
 	memset(&fmt, 0, sizeof(fmt));
 	fmt.Format = basic_format;
 	fmt.Samples.wValidBitsPerSample = basic_format.wBitsPerSample;
@@ -226,4 +227,21 @@ WAVEFORMATEXTENSIBLE AudioPCM_wasapi_waveformat(const AudioPCM *pcm) {
 
 	return fmt;
 }
+
+#ifdef MPL_DEBUG
+#include <assert.h>
+
+void AudioPCM_wasapi_debug(const AudioPCM *pcm, const WAVEFORMATEXTENSIBLE *fmt) {
+	assert(fmt->Format.wFormatTag == WAVE_FORMAT_EXTENSIBLE);
+	assert(fmt->Format.nChannels == 2);
+	assert(fmt->Format.nSamplesPerSec == 44100);
+	assert(fmt->Format.nAvgBytesPerSec == AudioPCM_buffer_size(pcm, 1000));
+	assert(fmt->Format.nBlockAlign == (fmt->Format.nChannels * fmt->Format.wBitsPerSample) / 8);
+	assert(fmt->Format.wBitsPerSample == 16);
+	assert(fmt->Format.cbSize == 22);
+
+	assert(fmt->Samples.wValidBitsPerSample == fmt->Format.wBitsPerSample);
+	assert(fmt->Samples.wReserved == 0);
+}
+#endif
 #endif
