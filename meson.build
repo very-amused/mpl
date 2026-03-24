@@ -16,7 +16,7 @@ deps += dependency('libavcodec', version : '>=60.0.0')
 deps += dependency('libavformat', version : '>=60.0.0')
 deps += dependency('libavutil', version : '>=58.0.0')
 if enable_resampling
-	deps += dependency('libswscale', version : '>=6.0.0')
+	deps += dependency('libswresample', version : '>=6.0.0')
 endif
 # audio output
 pulseaudio = dependency('libpulse', version : '>=16.0.0', required : get_option('pulseaudio'))
@@ -57,7 +57,7 @@ if pipewire.found()
 	cflags += '-DAO_PIPEWIRE'
 endif
 if enable_resampling
-	cflags += '-DRESAMPLING'
+	cflags += '-DMPL_RESAMPLE'
 endif
 cc = meson.get_compiler('c')
 if enable_wasapi

@@ -175,7 +175,7 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *tr) {
 	struct spa_pod_builder pod_builder = SPA_POD_BUILDER_INIT(params_buf, sizeof(params_buf));
 
 	const struct spa_pod *stream_params[1];
-	const struct spa_audio_info_raw audio_info = AudioPCM_pipewire_info(&tr->pcm);
+	const struct spa_audio_info_raw audio_info = AudioPCM_pipewire_info(&tr->buf_pcm);
 	stream_params[0] = spa_format_audio_raw_build(&pod_builder,
 			SPA_PARAM_EnumFormat, // Declare type as an SPA_PARAM holding a 1-value format enum. Yes, my head hurts too
 			&audio_info);

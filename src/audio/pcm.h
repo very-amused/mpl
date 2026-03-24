@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <libavutil/samplefmt.h>
+#include <libavutil/channel_layout.h>
 
 // Sampling parameters used to interpret decoded PCM frames
 typedef struct AudioPCM {

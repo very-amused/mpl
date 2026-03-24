@@ -14,6 +14,12 @@
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 
+#ifdef MPL_RESAMPLE
+#include <libswresample/swresample.h>
+#endif
+
+typedef struct AudioBackend AudioBackend; // break circular dependency between AudioTrack and AudioBackend
+
 // Decoding and playback state for a single track
 typedef struct AudioTrack {
 	// Demuxing
@@ -26,15 +32,20 @@ typedef struct AudioTrack {
 	AVPacket *av_packet;
 	AVFrame *av_frame;
 
-#ifdef RESAMPLING
 	// Resampling
+#ifdef MPL_RESAMPLE
+	bool resample; // whether we need to resample in-house
+	SwrContext *resample_ctx;
+	AVFrame *av_frame_swr; // Pre-resampled frame input
 #endif
 	
 	// PCM playback
-	AudioPCM pcm;
+	AudioPCM src_pcm; // (pre-resample if needed) PCM format we decode
+	AudioPCM buf_pcm; // (post-resample if needed) PCM format we buffer for playback
 	AudioBuffer *buffer;
 
 	// Metadata
+	// NOTE: all units of sample frames are post-resample frames
 	EventBody_Timecode duration_timecode; // Duration in sample frames
 	size_t start_padding, end_padding; // The number of sample frames at the start and end of the track used for padding. These must be discarded for gapless playback.
 
@@ -42,8 +53,9 @@ typedef struct AudioTrack {
 	const Settings *settings;
 } AudioTrack;
 
-// Initialize an AudioTrack and update metadata if meta != NULL
-enum AudioTrack_ERR AudioTrack_init(AudioTrack *at, const char *url, const Settings *settings);
+
+// Initialize an AudioTrack for playback with an AudioBackend
+enum AudioTrack_ERR AudioTrack_init(AudioTrack *at, const char *url, AudioBackend *ab, const Settings *settings);
 void AudioTrack_deinit(AudioTrack *at);
 
 // Retrieve metadata from an AudioTrack's decoding context, storing the result in *meta

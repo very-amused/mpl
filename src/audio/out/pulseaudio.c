@@ -210,7 +210,7 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 	}
 
 	// Set up our playback stream
-	const AudioPCM *pcm = &t->pcm;
+	const AudioPCM *pcm = &t->buf_pcm;
 	pa_sample_spec sample_spec = AudioPCM_pulseaudio_spec(pcm);
 	pa_channel_map channel_map = AudioPCM_pulseaudio_channel_map(pcm);
 	ctx->stream = pa_stream_new(ctx->pa_ctx, BACKEND_APP_NAME, &sample_spec, &channel_map);

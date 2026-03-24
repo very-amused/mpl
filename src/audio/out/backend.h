@@ -1,5 +1,6 @@
 #pragma once
 #include "audio/track.h"
+#include "audio/pcm.h"
 #include "config/config.h"
 #include "config/settings.h"
 #include "error.h"
@@ -8,6 +9,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
+
 
 #define BACKEND_APP_NAME "mpl"
 
@@ -24,6 +26,15 @@ typedef struct AudioBackend {
 	enum AudioBackend_ERR (*init)(void *ctx, const EventQueue *eq, const Settings *settings);
 	// Deinitialize the audio backend
 	void (*deinit)(void *ctx);
+
+#ifdef MPL_RESAMPLE
+	// Negotiate PCM with an AudioTrack, causing the AudioTrack to perform resampling
+	// if needed for this AudioBackend to accept its PCM frames
+	//
+	// If resampling is needed, returns and sets dst_pcm to the resample destination format.
+	// Otherwise, returns false and sets dst_pcm = src_pcm.
+	bool (*negotiate_pcm)(void *ctx, AudioPCM *dst_pcm, const AudioPCM *src_pcm);
+#endif
 
 	// Prepare for 'cold' playback of *track from a silent start.
 	// This involves setting up an audio stream with the correct sample rate, format, channels, etc.
@@ -45,6 +56,7 @@ typedef struct AudioBackend {
 	// used to implement seeks
 	void (*seek)(void *ctx);
 
+
 	// Private backend-specific context
 	const size_t ctx_size;
 	void *ctx;
@@ -56,6 +68,16 @@ typedef struct AudioBackend {
 enum AudioBackend_ERR AudioBackend_init(AudioBackend *ab, const EventQueue *eq, const Settings *settings);
 // Deinitialize an AudioBackend
 void AudioBackend_deinit(AudioBackend *ab);
+
+#ifdef MPL_RESAMPLE
+// Negotiate PCM with an AudioTrack, causing the AudioTrack to perform resampling
+// if needed for this AudioBackend to accept its PCM frames
+//
+// If resampling is needed, returns and sets dst_pcm to the resample destination format.
+// Otherwise, returns false and sets dst_pcm = src_pcm.
+bool AudioBackend_negotiate_pcm(AudioBackend *ab, AudioPCM *dst_pcm, const AudioPCM *src_pcm);
+#endif
+
 
 // Prepare for 'cold' playback of *track from a silent start.
 // This involves setting up an audio stream with the correct sample rate, format, channels, etc.

@@ -70,7 +70,8 @@ static inline const char *AudioBackend_ERR_name(enum AudioBackend_ERR err) {
 	VARIANT(AudioTrack_BAD_ALLOC) \
 	VARIANT(AudioTrack_CODEC_ERR) \
 	VARIANT(AudioTrack_PACKET_ERR) \
-	VARIANT(AudioTrack_FRAME_ERR)
+	VARIANT(AudioTrack_FRAME_ERR) \
+	VARIANT(AudioTrack_RESAMPLE_ERR)
 
 // Errors returned by an AudioTrack_* method
 enum AudioTrack_ERR {

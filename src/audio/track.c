@@ -1,6 +1,8 @@
 #include <ctype.h>
+#include <libavutil/channel_layout.h>
 #include <libavutil/mathematics.h>
 #include <libavutil/rational.h>
+#include <libswresample/swresample.h>
 #include <semaphore.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -16,6 +18,7 @@
 #include <libavformat/avformat.h>
 #include <libavcodec/codec.h>
 #include <libavutil/dict.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -24,13 +27,14 @@
 #include "../error.h"
 #include "audio/buffer.h"
 #include "audio/pcm.h"
+#include "audio/out/backend.h"
 #include "config/settings.h"
 #include "util/rational.h"
 #include "util/log.h"
 #include "util/compat/string_win32.h"
 
 
-enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url, const Settings *settings) {
+enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url, AudioBackend *ab, const Settings *settings) {
 	char av_err[AV_ERROR_MAX_STRING_SIZE]; // libav* library error message buffer
 
 	// Zero pointers to ensure AudioTrack_deinit is safe
@@ -63,18 +67,27 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url, const Settin
 	const AVStream *stream = t->avf_ctx->streams[t->stream_no];
 	const AVCodecParameters *codec_params = stream->codecpar;
 	// Sampling info
-	t->pcm.sample_fmt = codec_params->format;
-	t->pcm.sample_rate = codec_params->sample_rate;
-	t->pcm.n_channels = codec_params->ch_layout.nb_channels;
+	t->src_pcm.sample_fmt = codec_params->format;
+	t->src_pcm.sample_rate = codec_params->sample_rate;
+	t->src_pcm.n_channels = codec_params->ch_layout.nb_channels;
 	LOG(Verbosity_VERBOSE, "AudioTrack: is_planar: %d\n\tsample rate: %d\nsample_fmt: %s\n",
-			av_sample_fmt_is_planar(t->pcm.sample_fmt), t->pcm.sample_rate, av_get_sample_fmt_name(t->pcm.sample_fmt));
-	// Timing info
+			av_sample_fmt_is_planar(t->src_pcm.sample_fmt), t->src_pcm.sample_rate, av_get_sample_fmt_name(t->src_pcm.sample_fmt));
+
+	// Negotiate in-house resampling iff the AudioBackend is incapable of its own resampling
+	// We do this early so t->buf_pcm is set correctly for timing info and buffering
+#ifdef MPL_RESAMPLE
+	t->resample = AudioBackend_negotiate_pcm(ab, &t->buf_pcm, &t->src_pcm);
+#else
+	t->buf_pcm = t->src_pcm;
+#endif
+
+	// Compute timing info
 	const AVRational time_base = stream->time_base;
 	const int64_t duration_tb = stream->duration; // Duration in time_base units
 	mplRational duration;
 	mplRational_from_AVRational(&duration, time_base);
 	duration.num *= duration_tb;
-	duration.num *= t->pcm.sample_rate;
+	duration.num *= t->buf_pcm.sample_rate;
 	mplRational_reduce(&duration);
 	if (duration.den == 1) {
 		t->duration_timecode = duration.num;
@@ -87,7 +100,7 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url, const Settin
 
 	// Allocate playback buffer
 	t->buffer = malloc(sizeof(AudioBuffer));
-	if (t->buffer == NULL || AudioBuffer_init(t->buffer, &t->pcm, t->settings) != 0) {
+	if (t->buffer == NULL || AudioBuffer_init(t->buffer, &t->buf_pcm, t->settings) != 0) {
 		return AudioTrack_BUFFER_ERR;
 	}
 
@@ -115,35 +128,30 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url, const Settin
 		return AudioTrack_BAD_ALLOC;
 	}
 
-	// Drain any padding samples at the start
-	LOG(Verbosity_DEBUG, "Track start_padding: %zu\n", t->start_padding);
-#if 0
-	while (t->start_padding > 0) {
-		status = av_read_frame(t->avf_ctx, t->av_packet); // Despite its name, av_read_frame reads packets
+	// Initialize resampling if needed
+#ifdef MPL_RESAMPLE
+	if (t->resample) {
+		AVChannelLayout channel_layout;
+		av_channel_layout_default(&channel_layout, t->buf_pcm.n_channels);
+		status = swr_alloc_set_opts2(&t->resample_ctx,
+				&channel_layout, t->buf_pcm.sample_fmt, t->buf_pcm.sample_fmt,
+				&channel_layout, t->src_pcm.sample_fmt, t->src_pcm.sample_rate,
+				0, NULL);
 		if (status < 0) {
 			av_perror(status, av_err);
-			return AudioTrack_PACKET_ERR;
+			return AudioTrack_RESAMPLE_ERR;
 		}
-		status = avcodec_send_packet(t->avc_ctx, t->av_packet);
+		status = swr_init(t->resample_ctx);
 		if (status < 0) {
 			av_perror(status, av_err);
-			return AudioTrack_PACKET_ERR;
+			return AudioTrack_RESAMPLE_ERR;
 		}
-
-		do {
-			status = avcodec_receive_frame(t->avc_ctx, t->av_frame);
-			if (status >= 0) {
-				t->start_padding--;
-			}
-		} while (status >= 0);
-		if (t->start_padding > 0 && status != AVERROR(EAGAIN)) {
-			return AudioTrack_FRAME_ERR;
+		t->av_frame_swr = av_frame_alloc();
+		if (t->av_frame_swr == NULL) {
+			return AudioTrack_BAD_ALLOC;
 		}
 	}
-	while (avcodec_receive_frame(t->avc_ctx, t->av_frame) >= 0) {} // Just in case, drain any remaining frames from the packet's buffer
 #endif
-	av_packet_unref(t->av_packet);
-	av_frame_unref(t->av_frame);
 
 	return AudioTrack_OK;
 }
@@ -151,6 +159,7 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url, const Settin
 void AudioTrack_deinit(AudioTrack *t) {
 	av_packet_free(&t->av_packet);
 	av_frame_free(&t->av_frame);
+	av_frame_free(&t->av_frame_swr);
 
 	avcodec_free_context(&t->avc_ctx);
 
@@ -211,9 +220,40 @@ enum AudioTrack_ERR AudioTrack_get_metadata(AudioTrack *at, TrackMeta *meta) {
 	return AudioTrack_OK;
 }
 
+// Advance t->av_frame to the next buffer-ready (resampled if-needed) AVFrame.
+// Called inside of AudioTrack_buffer_packet
+//
+// [samplerate_lcm] is the least common multiple between the input and output sample rate
+//
+// Return value is an averror
+static int AudioTrack_advance_frame(AudioTrack *t, int64_t samplerate_lcm) {
+#ifdef MPL_RESAMPLE
+	if (t->resample) {
+		// Check if we have frames remaining in the swr_ctx buffer
+		const bool swr_has_frames = swr_get_delay(t->resample_ctx, samplerate_lcm);
+		if (swr_has_frames) {
+			return swr_convert_frame(t->resample_ctx, t->av_frame, NULL);
+		}
+
+		// Decode the next frame
+		int status = avcodec_receive_frame(t->avc_ctx, t->av_frame_swr);
+		if (status < 0) {
+			return status;
+		}
+
+		// Configure output frame options, which are required to match the resampling context by libswr
+		t->av_frame->ch_layout = t->av_frame_swr->ch_layout;
+		t->av_frame->format = t->buf_pcm.sample_fmt;
+		t->av_frame->sample_rate = t->buf_pcm.sample_rate;
+
+		return swr_convert_frame(t->resample_ctx, t->av_frame, t->av_frame_swr);
+	}
+#endif
+	return avcodec_receive_frame(t->avc_ctx, t->av_frame);
+}
+
 enum AudioTrack_ERR AudioTrack_buffer_packet(AudioTrack *t, size_t *n_bytes) {
 	char av_err[AV_ERROR_MAX_STRING_SIZE]; // libav* library error message buffer
-	const size_t sample_size = av_get_bytes_per_sample(t->pcm.sample_fmt);
 
 	if (n_bytes) {
 		*n_bytes = 0;
@@ -243,15 +283,26 @@ enum AudioTrack_ERR AudioTrack_buffer_packet(AudioTrack *t, size_t *n_bytes) {
 		return AudioTrack_PACKET_ERR;
 	}
 
-	const bool is_planar = av_sample_fmt_is_planar(t->pcm.sample_fmt);
 	unsigned char *interleave_buf = NULL; // Intermediate buffer used to interleave planar samples before they're written to the playback buffer
 	unsigned int interleave_buf_size = 0;
 
+	// Compute LCM between input and output sample rates if resampling
+	int64_t samplerate_lcm = 0;
+#ifdef MPL_RESAMPLE
+	if (t->resample) {
+		uint64_t inrate = t->src_pcm.sample_rate;
+		uint64_t outrate = t->buf_pcm.sample_rate;
+		samplerate_lcm = (inrate * outrate) / av_gcd(inrate, outrate);
+	}
+#endif
+
 	// Buffer each frame we decode
-	status = avcodec_receive_frame(t->avc_ctx, t->av_frame);
-	for (; status >= 0; status = avcodec_receive_frame(t->avc_ctx, t->av_frame)) {
+	const bool is_planar = av_sample_fmt_is_planar(t->buf_pcm.sample_fmt);
+	const size_t buf_sample_size = av_get_bytes_per_sample(t->buf_pcm.sample_fmt);
+	status = AudioTrack_advance_frame(t, samplerate_lcm);
+	for (; status >= 0; status = AudioTrack_advance_frame(t, samplerate_lcm)) {
 		const AVFrame *frame = t->av_frame;
-		size_t frame_size = frame->nb_samples * t->pcm.n_channels * sample_size;
+		size_t frame_size = frame->nb_samples * t->buf_pcm.n_channels * buf_sample_size;
 
 		unsigned char *frame_data = NULL;
 		if (is_planar) {
@@ -260,12 +311,12 @@ enum AudioTrack_ERR AudioTrack_buffer_packet(AudioTrack *t, size_t *n_bytes) {
 
 			size_t interleave_idx = 0;
 			for (size_t samp = 0; samp < frame->nb_samples; samp++) {
-				for (size_t ch = 0; ch < t->pcm.n_channels; ch++) {
+				for (size_t ch = 0; ch < t->buf_pcm.n_channels; ch++) {
 					static const size_t n_data = sizeof(frame->data) / sizeof(frame->data[0]);
 					unsigned char *line = ch < n_data ? frame->data[ch] : frame->extended_data[ch];
-					unsigned char *sample = &line[samp * sample_size];
-					memcpy(&interleave_buf[interleave_idx], sample, sample_size);
-					interleave_idx += sample_size;
+					unsigned char *sample = &line[samp * buf_sample_size];
+					memcpy(&interleave_buf[interleave_idx], sample, buf_sample_size);
+					interleave_idx += buf_sample_size;
 				}
 			}
 
@@ -296,7 +347,7 @@ enum AudioTrack_ERR AudioTrack_buffer_packet(AudioTrack *t, size_t *n_bytes) {
 
 enum AudioTrack_ERR AudioTrack_buffer_ms(AudioTrack *t, enum AudioSeek dir, const uint32_t ms) {
 	// Compute the number of bytes we want to buffer
-	const size_t n_bytes = AudioPCM_buffer_size(&t->pcm, ms);
+	const size_t n_bytes = AudioPCM_buffer_size(&t->buf_pcm, ms);
 
 	// Read packets, convert them to frames, and write them to the buffer
 	size_t n = 0; // # of bytes written

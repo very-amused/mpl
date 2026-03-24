@@ -159,7 +159,7 @@ int Queue_select(Queue *q, QueueNode *node) {
 	// Initialize track audio if needed
 	if (!node->track->audio) {
 		node->track->audio = malloc(sizeof(AudioTrack));
-		enum AudioTrack_ERR at_err = AudioTrack_init(node->track->audio, node->track->url, q->settings);
+		enum AudioTrack_ERR at_err = AudioTrack_init(node->track->audio, node->track->url, q->backend, q->settings);
 		if (at_err != AudioTrack_OK) {
 			fprintf(stderr, "Failed to initialize AudioTrack for track %s: %s\n", node->track->url, AudioTrack_ERR_name(at_err));
 			free(node->track->audio);
@@ -244,7 +244,7 @@ int Queue_seek(Queue *q, int32_t offset_ms, enum AudioSeek from) {
 
 	// Convert offset into bytes
 	const int32_t offset_ms_abs = offset_ms < 0 ? -offset_ms : offset_ms;
-	const int32_t offset = AudioPCM_buffer_size(&cur_audio->pcm, offset_ms_abs) * (offset_ms < 0 ? -1 : 1);
+	const int32_t offset = AudioPCM_buffer_size(&cur_audio->buf_pcm, offset_ms_abs) * (offset_ms < 0 ? -1 : 1);
 
 	// Pause buffering so we can adjust the buffer's write index
 	BufferThread_lock(q->buffer_thread);
@@ -270,7 +270,7 @@ int Queue_seek_snap(Queue *q, int32_t offset_ms) {
 
 	const int32_t offset_ms_abs = offset_ms < 0 ? -offset_ms : offset_ms;
 	// Offset scalar in bytes
-	const int32_t offset_scalar = AudioPCM_buffer_size(&cur_audio->pcm, offset_ms_abs);
+	const int32_t offset_scalar = AudioPCM_buffer_size(&cur_audio->buf_pcm, offset_ms_abs);
 
 	// Lock everything else that touches the track's AudioBuffer
 	BufferThread_lock(q->buffer_thread);
@@ -282,7 +282,7 @@ int Queue_seek_snap(Queue *q, int32_t offset_ms) {
 	// Compute seek snap alignment so we get a projected n_read value that's an even multiple of offset_scalar
 	const ssize_t n_read = cur_audio->buffer->n_read,
 				frame_size = cur_audio->buffer->frame_size,
-				sample_rate = cur_audio->pcm.sample_rate;
+				sample_rate = cur_audio->buf_pcm.sample_rate;
 	const ssize_t fps = frame_size * sample_rate; // frames per second
 	const ssize_t time_ms = (1000 * n_read) / fps;
 

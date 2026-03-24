@@ -110,7 +110,7 @@ int main(int argc, const char **argv) {
 		{
 			EventBody_Timecode timecode = evt.body_inline;
 			const Track *tr = Queue_cur_track(&queue);
-			AudioPCM pcm = tr->audio->pcm;
+			AudioPCM pcm = tr->audio->buf_pcm;
 			char timecode_buf[255];
 			char duration_buf[255];
 			const bool show_ms = config.settings.ui_timecode_ms;
