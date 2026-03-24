@@ -159,7 +159,9 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url, AudioBackend
 void AudioTrack_deinit(AudioTrack *t) {
 	av_packet_free(&t->av_packet);
 	av_frame_free(&t->av_frame);
+#ifdef MPL_RESAMPLE
 	av_frame_free(&t->av_frame_swr);
+#endif
 
 	avcodec_free_context(&t->avc_ctx);
 
