@@ -35,7 +35,7 @@ typedef struct AudioTrack {
 	// Resampling
 #ifdef MPL_RESAMPLE
 	bool resample; // whether we need to resample in-house
-	SwrContext *resample_ctx;
+	SwrContext *swr_ctx;
 	AVFrame *av_frame_swr; // Pre-resampled frame input
 #endif
 	

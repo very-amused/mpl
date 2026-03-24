@@ -136,7 +136,7 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url, AudioBackend
 		if (t->av_frame_swr == NULL) {
 			return AudioTrack_BAD_ALLOC;
 		}
-		status = swr_alloc_set_opts2(&t->resample_ctx,
+		status = swr_alloc_set_opts2(&t->swr_ctx,
 				&codec_params->ch_layout, t->buf_pcm.sample_fmt, t->buf_pcm.sample_rate,
 				&codec_params->ch_layout, t->src_pcm.sample_fmt, t->src_pcm.sample_rate,
 				0, NULL);
@@ -144,7 +144,7 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url, AudioBackend
 			av_perror(status, av_err);
 			return AudioTrack_RESAMPLE_ERR;
 		}
-		status = swr_init(t->resample_ctx);
+		status = swr_init(t->swr_ctx);
 		if (status < 0) {
 			av_perror(status, av_err);
 			return AudioTrack_RESAMPLE_ERR;
@@ -160,7 +160,7 @@ void AudioTrack_deinit(AudioTrack *t) {
 	av_frame_free(&t->av_frame);
 #ifdef MPL_RESAMPLE
 	if (t->resample) {
-		swr_free(&t->resample_ctx);
+		swr_free(&t->swr_ctx);
 		av_frame_free(&t->av_frame_swr);
 	}
 #endif
@@ -234,9 +234,9 @@ static int AudioTrack_advance_frame(AudioTrack *t, int64_t samplerate_lcm) {
 #ifdef MPL_RESAMPLE
 	if (t->resample) {
 		// Check if we have frames remaining in the swr_ctx buffer
-		const bool swr_has_frames = swr_get_delay(t->resample_ctx, samplerate_lcm);
+		const bool swr_has_frames = swr_get_delay(t->swr_ctx, samplerate_lcm);
 		if (swr_has_frames) {
-			return swr_convert_frame(t->resample_ctx, t->av_frame, NULL);
+			return swr_convert_frame(t->swr_ctx, t->av_frame, NULL);
 		}
 
 		// Decode the next frame
@@ -250,7 +250,7 @@ static int AudioTrack_advance_frame(AudioTrack *t, int64_t samplerate_lcm) {
 		t->av_frame->format = t->buf_pcm.sample_fmt;
 		t->av_frame->sample_rate = t->buf_pcm.sample_rate;
 
-		return swr_convert_frame(t->resample_ctx, t->av_frame, t->av_frame_swr);
+		return swr_convert_frame(t->swr_ctx, t->av_frame, t->av_frame_swr);
 	}
 #endif
 	return avcodec_receive_frame(t->avc_ctx, t->av_frame);
