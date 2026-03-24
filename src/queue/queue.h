@@ -3,6 +3,7 @@
 #include "audio/seek.h"
 #include "config/config.h"
 #include "config/settings.h"
+#include "error.h"
 #include "lock.h"
 #include "state.h"
 #include "track.h"
@@ -33,6 +34,12 @@ typedef struct Queue {
 int Queue_init(Queue *q, const Settings *settings);
 // Deinitialize a queue and disconnect audio output.
 void Queue_deinit(Queue *q);
+
+// Connect the queue to the system's audio output.
+// If ab == NULL, a 'best' audio backend for the system will be automatically determined from mpl.conf or defaults. This is the recommended strategy.
+enum AudioBackend_ERR Queue_connect_audio(Queue *q, AudioBackend *ab, const EventQueue *eq);
+// Disconnect the queue from the system's audio output.
+void Queue_disconnect_audio(Queue *q);
 
 // Get the currently playing track in the queue
 const Track *Queue_cur_track(const Queue *q);
@@ -75,8 +82,3 @@ int Queue_seek_snap(Queue *q, int32_t offset_ms);
 // Get playback state from the queue and its AudioBackend
 enum Queue_PLAYBACK_STATE Queue_get_playback_state(const Queue *q);
 
-// Connect the queue to the system's audio output.
-// If ab == NULL, a 'best' audio backend for the system will be automatically determined from mpl.conf or defaults. This is the recommended strategy.
-int Queue_connect_audio(Queue *q, AudioBackend *ab, const EventQueue *eq);
-// Disconnect the queue from the system's audio output.
-void Queue_disconnect_audio(Queue *q);

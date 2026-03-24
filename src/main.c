@@ -52,7 +52,11 @@ int main(int argc, const char **argv) {
 	// Initialize queue w/ track
 	Queue queue;
 	Queue_init(&queue, &config.settings);
-	Queue_connect_audio(&queue, NULL, ui.evt_queue);
+	enum AudioBackend_ERR ab_err = Queue_connect_audio(&queue, NULL, ui.evt_queue);
+	if (ab_err != AudioBackend_OK) {
+		LOG(Verbosity_NORMAL, "Failed to connect AudioBackend: %s\n", AudioBackend_ERR_name(ab_err));
+		goto quit;
+	}
 	if (Queue_prepend(&queue, Track_new(url, url_len)) != 0) {
 		goto quit;
 	}

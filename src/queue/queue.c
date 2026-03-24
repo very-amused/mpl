@@ -52,7 +52,7 @@ void Queue_deinit(Queue *q) {
 	Queue_clear(q);
 }
 
-int Queue_connect_audio(Queue *q, AudioBackend *ab, const EventQueue *eq) {
+enum AudioBackend_ERR Queue_connect_audio(Queue *q, AudioBackend *ab, const EventQueue *eq) {
 	// Set q->backend to a defined AudioBackend
 	if (ab) {
 		q->backend = ab;
