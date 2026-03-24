@@ -3,12 +3,19 @@ project('MPL', 'c', 'cpp',
 	license : 'GPL-3.0-only',
 	license_files: ['LICENSE'])
 
+is_win32 = build_machine.system() == 'windows'
+enable_wasapi = is_win32 and get_option('wasapi').allowed()
+# Only enable resampling when supporting AudioBackend's that require it.
+# We leave resampling up to the audio server whenever possible.
+enable_resampling = enable_wasapi
+
 # Dependencies
 deps = []
 # ffmpeg
 deps += dependency('libavcodec', version : '>=60.0.0')
 deps += dependency('libavformat', version : '>=60.0.0')
 deps += dependency('libavutil', version : '>=58.0.0')
+deps += dependency('libswscale', version : '>=6.0.0', required : enable_resampling)
 # audio output
 pulseaudio = dependency('libpulse', version : '>=16.0.0', required : get_option('pulseaudio'))
 pipewire = dependency('libpipewire-0.3', version : '>=0.3.0', required : get_option('pipewire'))
@@ -28,7 +35,7 @@ endif
 src = []
 include = []
 include += include_directories('src')
-if build_machine.system() == 'windows'
+if is_win32
 	include += include_directories('src/util/compat')
 endif
 
@@ -47,8 +54,11 @@ endif
 if pipewire.found()
 	cflags += '-DAO_PIPEWIRE'
 endif
+if enable_resampling
+	cflags += '-DRESAMPLING'
+endif
 cc = meson.get_compiler('c')
-if build_machine.system() == 'windows'
+if enable_wasapi
   cflags += '-DAO_WASAPI'
   # Provides KSDATAFORMAT_SUBTYPE idents
   deps += cc.find_library('ksuser', required : true)

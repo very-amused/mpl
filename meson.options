@@ -1,10 +1,11 @@
-option('pulseaudio', type: 'feature', value: 'auto')
-option('pipewire', type: 'feature', value: 'auto')
+option('pulseaudio', type : 'feature', value : 'auto')
+option('pipewire', type : 'feature', value : 'auto')
+option('wasapi', type : 'feature', value : 'auto')
 # Use the simpler ASCII-only implementation of KeybindMap defined in
 # keybind_map_ascii.c
 # By default, MPL uses the UTF-8 implementation in keybind_map.cpp
-option('ascii_keybinds', type: 'boolean', value: false)
+option('ascii_keybinds', type : 'boolean', value : false)
 
 # Options for MPL development - don't enable these unless you know what you're doing:
-option('test_config', type: 'boolean', value: false) # Read ../test/mpl.conf instead of the usual config locations
-option('ao_fast', type: 'boolean', value: false) # Support libFAST fake audio output for testing
+option('test_config', type : 'boolean', value : false) # Read ../test/mpl.conf instead of the usual config locations
+option('ao_fast', type : 'boolean', value : false) # Support libFAST fake audio output for testing
