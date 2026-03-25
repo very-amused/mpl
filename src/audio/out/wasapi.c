@@ -169,10 +169,21 @@ static bool negotiate_pcm(void *ctx__, AudioPCM *dst_pcm, const AudioPCM *src_pc
 		LOG(Verbosity_VERBOSE, "Failed to verify sample format with WASAPI\n");
 		return false;
 	}
-	if (alt_fmt) {
-		dst_pcm->n_channels = alt_fmt->nChannels;
-		dst_pcm->sample_rate = alt_fmt->nSamplesPerSec;
+	if (!alt_fmt) {
+		// WASAPI will accept our PCM as-is. This is the ideal scenario.
+		return false;
 	}
+
+	// We need to resample to the format WASAPI has given us as a "nearest match"
+	int status = AudioPCM_from_wasapi_waveformat(dst_pcm, alt_fmt);
+	if (!status) {
+		// We return false so AudioClient::Initialize will later fail.
+		// This is a more predictable fail state than if the caller tries to resample
+		// to an invalid AudioPCM destination format
+		LOG(Verbosity_VERBOSE, "Unable to convert WAVEFORMATEX to AudioPCM\n");
+		return false;
+	}
+	return true;
 }
 
 
