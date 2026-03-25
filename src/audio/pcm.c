@@ -248,6 +248,7 @@ int AudioPCM_from_wasapi_waveformat(AudioPCM *dst_pcm, const WAVEFORMATEX *wavfm
 
 	case WAVE_FORMAT_PCM:
 wasapi_pcm_fmt:
+	{
 		switch (wavfmt->wBitsPerSample) {
 		case 8:
 			dst_pcm->sample_fmt = AV_SAMPLE_FMT_U8;
@@ -264,10 +265,12 @@ wasapi_pcm_fmt:
 		default:
 			return 1;
 		}
+	}
 	break;
 	
 	case WAVE_FORMAT_IEEE_FLOAT:
 wasapi_float_fmt:
+	{
 		switch (wavfmt->wBitsPerSample) {
 		case 32:
 			dst_pcm->sample_fmt = AV_SAMPLE_FMT_FLT;
@@ -278,6 +281,7 @@ wasapi_float_fmt:
 		default:
 			return 1;
 		}
+	}
 	break;
 	
 	default:
