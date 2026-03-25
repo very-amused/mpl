@@ -51,6 +51,7 @@ typedef struct Ctx {
 /* WASAPI AudioBackend methods */
 static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Settings *settings);
 static void deinit(void *ctx__);
+static bool negotiate_pcm(void *ctx__, AudioPCM *dst_pcm, const AudioPCM *src_pcm);
 static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *track);
 static enum AudioBackend_ERR play(void *ctx__, bool pause);
 static void lock(void *ctx__);
@@ -63,6 +64,8 @@ AudioBackend AB_WASAPI = {
 
 	.init = init,
 	.deinit = deinit,
+
+	.negotiate_pcm = negotiate_pcm,
 
 	.prepare = prepare,
 	.play = play,
@@ -106,6 +109,14 @@ static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Setti
 		return AudioBackend_CONNECT_ERR;
 	}
 
+	// Activate stream so AudioTracks can perform PCM negotiation
+	hr = ctx->audio_device->lpVtbl->Activate(ctx->audio_device, &IID_IAudioClient, CLSCTX_ALL,
+			NULL, (void **)&ctx->stream);
+	if (FAILED(hr)) {
+		LOG(Verbosity_VERBOSE, "Failed to activate audio stream\n");
+		return AudioBackend_STREAM_ERR;
+	}
+
 	return AudioBackend_OK;
 }
 
@@ -144,6 +155,27 @@ static void deinit(void *ctx__) {
 #undef RELEASE
 }
 
+
+// Return true if we need to resample
+static bool negotiate_pcm(void *ctx__, AudioPCM *dst_pcm, const AudioPCM *src_pcm) {
+	Ctx *ctx = ctx__;	
+
+	// Verify if WASAPI will accept our sample format as is
+	const WAVEFORMATEXTENSIBLE wavfmt = AudioPCM_wasapi_waveformat(src_pcm);
+	WAVEFORMATEX *alt_fmt = NULL;
+	// TODO support WASAPI exclusive mode
+	HRESULT hr = ctx->stream->lpVtbl->IsFormatSupported(ctx->stream, AUDCLNT_SHAREMODE_SHARED, &(wavfmt.Format), &alt_fmt);
+	if (FAILED(hr)) {
+		LOG(Verbosity_VERBOSE, "Failed to verify sample format with WASAPI\n");
+		return false;
+	}
+	if (alt_fmt) {
+		dst_pcm->n_channels = alt_fmt->nChannels;
+		dst_pcm->sample_rate = alt_fmt->nSamplesPerSec;
+	}
+}
+
+
 static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 	Ctx *ctx = ctx__;
 
@@ -156,14 +188,7 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 			return AudioBackend_STREAM_EXISTS;
 		}
 	} else {
-		hr = ctx->audio_device->lpVtbl->Activate(ctx->audio_device, &IID_IAudioClient, CLSCTX_ALL,
-				NULL, (void **)&ctx->stream);
-		if (FAILED(hr)) {
-			LOG(Verbosity_VERBOSE, "Failed to activate audio stream\n");
-			return AudioBackend_STREAM_ERR;
-		}
 	}
-
 
 
 
@@ -179,7 +204,7 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 
 	// Verify WASAPI will accept our sample format
 	const WAVEFORMATEXTENSIBLE wavfmt = AudioPCM_wasapi_waveformat(&t->pcm);
-	WAVEFORMATEX *alternate_fmt = NULL;
+	WAVEFORpMATEX *alternate_fmt = NULL;
 	hr = ctx->stream->lpVtbl->IsFormatSupported(ctx->stream, AUDCLNT_SHAREMODE_SHARED, &(wavfmt.Format), &alternate_fmt);
 	if (FAILED(hr)) {
 		LOG(Verbosity_VERBOSE, "Sample format is not supported by WASAPI\n");

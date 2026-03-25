@@ -4,6 +4,7 @@
 #include <libavutil/samplefmt.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <winnt.h>
 
 uint32_t AudioPCM_sample_size(const AudioPCM *pcm) {
 	return av_get_bytes_per_sample(pcm->sample_fmt);
@@ -226,6 +227,64 @@ WAVEFORMATEXTENSIBLE AudioPCM_wasapi_waveformat(const AudioPCM *pcm) {
 	fmt.SubFormat = subformat;
 
 	return fmt;
+}
+
+int AudioPCM_from_wasapi_waveformat(AudioPCM *dst_pcm, const WAVEFORMATEX *wavfmt) {
+	dst_pcm->n_channels = wavfmt->nChannels; 
+	dst_pcm->sample_rate = wavfmt->nSamplesPerSec;
+
+	switch (wavfmt->wFormatTag) {
+	case WAVE_FORMAT_EXTENSIBLE:
+	{
+		const WAVEFORMATEXTENSIBLE *wavfmt_ex = (const WAVEFORMATEXTENSIBLE *)wavfmt;
+		if (IsEqualGUID(&wavfmt_ex->SubFormat, &KSDATAFORMAT_SUBTYPE_PCM)) {
+			goto wasapi_pcm_fmt;
+		} else if (IsEqualGUID(&wavfmt_ex->SubFormat, &KSDATAFORMAT_SUBTYPE_IEEE_FLOAT)) {
+			goto wasapi_float_fmt;
+		}
+		return 1;
+	}
+	break;
+
+	case WAVE_FORMAT_PCM:
+wasapi_pcm_fmt:
+		switch (wavfmt->wBitsPerSample) {
+		case 8:
+			dst_pcm->sample_fmt = AV_SAMPLE_FMT_U8;
+			break;
+		case 16:
+			dst_pcm->sample_fmt = AV_SAMPLE_FMT_S16;
+			break;
+		case 32:
+			dst_pcm->sample_fmt = AV_SAMPLE_FMT_S32;
+			break;
+		case 64:
+			dst_pcm->sample_fmt = AV_SAMPLE_FMT_S64;
+			break;
+		default:
+			return 1;
+		}
+	break;
+	
+	case WAVE_FORMAT_IEEE_FLOAT:
+wasapi_float_fmt:
+		switch (wavfmt->wBitsPerSample) {
+		case 32:
+			dst_pcm->sample_fmt = AV_SAMPLE_FMT_FLT;
+			break;
+		case 64:
+			dst_pcm->sample_fmt = AV_SAMPLE_FMT_DBL;
+			break;
+		default:
+			return 1;
+		}
+	break;
+	
+	default:
+		return 1;
+	}
+
+	return 0;
 }
 
 #ifdef MPL_DEBUG

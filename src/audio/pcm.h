@@ -42,6 +42,10 @@ struct spa_audio_info_raw AudioPCM_pipewire_info(const AudioPCM *pcm);
 
 WAVEFORMATEXTENSIBLE AudioPCM_wasapi_waveformat(const AudioPCM *pcm);
 
+// Construct AudioPCM from a WASAPI WAVEFORMATEX struct
+// Returns 0 on success, nonzero on error
+int AudioPCM_from_wasapi_waveformat(AudioPCM *dst_pcm, const WAVEFORMATEX *wavfmt);
+
 #ifdef MPL_DEBUG
 void AudioPCM_wasapi_debug(const AudioPCM *pcm, const WAVEFORMATEXTENSIBLE *fmt);
 #endif
