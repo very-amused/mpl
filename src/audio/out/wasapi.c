@@ -158,7 +158,7 @@ static void deinit(void *ctx__) {
 
 // Return true if we need to resample
 static bool negotiate_pcm(void *ctx__, AudioPCM *dst_pcm, const AudioPCM *src_pcm) {
-	Ctx *ctx = ctx__;	
+	Ctx *ctx = ctx__;
 
 	// Verify if WASAPI will accept our sample format as is
 	const WAVEFORMATEXTENSIBLE wavfmt = AudioPCM_wasapi_waveformat(src_pcm);
@@ -195,13 +195,11 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 	if (ctx->stream) {
 		REFERENCE_TIME dontcare;
 		hr = ctx->stream->lpVtbl->GetStreamLatency(ctx->stream, &dontcare);
-		if (!(hr == AUDCLNT_E_NOT_INITIALIZED || hr == AUDCLNT_E_DEVICE_INVALIDATED)) {
+		if (!(hr == AUDCLNT_E_NOT_INITIALIZED)) {
 			return AudioBackend_STREAM_EXISTS;
 		}
 	} else {
 	}
-
-
 
 	// Attach this stream to an existing session if possible
 	GUID *session_guid = NULL;
@@ -213,13 +211,18 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 		}
 	}
 
+
+	// TODO: support WASAPI exclusive mode
+	static const AUDCLNT_SHAREMODE sharemode = AUDCLNT_SHAREMODE_SHARED;
+
 	// Verify WASAPI will accept our sample format
-	const WAVEFORMATEXTENSIBLE wavfmt = AudioPCM_wasapi_waveformat(&t->pcm);
-	WAVEFORpMATEX *alternate_fmt = NULL;
-	hr = ctx->stream->lpVtbl->IsFormatSupported(ctx->stream, AUDCLNT_SHAREMODE_SHARED, &(wavfmt.Format), &alternate_fmt);
-	if (FAILED(hr)) {
-		LOG(Verbosity_VERBOSE, "Sample format is not supported by WASAPI\n");
-	} else {
+	// (the client should have called pcm_negotiate to figure this out BEFORE calling prepare)
+	const WAVEFORMATEXTENSIBLE wavfmt = AudioPCM_wasapi_waveformat(&t->buf_pcm);
+	WAVEFORMATEX *alternate_fmt = NULL;
+	hr = ctx->stream->lpVtbl->IsFormatSupported(ctx->stream, sharemode, &(wavfmt.Format), &alternate_fmt);
+	if (hr != S_OK) {
+		// TODO: figure out how to perror HRESULT's
+		return AudioBackend_BAD_PCM_FMT;
 	}
 
 
@@ -228,7 +231,7 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 	const DWORD STREAM_FLAGS = AUDCLNT_STREAMFLAGS_EVENTCALLBACK | AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY;
 	const REFERENCE_TIME hns_buf_duration = ctx->settings->ab_buffer_ms * 10000; // 1 ms = 10000 * 100ns
 	hr = ctx->stream->lpVtbl->Initialize(ctx->stream,
-			AUDCLNT_SHAREMODE_SHARED,
+			sharemode,
 			STREAM_FLAGS,
 			hns_buf_duration,
 			0,
@@ -238,6 +241,8 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 		LOG(Verbosity_VERBOSE, "Failed to initialize audio stream: 0x%lx\n", hr);
 		return AudioBackend_STREAM_ERR;
 	}
+
+	LOG(Verbosity_VERBOSE, "AudioClient successfully initialized!\n");
 
 	// If we just created a session, save it to the AudioBackend so future streams can attach
 	if (!ctx->session) {
@@ -250,16 +255,14 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 	// Load render client (what we use to write frames)
 	hr = ctx->stream->lpVtbl->GetService(ctx->stream, &IID_IAudioRenderClient, (void **)&ctx->stream_render);
 	if (FAILED(hr)) {
-		LOG(Verbosity_VERBOSE, "Failed to get audio render client\n");
-		return AudioBackend_FB_WRITE_ERR;
+		return AudioBackend_WASAPI_ERR;
 	}
 
 	// Get max number of frames we can write
 	uint32_t max_frame_count;
 	hr = ctx->stream->lpVtbl->GetBufferSize(ctx->stream, &max_frame_count);
 	if (FAILED(hr)) {
-		LOG(Verbosity_VERBOSE, "Failed to get WASAPI buffer size\n");
-		return AudioBackend_FB_WRITE_ERR;
+		return AudioBackend_WASAPI_ERR;
 	}
 
 	// Figure out how many frames we can actually write
