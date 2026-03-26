@@ -233,10 +233,8 @@ enum AudioTrack_ERR AudioTrack_get_metadata(AudioTrack *at, TrackMeta *meta) {
 // Advance t->av_frame to the next buffer-ready (resampled if-needed) AVFrame.
 // Called inside of AudioTrack_buffer_packet
 //
-// [samplerate_lcm] is the least common multiple between the input and output sample rate
-//
 // Return value is an averror
-static int AudioTrack_advance_frame(AudioTrack *t, int64_t samplerate_lcm) {
+static int AudioTrack_advance_frame(AudioTrack *t) {
 #ifdef MPL_RESAMPLE
 	if (t->resample) {
 		// Pump swr_ctx with input frames until either
@@ -266,6 +264,7 @@ static int AudioTrack_advance_frame(AudioTrack *t, int64_t samplerate_lcm) {
 				return 0;
 			}
 		}
+		return AVERROR(EAGAIN);
 	}
 #endif
 	return avcodec_receive_frame(t->avc_ctx, t->av_frame);
@@ -305,21 +304,11 @@ enum AudioTrack_ERR AudioTrack_buffer_packet(AudioTrack *t, size_t *n_bytes) {
 	unsigned char *interleave_buf = NULL; // Intermediate buffer used to interleave planar samples before they're written to the playback buffer
 	unsigned int interleave_buf_size = 0;
 
-	// Compute LCM between input and output sample rates if resampling
-	int64_t samplerate_lcm = 0;
-#ifdef MPL_RESAMPLE
-	if (t->resample) {
-		uint64_t inrate = t->src_pcm.sample_rate;
-		uint64_t outrate = t->buf_pcm.sample_rate;
-		samplerate_lcm = (inrate * outrate) / av_gcd(inrate, outrate);
-	}
-#endif
-
 	// Buffer each frame we decode
 	const bool is_planar = av_sample_fmt_is_planar(t->buf_pcm.sample_fmt);
 	const size_t buf_sample_size = av_get_bytes_per_sample(t->buf_pcm.sample_fmt);
-	status = AudioTrack_advance_frame(t, samplerate_lcm);
-	for (; status >= 0; status = AudioTrack_advance_frame(t, samplerate_lcm)) {
+	status = AudioTrack_advance_frame(t);
+	for (; status >= 0; status = AudioTrack_advance_frame(t)) {
 		const AVFrame *frame = t->av_frame;
 		size_t frame_size = frame->nb_samples * t->buf_pcm.n_channels * buf_sample_size;
 		LOG(Verbosity_DEBUG, "frame_size=%zu\n", frame_size);
