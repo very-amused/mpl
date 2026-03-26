@@ -229,6 +229,9 @@ WAVEFORMATEXTENSIBLE AudioPCM_wasapi_waveformat(const AudioPCM *pcm) {
 	return fmt;
 }
 
+// NOTE: we must NEVER return a planar sample format from this function (or any other AudioPCM_from_* routines used in resampling)
+// b/c we use one transfer buffer (as opposed to an array of n_channels buffers) for resampling.
+// Thus, trying to resample to a planar format is UB with the way MPL handles it, and must be avoided.
 int AudioPCM_from_wasapi_waveformat(AudioPCM *dst_pcm, const WAVEFORMATEX *wavfmt) {
 	dst_pcm->n_channels = wavfmt->nChannels; 
 	dst_pcm->sample_rate = wavfmt->nSamplesPerSec;

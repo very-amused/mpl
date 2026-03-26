@@ -3,7 +3,6 @@
 #include <libavutil/channel_layout.h>
 #include <libavutil/mathematics.h>
 #include <libavutil/rational.h>
-#include <libswresample/swresample.h>
 #include <semaphore.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -22,6 +21,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef MPL_RESAMPLE
+#include <libswresample/swresample.h>
+#include <libavutil/audio_fifo.h>
+#endif
 
 
 #include "track.h"
@@ -132,10 +136,7 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url, AudioBackend
 	// Initialize resampling if needed
 #ifdef MPL_RESAMPLE
 	if (t->resample) {
-		t->av_frame_swr = av_frame_alloc();
-		if (t->av_frame_swr == NULL) {
-			return AudioTrack_BAD_ALLOC;
-		}
+		// Initialize swr resampling context
 		status = swr_alloc_set_opts2(&t->swr_ctx,
 				&codec_params->ch_layout, t->buf_pcm.sample_fmt, t->buf_pcm.sample_rate,
 				&codec_params->ch_layout, t->src_pcm.sample_fmt, t->src_pcm.sample_rate,
@@ -148,6 +149,11 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url, AudioBackend
 		if (status < 0) {
 			av_perror(status, av_err);
 			return AudioTrack_RESAMPLE_ERR;
+		}
+		// Initialize SWR input frame struct
+		t->av_frame_swr = av_frame_alloc();
+		if (t->av_frame_swr == NULL) {
+			return AudioTrack_BAD_ALLOC;
 		}
 	}
 #endif
@@ -233,24 +239,67 @@ enum AudioTrack_ERR AudioTrack_get_metadata(AudioTrack *at, TrackMeta *meta) {
 static int AudioTrack_advance_frame(AudioTrack *t, int64_t samplerate_lcm) {
 #ifdef MPL_RESAMPLE
 	if (t->resample) {
-		// Check if we have frames remaining in the swr_ctx buffer
-		const bool swr_has_frames = swr_get_delay(t->swr_ctx, samplerate_lcm);
-		if (swr_has_frames) {
-			return swr_convert_frame(t->swr_ctx, t->av_frame, NULL);
+#if 0
+		// Initialize the resampling FIFO buffer if needed
+		if (!t->swr_fifo) {
+			status = avcodec_receive_frame(t->avc_ctx, t->av_frame_swr);
+			if (status < 0) {
+				return status;
+			}
+
+			const uint8_t n_channels = t->src_pcm.n_channels;
+			const int frame_insamples = t->av_frame_swr->nb_samples;
+			const int frame_outsamples_max = swr_get_out_samples(t->swr_ctx, frame_insamples);
+			t->swr_fifo = av_audio_fifo_alloc(t->buf_pcm.sample_fmt, n_channels, frame_outsamples_max);
+			if (!t->swr_fifo) {
+				// FIXME we should return an AudioTrack_ERR instead of an averror.
+				// averror has no AudioTrack_BAD_ALLOC equiv
+				return AVERROR_UNKNOWN;
+			}
+			// Pump FIFO with up to frame_outsamples_max resampled frames
+			// software rendering transfer buffer 
+			unsigned char *swr_tb = malloc(frame_outsamples_max * n_channels * AudioPCM_sample_size(&t->buf_pcm));
+			if (!swr_tb) {
+				return AVERROR_UNKNOWN;
+			}
+			const int frame_outsamples = swr_convert(t->swr_ctx,
+					&swr_tb, frame_outsamples_max,
+					(const uint8_t **)&t->av_frame_swr->data[0], frame_insamples);
+			av_audio_fifo_write(t->swr_fifo, (void *const *)&swr_tb, frame_outsamples);
+			free(swr_tb);
 		}
+#endif
 
-		// Decode the next frame
-		int status = avcodec_receive_frame(t->avc_ctx, t->av_frame_swr);
-		if (status < 0) {
-			return status;
+		// Pump swr_ctx with input frames until either
+		// 1. we have a resampled output frame with 1+ samples per-ch (thus, t->av_frame has been advanced) or
+		// 2. the packet runs out of input frames (thus, the caller must call AudioTrack_buffer_packet again)
+		const uint8_t n_channels = t->src_pcm.n_channels;
+		unsigned char *fifo_tb = NULL; // swr_fifo in/out transfer buffer
+		unsigned int fifo_tb_size = 0;
+		int status;
+		while (status = avcodec_receive_frame(t->avc_ctx, t->av_frame_swr), status >= 0) {
+			// Get the max # of outsamples this frame will yield
+			const int frame_insamples = t->av_frame_swr->nb_samples; // per ch
+			const int frame_outsamples_max = swr_get_out_samples(t->swr_ctx, frame_insamples); // per ch
+
+			// Perform resampling, using t->av_frame->extended as our dst for 1+ frames
+			if (frame_outsamples_max) {
+				av_frame_unref(t->av_frame);
+				t->av_frame->sample_rate = t->buf_pcm.sample_rate;
+				t->av_frame->format = t->buf_pcm.sample_fmt;
+				t->av_frame->nb_samples = frame_outsamples_max;
+				av_channel_layout_default(&t->av_frame->ch_layout, t->buf_pcm.n_channels);
+				av_frame_get_buffer(t->av_frame, 0);
+			}
+			t->av_frame->nb_samples = swr_convert(t->swr_ctx,
+					// NOTE: All AudioPCM_from_* functions that determine the target sample fmt are guaranteed
+					// to never return a planar format. Thus, using the address of our single transfer buffer as &transfer_bufs[0] is OK
+					&t->av_frame->data[0], frame_outsamples_max,
+					(const uint8_t **)t->av_frame_swr->extended_data, frame_insamples);
+			if (t->av_frame->nb_samples) {
+				return 0;
+			}
 		}
-
-		// Configure output frame options, which are required to match the resampling context by libswr
-		t->av_frame->ch_layout = t->av_frame_swr->ch_layout;
-		t->av_frame->format = t->buf_pcm.sample_fmt;
-		t->av_frame->sample_rate = t->buf_pcm.sample_rate;
-
-		return swr_convert_frame(t->swr_ctx, t->av_frame, t->av_frame_swr);
 	}
 #endif
 	return avcodec_receive_frame(t->avc_ctx, t->av_frame);
@@ -307,6 +356,7 @@ enum AudioTrack_ERR AudioTrack_buffer_packet(AudioTrack *t, size_t *n_bytes) {
 	for (; status >= 0; status = AudioTrack_advance_frame(t, samplerate_lcm)) {
 		const AVFrame *frame = t->av_frame;
 		size_t frame_size = frame->nb_samples * t->buf_pcm.n_channels * buf_sample_size;
+		LOG(Verbosity_DEBUG, "frame_size=%zu\n", frame_size);
 
 		unsigned char *frame_data = NULL;
 		if (is_planar) {

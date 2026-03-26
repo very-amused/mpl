@@ -16,6 +16,7 @@
 
 #ifdef MPL_RESAMPLE
 #include <libswresample/swresample.h>
+#include <libavutil/audio_fifo.h>
 #endif
 
 typedef struct AudioBackend AudioBackend; // break circular dependency between AudioTrack and AudioBackend
@@ -36,7 +37,8 @@ typedef struct AudioTrack {
 #ifdef MPL_RESAMPLE
 	bool resample; // whether we need to resample in-house
 	SwrContext *swr_ctx;
-	AVFrame *av_frame_swr; // Pre-resampled frame input
+	AVAudioFifo *swr_fifo;
+	AVFrame *av_frame_swr; // Pre-resampling input frame
 #endif
 	
 	// PCM playback

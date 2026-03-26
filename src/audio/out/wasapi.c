@@ -176,7 +176,7 @@ static bool negotiate_pcm(void *ctx__, AudioPCM *dst_pcm, const AudioPCM *src_pc
 
 	// We need to resample to the format WASAPI has given us as a "nearest match"
 	int status = AudioPCM_from_wasapi_waveformat(dst_pcm, alt_fmt);
-	if (!status) {
+	if (status != 0) {
 		// We return false so AudioClient::Initialize will later fail.
 		// This is a more predictable fail state than if the caller tries to resample
 		// to an invalid AudioPCM destination format
