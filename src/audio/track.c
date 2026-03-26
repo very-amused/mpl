@@ -237,6 +237,12 @@ enum AudioTrack_ERR AudioTrack_get_metadata(AudioTrack *at, TrackMeta *meta) {
 static int AudioTrack_advance_frame(AudioTrack *t) {
 #ifdef MPL_RESAMPLE
 	if (t->resample) {
+		// Ensure resample target is non-planar to avoid UB
+		if (av_sample_fmt_is_planar(t->buf_pcm.sample_fmt)) {
+			LOG(Verbosity_NORMAL, "We can't resample to a planar format! One of the AudioPCM_from_* methods messed up.\n");
+			return -1;
+		}
+
 		// Pump swr_ctx with input frames until either
 		// 1. we have a resampled output frame with 1+ samples per-ch (thus, t->av_frame has been advanced) or
 		// 2. the packet runs out of input frames (thus, the caller must call AudioTrack_buffer_packet again)
@@ -256,8 +262,6 @@ static int AudioTrack_advance_frame(AudioTrack *t) {
 				av_frame_get_buffer(t->av_frame, 0);
 			}
 			t->av_frame->nb_samples = swr_convert(t->swr_ctx,
-					// NOTE: All AudioPCM_from_* functions that determine the target sample fmt are guaranteed
-					// to never return a planar format. Thus, using the address of our single transfer buffer as &transfer_bufs[0] is OK
 					&t->av_frame->data[0], frame_outsamples_max,
 					(const uint8_t **)t->av_frame_swr->extended_data, frame_insamples);
 			if (t->av_frame->nb_samples) {
