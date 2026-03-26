@@ -239,43 +239,9 @@ enum AudioTrack_ERR AudioTrack_get_metadata(AudioTrack *at, TrackMeta *meta) {
 static int AudioTrack_advance_frame(AudioTrack *t, int64_t samplerate_lcm) {
 #ifdef MPL_RESAMPLE
 	if (t->resample) {
-#if 0
-		// Initialize the resampling FIFO buffer if needed
-		if (!t->swr_fifo) {
-			status = avcodec_receive_frame(t->avc_ctx, t->av_frame_swr);
-			if (status < 0) {
-				return status;
-			}
-
-			const uint8_t n_channels = t->src_pcm.n_channels;
-			const int frame_insamples = t->av_frame_swr->nb_samples;
-			const int frame_outsamples_max = swr_get_out_samples(t->swr_ctx, frame_insamples);
-			t->swr_fifo = av_audio_fifo_alloc(t->buf_pcm.sample_fmt, n_channels, frame_outsamples_max);
-			if (!t->swr_fifo) {
-				// FIXME we should return an AudioTrack_ERR instead of an averror.
-				// averror has no AudioTrack_BAD_ALLOC equiv
-				return AVERROR_UNKNOWN;
-			}
-			// Pump FIFO with up to frame_outsamples_max resampled frames
-			// software rendering transfer buffer 
-			unsigned char *swr_tb = malloc(frame_outsamples_max * n_channels * AudioPCM_sample_size(&t->buf_pcm));
-			if (!swr_tb) {
-				return AVERROR_UNKNOWN;
-			}
-			const int frame_outsamples = swr_convert(t->swr_ctx,
-					&swr_tb, frame_outsamples_max,
-					(const uint8_t **)&t->av_frame_swr->data[0], frame_insamples);
-			av_audio_fifo_write(t->swr_fifo, (void *const *)&swr_tb, frame_outsamples);
-			free(swr_tb);
-		}
-#endif
-
 		// Pump swr_ctx with input frames until either
 		// 1. we have a resampled output frame with 1+ samples per-ch (thus, t->av_frame has been advanced) or
 		// 2. the packet runs out of input frames (thus, the caller must call AudioTrack_buffer_packet again)
-		const uint8_t n_channels = t->src_pcm.n_channels;
-		unsigned char *fifo_tb = NULL; // swr_fifo in/out transfer buffer
-		unsigned int fifo_tb_size = 0;
 		int status;
 		while (status = avcodec_receive_frame(t->avc_ctx, t->av_frame_swr), status >= 0) {
 			// Get the max # of outsamples this frame will yield
