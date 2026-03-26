@@ -264,7 +264,7 @@ static int AudioTrack_advance_frame(AudioTrack *t) {
 				return 0;
 			}
 		}
-		return AVERROR(EAGAIN);
+		return status;
 	}
 #endif
 	return avcodec_receive_frame(t->avc_ctx, t->av_frame);
