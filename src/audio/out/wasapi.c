@@ -6,6 +6,7 @@
 #include "backends.h"
 #include "config/settings.h"
 #include "error.h"
+#include "ui/event.h"
 #include "ui/event_queue.h"
 #include "util/log.h"
 #include "error.h"
@@ -357,7 +358,7 @@ static void wasapi_write_cb_(void *userdata) {
 		LOG(Verbosity_VERBOSE, "Failed to get max frame count from WASAPI\n");
 		return;
 	}
-	// Figure out how many frames we can actually write
+	// Figure out how many frames we can actually write,
 	const size_t frame_size = ctx->playback_buffer->frame_size;
 	uint32_t frame_count = AudioBuffer_max_read(ctx->playback_buffer, -1, -1, true) / frame_size;
 	if (frame_count > max_frame_count) {
@@ -368,17 +369,39 @@ static void wasapi_write_cb_(void *userdata) {
 	BYTE *tb;
 	hr = ctx->stream_render->lpVtbl->GetBuffer(ctx->stream_render, frame_count, &tb);
 	if (FAILED(hr)) {
-		// this path is normal and occurs pretty frequently
+		// If WASAPI can't buffer everything we can offer, maybe it can buffer half right now
+		frame_count /= 2;
+		hr = ctx->stream_render->lpVtbl->GetBuffer(ctx->stream_render, frame_count, &tb);
+	}
+	if (FAILED(hr)) {
+		// this path is normal and occurs semi-frequently
 		// WASAPI will just wait until it has enough buffer space
 		return;
 	}
-	size_t bytes_read = AudioBuffer_read(ctx->playback_buffer, tb, frame_count * frame_size, true);
+	const size_t bytes_read = AudioBuffer_read(ctx->playback_buffer, tb, frame_count * frame_size, true);
 	const uint32_t actual_frame_count = bytes_read / frame_size;
 
 	// Release the transfer buffer to WASAPI
 	hr = ctx->stream_render->lpVtbl->ReleaseBuffer(ctx->stream_render, actual_frame_count, 0);
 	if (FAILED(hr)) {
 		LOG(Verbosity_VERBOSE, "Failed to release transfer buffer to WASAPI\n");
+	}
+
+	// Compute number of frames read, send to main as a timecode
+	const size_t n_read = ctx->playback_buffer->n_read;
+	const EventBody_Timecode frames_read = n_read / frame_size;
+	const Event evt = {
+		.event_type = mpl_TIMECODE,
+		.body_size = sizeof(EventBody_Timecode),
+		.body_inline = frames_read};
+	// Send timecode to main thread
+	//EventQueue_send(ctx->evt_queue, &evt);
+	if (bytes_read == 0) {
+		// Notify the main thread of track end
+		const Event end_evt = {
+			.event_type = mpl_TRACK_END,
+			.body_size = 0};
+		//EventQueue_send(ctx->evt_queue, &end_evt);
 	}
 
 	LOG(Verbosity_DEBUG, "Wrote %zu bytes to WASAPI\n", bytes_read);

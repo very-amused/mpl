@@ -97,13 +97,10 @@ static void *WASAPI_fbThread_routine(void *args) {
 	static const DWORD n_handles = sizeof(object_handles) / sizeof(object_handles[0]);
 
 	while (true) {
-		WASAPI_fbThread_lock(thr);
-
 		// See input_thread_win32.c for remarks on these routines
 		DWORD status = WaitForMultipleObjects(n_handles, object_handles, false, INFINITE);
 		if (!(status >= WAIT_OBJECT_0 && status <= WAIT_OBJECT_0+(n_handles-1))) {
 			LOG(Verbosity_NORMAL, "WaitForMultipleObjects failed. This should never happen\n");
-			WASAPI_fbThread_unlock(thr);
 			continue;
 		}
 
@@ -114,8 +111,8 @@ static void *WASAPI_fbThread_routine(void *args) {
 		}
 
 		// Call write callback with lock
+		WASAPI_fbThread_lock(thr);
 		thr->write_callback(thr->userdata);
-
 		WASAPI_fbThread_unlock(thr);
 	}
 

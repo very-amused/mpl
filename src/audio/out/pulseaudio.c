@@ -352,6 +352,28 @@ static void pa_ctx_state_cb_(pa_context *pa_ctx, void *userdata) {
 	}
 }
 
+static void pa_stream_state_cb_(pa_stream *stream, void *userdata) {
+	Ctx *ctx = userdata;
+
+	switch (pa_stream_get_state(stream)) {
+	case PA_STREAM_READY:
+	case PA_STREAM_TERMINATED:
+	case PA_STREAM_FAILED:
+		pa_threaded_mainloop_signal(ctx->loop, 0);
+		break;
+	
+	case PA_STREAM_UNCONNECTED:
+	case PA_STREAM_CREATING:
+		break;
+	}
+}
+
+static void pa_stream_success_cb_(pa_stream *stream, int success, void *userdata) {
+	Ctx *ctx = userdata;
+
+	pa_threaded_mainloop_signal(ctx->loop, 0);
+}
+
 static void pa_stream_write_cb_(pa_stream *stream, size_t n_bytes, void *userdata) {
 	Ctx *ctx = userdata;
 
@@ -387,26 +409,4 @@ static void pa_stream_write_cb_(pa_stream *stream, size_t n_bytes, void *userdat
 			.body_size = 0};
 		EventQueue_send(ctx->evt_queue, &end_evt);
 	}
-}
-
-static void pa_stream_state_cb_(pa_stream *stream, void *userdata) {
-	Ctx *ctx = userdata;
-
-	switch (pa_stream_get_state(stream)) {
-	case PA_STREAM_READY:
-	case PA_STREAM_TERMINATED:
-	case PA_STREAM_FAILED:
-		pa_threaded_mainloop_signal(ctx->loop, 0);
-		break;
-	
-	case PA_STREAM_UNCONNECTED:
-	case PA_STREAM_CREATING:
-		break;
-	}
-}
-
-static void pa_stream_success_cb_(pa_stream *stream, int success, void *userdata) {
-	Ctx *ctx = userdata;
-
-	pa_threaded_mainloop_signal(ctx->loop, 0);
 }
