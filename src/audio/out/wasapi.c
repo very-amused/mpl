@@ -244,6 +244,7 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 
 	LOG(Verbosity_VERBOSE, "AudioClient successfully initialized!\n");
 
+
 	// If we just created a session, save it to the AudioBackend so future streams can attach
 	if (!ctx->session) {
 		hr = ctx->stream->lpVtbl->GetService(ctx->stream, &IID_IAudioSessionControl, (void **)&ctx->session);
@@ -257,6 +258,9 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 	if (FAILED(hr)) {
 		return AudioBackend_WASAPI_ERR;
 	}
+
+	// Connect playback buffer to framebuffer
+	ctx->playback_buffer = t->buffer;
 
 	// Get max number of frames we can write
 	uint32_t max_frame_count;
