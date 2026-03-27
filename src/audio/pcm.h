@@ -41,6 +41,9 @@ struct spa_audio_info_raw AudioPCM_pipewire_info(const AudioPCM *pcm);
 #include <ksmedia.h>
 
 WAVEFORMATEXTENSIBLE AudioPCM_wasapi_waveformat(const AudioPCM *pcm);
+// Convert a WAVEFORMATEXTENSIBLE into a legacy-compatible WAVEFORMATEX
+// Returns 0 on success, nonzero if called with >2 channels
+int AudioPCM_wasapi_waveformat_simplify(WAVEFORMATEXTENSIBLE *wavfmt);
 
 // Construct AudioPCM from a WASAPI WAVEFORMATEX struct
 // Returns 0 on success, nonzero on error

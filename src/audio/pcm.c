@@ -229,6 +229,25 @@ WAVEFORMATEXTENSIBLE AudioPCM_wasapi_waveformat(const AudioPCM *pcm) {
 	return fmt;
 }
 
+int AudioPCM_wasapi_waveformat_simplify(WAVEFORMATEXTENSIBLE *wavfmt) {
+	if (wavfmt->Format.nChannels > 2) {
+		return 1;
+	}
+	if (wavfmt->Format.wFormatTag != WAVE_FORMAT_EXTENSIBLE) {
+		return 0;
+	}
+
+	if (IsEqualGUID(&wavfmt->SubFormat, &KSDATAFORMAT_SUBTYPE_PCM)) {
+		wavfmt->Format.wFormatTag = WAVE_FORMAT_PCM;
+	} else if (IsEqualGUID(&wavfmt->SubFormat, &KSDATAFORMAT_SUBTYPE_IEEE_FLOAT)) {
+		wavfmt->Format.wFormatTag = WAVE_FORMAT_IEEE_FLOAT;
+	} else {
+		wavfmt->Format.wFormatTag = WAVE_FORMAT_UNKNOWN;
+	}
+
+	return 0;
+}
+
 // NOTE: we must NEVER return a planar sample format from this function (or any other AudioPCM_from_* routines used in resampling)
 // b/c we use one transfer buffer (as opposed to an array of n_channels buffers) for resampling.
 // Thus, trying to resample to a planar format is UB with the way MPL handles it, and must be avoided.

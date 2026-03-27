@@ -217,10 +217,19 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 
 	// Verify WASAPI will accept our sample format
 	// (the client should have called pcm_negotiate to figure this out BEFORE calling prepare)
-	const WAVEFORMATEXTENSIBLE wavfmt = AudioPCM_wasapi_waveformat(&t->buf_pcm);
+	WAVEFORMATEXTENSIBLE wavfmt = AudioPCM_wasapi_waveformat(&t->buf_pcm);
 	WAVEFORMATEX *alternate_fmt = NULL;
 	hr = ctx->stream->lpVtbl->IsFormatSupported(ctx->stream, sharemode, &(wavfmt.Format), &alternate_fmt);
+	if (hr != S_OK && wavfmt.Format.nChannels <= 2) {
+		// try again with a non-extended basic WAVEFORMATEX
+		// sometimes this is needed
+		// ref https://learn.microsoft.com/en-us/windows/win32/coreaudio/device-formats
+		if (AudioPCM_wasapi_waveformat_simplify(&wavfmt) == 0) {
+			hr = ctx->stream->lpVtbl->IsFormatSupported(ctx->stream, sharemode, &(wavfmt.Format), &alternate_fmt);
+		}
+	}
 	if (hr != S_OK) {
+		LOG(Verbosity_NORMAL, "prepare is failing with BAD_PCM_FMT\n");
 		// TODO: figure out how to perror HRESULT's
 		return AudioBackend_BAD_PCM_FMT;
 	}
