@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+- Windows implementation of InputThread
+- Windows WASAPI AudioBackend support
+
 ## [0.4.2]
 
 ### Added
