@@ -21,6 +21,8 @@ void WASAPI_fbThread_lock(WASAPI_fbThread *thr);
 // Unlock framebuffer thread loop
 void WASAPI_fbThread_unlock(WASAPI_fbThread *thr);
 
+// Get event handle to register with WASAPI
+HANDLE WASAPI_fbThread_get_write_evt_handle(WASAPI_fbThread *thr);
 // Set write callback
 void WASAPI_fbThread_set_write_cb(WASAPI_fbThread *thr, WASAPI_write_cb_t cb, void *userdata);
 

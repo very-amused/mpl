@@ -315,7 +315,6 @@ enum AudioTrack_ERR AudioTrack_buffer_packet(AudioTrack *t, size_t *n_bytes) {
 	for (; status >= 0; status = AudioTrack_advance_frame(t)) {
 		const AVFrame *frame = t->av_frame;
 		size_t frame_size = frame->nb_samples * t->buf_pcm.n_channels * buf_sample_size;
-		LOG(Verbosity_DEBUG, "frame_size=%zu\n", frame_size);
 
 		unsigned char *frame_data = NULL;
 		if (is_planar) {

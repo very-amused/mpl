@@ -38,7 +38,8 @@ static const char DEFAULT_ERR_NAME[] = "Not implemented.";
 	VARIANT(AudioBackend_FB_WRITE_ERR) \
 	VARIANT(AudioBackend_PLAY_ERR) \
 	VARIANT(AudioBackend_BAD_PCM_FMT) \
-	VARIANT(AudioBackend_WASAPI_ERR)
+	VARIANT(AudioBackend_WASAPI_ERR) \
+	VARIANT(AudioBackend_WASAPI_FBTHREAD_ERR)
 
 /* An error returned by AudioBackend_* methods.
  *

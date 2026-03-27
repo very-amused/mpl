@@ -82,6 +82,10 @@ void WASAPI_fbThread_unlock(WASAPI_fbThread *thr) {
 	pthread_mutex_unlock(&thr->lock);
 }
 
+HANDLE WASAPI_fbThread_get_write_evt_handle(WASAPI_fbThread *thr) {
+	return thr->write_evt;
+}
+
 void WASAPI_fbThread_set_write_cb(WASAPI_fbThread *thr, WASAPI_write_cb_t cb, void *userdata) {
 	thr->write_callback = cb;
 	thr->userdata = userdata;

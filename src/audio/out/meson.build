@@ -6,8 +6,8 @@ endif
 if pipewire.found()
 	src_audio_out += files('pipewire.c')
 endif
-if build_machine.system() == 'windows'
-  src_audio_out += files('wasapi.c')
+if enable_wasapi
+  src_audio_out += files('wasapi.c', 'wasapi_fb_thread.c')
 endif
 if get_option('ao_fast')
 	src_audio_out += files('debug_fast.c')

@@ -1,4 +1,5 @@
 #include "audio/buffer.h"
+#include "audio/out/wasapi_fb_thread.h"
 #include "audio/pcm.h"
 #include "audio/track.h"
 #include "backend.h"
@@ -38,6 +39,8 @@ typedef struct Ctx {
 	IAudioRenderClient *next_stream_render;
 	// Audio session for grouping streams w/ metadata
 	IAudioSessionControl *session;
+	// Framebuffer loop thread (we get this from other audio APIs, but need to provide our own with WASAPI)
+	WASAPI_fbThread *framebuffer_thread;
 
 	// Playback buffer for current and next audio track
 	AudioBuffer *playback_buffer;
@@ -75,6 +78,9 @@ AudioBackend AB_WASAPI = {
 
 	.ctx_size = sizeof(Ctx)
 };
+
+/* WASASPI callbacks. *userdata is of type *Ctx. */
+static void wasapi_write_cb_(void *userdata);
 
 static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Settings *settings) {
 	Ctx *ctx = ctx__;
@@ -122,6 +128,10 @@ static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Setti
 
 static void deinit(void *ctx__) {
 	Ctx *ctx = ctx__;
+
+	if (ctx->framebuffer_thread) {
+		WASAPI_fbThread_free(ctx->framebuffer_thread);
+	}
 
 	if (ctx->stream) {
 		HRESULT hr = ctx->stream->lpVtbl->Stop(ctx->stream);
@@ -253,8 +263,17 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 	LOG(Verbosity_VERBOSE, "AudioClient successfully initialized!\n");
 
 
-	// Set up stream write thread
-
+	// Set up write callback on its own thread
+	ctx->framebuffer_thread = WASAPI_fbThread_new();
+	if (!ctx->framebuffer_thread) {
+		return AudioBackend_BAD_ALLOC;
+	}
+	WASAPI_fbThread_set_write_cb(ctx->framebuffer_thread, wasapi_write_cb_, ctx);
+	ctx->stream->lpVtbl->SetEventHandle(ctx->stream,
+			WASAPI_fbThread_get_write_evt_handle(ctx->framebuffer_thread));
+	if (WASAPI_fbThread_start(ctx->framebuffer_thread) != 0) {
+		return AudioBackend_WASAPI_FBTHREAD_ERR;
+	}
 
 	// If we just created a session, save it to the AudioBackend so future streams can attach
 	if (!ctx->session) {
@@ -326,4 +345,41 @@ static void unlock(void *ctx__) {
 
 static void seek(void *ctx__) {
 	// TODO
+}
+
+static void wasapi_write_cb_(void *userdata) {
+	Ctx *ctx = userdata;
+
+	// Get max number of frames we can write
+	uint32_t max_frame_count;
+	HRESULT hr = ctx->stream->lpVtbl->GetBufferSize(ctx->stream, &max_frame_count);
+	if (FAILED(hr)) {
+		LOG(Verbosity_VERBOSE, "Failed to get max frame count from WASAPI\n");
+		return;
+	}
+	// Figure out how many frames we can actually write
+	const size_t frame_size = ctx->playback_buffer->frame_size;
+	uint32_t frame_count = AudioBuffer_max_read(ctx->playback_buffer, -1, -1, true) / frame_size;
+	if (frame_count > max_frame_count) {
+		frame_count = max_frame_count;
+	}
+
+	// Get a transfer buffer from WASAPI and write our frames
+	BYTE *tb;
+	hr = ctx->stream_render->lpVtbl->GetBuffer(ctx->stream_render, frame_count, &tb);
+	if (FAILED(hr)) {
+		// this path is normal and occurs pretty frequently
+		// WASAPI will just wait until it has enough buffer space
+		return;
+	}
+	size_t bytes_read = AudioBuffer_read(ctx->playback_buffer, tb, frame_count * frame_size, true);
+	const uint32_t actual_frame_count = bytes_read / frame_size;
+
+	// Release the transfer buffer to WASAPI
+	hr = ctx->stream_render->lpVtbl->ReleaseBuffer(ctx->stream_render, actual_frame_count, 0);
+	if (FAILED(hr)) {
+		LOG(Verbosity_VERBOSE, "Failed to release transfer buffer to WASAPI\n");
+	}
+
+	LOG(Verbosity_DEBUG, "Wrote %zu bytes to WASAPI\n", bytes_read);
 }
