@@ -4,7 +4,6 @@
 #include <libavutil/samplefmt.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <winnt.h>
 
 uint32_t AudioPCM_sample_size(const AudioPCM *pcm) {
 	return av_get_bytes_per_sample(pcm->sample_fmt);
@@ -152,6 +151,7 @@ struct spa_audio_info_raw AudioPCM_pipewire_info(const AudioPCM *pcm) {
 #include <mmeapi.h>
 #include <minwindef.h>
 #include <string.h>
+#include <winnt.h>
 
 WAVEFORMATEXTENSIBLE AudioPCM_wasapi_waveformat(const AudioPCM *pcm) {
 	// Get sample format and size
