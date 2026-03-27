@@ -5,7 +5,6 @@
 #include "backends.h"
 #include "config/settings.h"
 #include "error.h"
-#include "ui/event.h"
 #include "ui/event_queue.h"
 #include "util/log.h"
 #include "error.h"
@@ -254,6 +253,9 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 	LOG(Verbosity_VERBOSE, "AudioClient successfully initialized!\n");
 
 
+	// Set up stream write thread
+
+
 	// If we just created a session, save it to the AudioBackend so future streams can attach
 	if (!ctx->session) {
 		hr = ctx->stream->lpVtbl->GetService(ctx->stream, &IID_IAudioSessionControl, (void **)&ctx->session);
@@ -294,6 +296,7 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 	}
 	size_t bytes_read = AudioBuffer_read(ctx->playback_buffer, tb, frame_count * frame_size, true);
 	const uint32_t actual_frame_count = bytes_read / frame_size;
+	LOG(Verbosity_VERBOSE, "Prefilled WASAPI buffer with %d frames (%zu bytes)\n", actual_frame_count, bytes_read);
 	if (actual_frame_count != frame_count) {
 		LOG(Verbosity_DEBUG, "Read fewer frames than expected\n");
 	}
