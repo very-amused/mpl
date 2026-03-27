@@ -144,5 +144,6 @@ void InputThread_free(InputThread *thr) {
 
 	// Free thread resources
 	CloseHandle(thr->input);
+	CloseHandle(thr->shutdown_evt);
 	free(thr);
 }
