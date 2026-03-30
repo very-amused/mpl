@@ -102,7 +102,7 @@ static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Setti
 			CLSCTX_ALL, &IID_IMMDeviceEnumerator,
 			(void **)&ctx->audiodev_enum);
 	if (FAILED(hr)) {
-		LOG(Verbosity_VERBOSE, "Failed to create audio device enumerator\n");
+		w32_perror(L"Failed to create audio device enumerator");
 		deinit(ctx);
 		return AudioBackend_BAD_ALLOC;
 	}
@@ -110,7 +110,7 @@ static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Setti
 	hr = ctx->audiodev_enum->lpVtbl->GetDefaultAudioEndpoint(
 			ctx->audiodev_enum, eRender, eConsole, &ctx->audio_device);
 	if (FAILED(hr)) {
-		LOG(Verbosity_VERBOSE, "Failed to get default audio endpoint\n");
+		w32_perror(L"Failed to get default audio endpoint");
 		deinit(ctx);
 		return AudioBackend_CONNECT_ERR;
 	}
@@ -119,7 +119,7 @@ static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Setti
 	hr = ctx->audio_device->lpVtbl->Activate(ctx->audio_device, &IID_IAudioClient, CLSCTX_ALL,
 			NULL, (void **)&ctx->stream);
 	if (FAILED(hr)) {
-		LOG(Verbosity_VERBOSE, "Failed to activate audio stream\n");
+		w32_perror(L"Failed to activate audio stream");
 		return AudioBackend_STREAM_ERR;
 	}
 
@@ -137,13 +137,13 @@ static void deinit(void *ctx__) {
 	if (ctx->stream) {
 		HRESULT hr = ctx->stream->lpVtbl->Stop(ctx->stream);
 		if (FAILED(hr)) {
-			LOG(Verbosity_VERBOSE, "Failed to stop stream\n");
+			w32_perror(L"Failed to stop audio stream ctx->stream");
 		}
 	}
 	if (ctx->next_stream) {
 		HRESULT hr = ctx->next_stream->lpVtbl->Stop(ctx->next_stream);
 		if (FAILED(hr)) {
-			LOG(Verbosity_VERBOSE, "Failed to stop next_stream\n");
+			w32_perror(L"Failed to stop audio stream ctx->next_stream");
 		}
 	}
 
@@ -176,7 +176,7 @@ static bool negotiate_pcm(void *ctx__, AudioPCM *dst_pcm, const AudioPCM *src_pc
 	// TODO support WASAPI exclusive mode
 	HRESULT hr = ctx->stream->lpVtbl->IsFormatSupported(ctx->stream, AUDCLNT_SHAREMODE_SHARED, &(wavfmt.Format), &alt_fmt);
 	if (FAILED(hr)) {
-		LOG(Verbosity_VERBOSE, "Failed to verify sample format with WASAPI\n");
+		w32_perror(L"Failed to verify sample format with WASAPI");
 		return false;
 	}
 	if (!alt_fmt) {
@@ -190,7 +190,7 @@ static bool negotiate_pcm(void *ctx__, AudioPCM *dst_pcm, const AudioPCM *src_pc
 		// We return false so AudioClient::Initialize will later fail.
 		// This is a more predictable fail state than if the caller tries to resample
 		// to an invalid AudioPCM destination format
-		LOG(Verbosity_VERBOSE, "Unable to convert WAVEFORMATEX to AudioPCM\n");
+		w32_perror(L"Unable to convert WAVEFORMATEX to AudioPCM");
 		return false;
 	}
 	return true;
@@ -208,7 +208,6 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 		if (!(hr == AUDCLNT_E_NOT_INITIALIZED)) {
 			return AudioBackend_STREAM_EXISTS;
 		}
-	} else {
 	}
 
 	// Attach this stream to an existing session if possible
@@ -216,7 +215,7 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 	if (ctx->session) {
 		hr = ctx->session->lpVtbl->GetGroupingParam(ctx->session, session_guid);
 		if (FAILED(hr)) {
-			LOG(Verbosity_VERBOSE, "Failed to attach to existing audio session\n");
+			w32_perror(L"Failed to attach stream to existing audio session"); 
 			session_guid = NULL;
 		}
 	}
@@ -239,14 +238,12 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 		}
 	}
 	if (hr != S_OK) {
-		LOG(Verbosity_NORMAL, "prepare is failing with BAD_PCM_FMT\n");
-		// TODO: figure out how to perror HRESULT's
+		w32_perror(L"PCM format not supported by WASAPI (format negotiation failed?)");
 		return AudioBackend_BAD_PCM_FMT;
 	}
 
 
 	// Initialize stream
-	// TODO: support WASAPI exclusive mode
 	const DWORD STREAM_FLAGS = AUDCLNT_STREAMFLAGS_EVENTCALLBACK | AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY;
 	const REFERENCE_TIME hns_buf_duration = ctx->settings->ab_buffer_ms * 10000; // 1 ms = 10000 * 100ns
 	hr = ctx->stream->lpVtbl->Initialize(ctx->stream,
@@ -257,7 +254,7 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 			&(wavfmt.Format),
 			session_guid);
 	if (FAILED(hr)) {
-		LOG(Verbosity_VERBOSE, "Failed to initialize audio stream: 0x%lx\n", hr);
+		w32_perror(L"Failed to initialize audio stream");
 		return AudioBackend_STREAM_ERR;
 	}
 
@@ -280,7 +277,7 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 	if (!ctx->session) {
 		hr = ctx->stream->lpVtbl->GetService(ctx->stream, &IID_IAudioSessionControl, (void **)&ctx->session);
 		if (FAILED(hr)) {
-			LOG(Verbosity_VERBOSE, "Failed to save audio session\n");
+			w32_perror(L"Failed to save audio session");
 		}
 	}
 
@@ -297,6 +294,7 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 	uint32_t max_frame_count;
 	hr = ctx->stream->lpVtbl->GetBufferSize(ctx->stream, &max_frame_count);
 	if (FAILED(hr)) {
+		w32_perror(L"Failed to get WASAPI buffer size");
 		return AudioBackend_WASAPI_ERR;
 	}
 
@@ -311,12 +309,12 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 	BYTE *tb;
 	hr = ctx->stream_render->lpVtbl->GetBuffer(ctx->stream_render, frame_count, &tb);
 	if (FAILED(hr)) {
-		LOG(Verbosity_VERBOSE, "Failed to get transfer buffer from WASAPI\n");
+		w32_perror(L"Failed to get WASAPI transfer buffer");
 		return AudioBackend_FB_WRITE_ERR;
 	}
 	size_t bytes_read = AudioBuffer_read(ctx->playback_buffer, tb, frame_count * frame_size, true);
 	const uint32_t actual_frame_count = bytes_read / frame_size;
-	LOG(Verbosity_VERBOSE, "Prefilled WASAPI buffer with %d frames (%zu bytes)\n", actual_frame_count, bytes_read);
+	LOG(Verbosity_DEBUG, "Prefilled WASAPI buffer with %d frames (%zu bytes)\n", actual_frame_count, bytes_read);
 	if (actual_frame_count != frame_count) {
 		LOG(Verbosity_DEBUG, "Read fewer frames than expected\n");
 	}
@@ -324,7 +322,7 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 	// Release the transfer buffer to WASAPI
 	hr = ctx->stream_render->lpVtbl->ReleaseBuffer(ctx->stream_render, actual_frame_count, 0);
 	if (FAILED(hr)) {
-		LOG(Verbosity_VERBOSE, "Failed to release transfer buffer to WASAPI\n");
+		w32_perror(L"Failed to release WASAPI transfer buffer");
 	}
 
 	return AudioBackend_OK;
@@ -356,7 +354,7 @@ static void wasapi_write_cb_(void *userdata) {
 	uint32_t max_frame_count;
 	HRESULT hr = ctx->stream->lpVtbl->GetBufferSize(ctx->stream, &max_frame_count);
 	if (FAILED(hr)) {
-		LOG(Verbosity_VERBOSE, "Failed to get max frame count from WASAPI\n");
+		w32_perror(L"Failed to get WASAPI buffer size");
 		return;
 	}
 	// Figure out how many frames we can actually write,
@@ -370,14 +368,13 @@ static void wasapi_write_cb_(void *userdata) {
 	BYTE *tb;
 	hr = ctx->stream_render->lpVtbl->GetBuffer(ctx->stream_render, frame_count, &tb);
 	// GetBuffer will hard-fail if we can't write exactly frame_count frames.
-	// In the interest of keeping the WASAPI buffer >=50% full, we need to handle 1/2 or 1/4 buffer writes
+	// In the interest of keeping the WASAPI buffer full, we offer writes as small as 1/32 of the buffer
 	const uint32_t orig_frame_count = frame_count;
-	while (FAILED(hr) && frame_count > orig_frame_count/4) {
+	while (FAILED(hr) && frame_count > orig_frame_count/32) {
 		frame_count /= 2;
 		hr = ctx->stream_render->lpVtbl->GetBuffer(ctx->stream_render, frame_count, &tb);
 	}
 	if (FAILED(hr)) {
-		LOG(Verbosity_DEBUG, "Failed to negotiate write size in wasapi_write_cb_\n");
 		return;
 	}
 	const size_t bytes_read = AudioBuffer_read(ctx->playback_buffer, tb, frame_count * frame_size, true);
@@ -386,7 +383,7 @@ static void wasapi_write_cb_(void *userdata) {
 	// Release the transfer buffer to WASAPI
 	hr = ctx->stream_render->lpVtbl->ReleaseBuffer(ctx->stream_render, actual_frame_count, 0);
 	if (FAILED(hr)) {
-		LOG(Verbosity_VERBOSE, "Failed to release transfer buffer to WASAPI\n");
+		w32_perror(L"Failed to release WASAPI transfer buffer");
 	}
 
 	// Compute number of frames read, send to main as a timecode
@@ -406,5 +403,5 @@ static void wasapi_write_cb_(void *userdata) {
 		EventQueue_send(ctx->evt_queue, &end_evt);
 	}
 
-	//LOG(Verbosity_DEBUG, "Wrote %zu bytes to WASAPI\n", bytes_read);
+	LOG(Verbosity_DEBUG, "Wrote %zu bytes to WASAPI\n", bytes_read);
 }
