@@ -337,11 +337,12 @@ static enum AudioBackend_ERR play(void *ctx__, bool pause) {
 }
 
 static void lock(void *ctx__) {
-	// WASAPI uses buffer swapping, so we don't need to worry about locking
-	(void)0;
+	Ctx *ctx = ctx__;
+	WASAPI_fbThread_lock(ctx->framebuffer_thread);
 }
 static void unlock(void *ctx__) {
-	(void)0;
+	Ctx *ctx = ctx__;
+	WASAPI_fbThread_unlock(ctx->framebuffer_thread);
 }
 
 static void seek(void *ctx__) {
@@ -368,14 +369,15 @@ static void wasapi_write_cb_(void *userdata) {
 	// Get a transfer buffer from WASAPI and write our frames
 	BYTE *tb;
 	hr = ctx->stream_render->lpVtbl->GetBuffer(ctx->stream_render, frame_count, &tb);
-	if (FAILED(hr)) {
-		// If WASAPI can't buffer everything we can offer, maybe it can buffer half right now
+	// GetBuffer will hard-fail if we can't write exactly frame_count frames.
+	// In the interest of keeping the WASAPI buffer >=50% full, we need to handle 1/2 or 1/4 buffer writes
+	const uint32_t orig_frame_count = frame_count;
+	while (FAILED(hr) && frame_count > orig_frame_count/4) {
 		frame_count /= 2;
 		hr = ctx->stream_render->lpVtbl->GetBuffer(ctx->stream_render, frame_count, &tb);
 	}
 	if (FAILED(hr)) {
-		// this path is normal and occurs semi-frequently
-		// WASAPI will just wait until it has enough buffer space
+		LOG(Verbosity_DEBUG, "Failed to negotiate write size in wasapi_write_cb_\n");
 		return;
 	}
 	const size_t bytes_read = AudioBuffer_read(ctx->playback_buffer, tb, frame_count * frame_size, true);
@@ -395,14 +397,14 @@ static void wasapi_write_cb_(void *userdata) {
 		.body_size = sizeof(EventBody_Timecode),
 		.body_inline = frames_read};
 	// Send timecode to main thread
-	//EventQueue_send(ctx->evt_queue, &evt);
+	EventQueue_send(ctx->evt_queue, &evt);
 	if (bytes_read == 0) {
 		// Notify the main thread of track end
 		const Event end_evt = {
 			.event_type = mpl_TRACK_END,
 			.body_size = 0};
-		//EventQueue_send(ctx->evt_queue, &end_evt);
+		EventQueue_send(ctx->evt_queue, &end_evt);
 	}
 
-	LOG(Verbosity_DEBUG, "Wrote %zu bytes to WASAPI\n", bytes_read);
+	//LOG(Verbosity_DEBUG, "Wrote %zu bytes to WASAPI\n", bytes_read);
 }

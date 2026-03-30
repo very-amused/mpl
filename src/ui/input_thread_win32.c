@@ -140,7 +140,6 @@ void InputThread_free(InputThread *thr) {
 
 	// Join thread so we can safely free its resources
 	pthread_join(thr->thread, NULL);
-	LOG(Verbosity_DEBUG, "pthread_join exited\n");
 
 	// Free thread resources
 	CloseHandle(thr->input);
