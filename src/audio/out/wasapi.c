@@ -344,7 +344,7 @@ static void unlock(void *ctx__) {
 }
 
 static void seek(void *ctx__) {
-	// TODO
+	LOG(Verbosity_DEBUG, "AudioBackend_seek is not supported by	AudioBackend_WASAPI\n");
 }
 
 static void wasapi_write_cb_(void *userdata) {
