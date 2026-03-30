@@ -2,6 +2,6 @@ src_ui = files('cli.c', 'cli_args.c', 'timecode.c')
 if build_machine.system() == 'windows'
 	src_ui += files('event_queue_win32.c', 'input_thread_win32.c')
 else
-	src_ui += files('event_queue.c', 'input_thread.c')
+	src_ui += files('event_queue_mqueue.c', 'input_thread.c')
 endif
 src += src_ui
