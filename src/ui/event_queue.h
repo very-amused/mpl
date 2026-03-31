@@ -32,13 +32,3 @@ void EventSubQueue_send(EventSubQueue *sq, const Event *evt, bool allow_drop);
 // NOTE: May allocate evt->body, caller is responsible for freeing
 // Returns 0 on success, nonzero on error
 int EventQueue_recv(EventQueue *eq, Event *evt);
-
-
-/* #region deprecated */
-// WARN: DEPRECATED in favor of EventQueue_connect
-EventQueue *EventQueue_connect_legacy(const EventQueue *eq1, int oflags);
-// Send *evt on the EventQueue (*evt is copied).
-// Returns 0 on success, nonzero on error
-// WARN: DEPRECATED in favor of EventSubQueue_send.
-int EventQueue_send_legacy(EventQueue *eq, const Event *evt);
-/* #endregion */
