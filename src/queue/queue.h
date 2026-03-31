@@ -1,10 +1,8 @@
 #pragma once
 #include "audio/out/backend.h"
 #include "audio/seek.h"
-#include "config/config.h"
 #include "config/settings.h"
 #include "error.h"
-#include "lock.h"
 #include "state.h"
 #include "track.h"
 #include "buffer_thread.h"
