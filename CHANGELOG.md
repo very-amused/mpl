@@ -14,6 +14,9 @@ The next release after v0.4.5 will be v0.5.0. This release will see a massive in
 
 ## [0.4.4]
 
+### Added
+- Official Windows support! Now that we aren't using a hacky implementation of EventQueue, MPL can be considered usable on Windows.
+
 ### Internal
 - Completely rewrote EventQueue to be platform independent
 - Moved the bulk of what was in main to UI_CLI_mainloop
