@@ -34,7 +34,7 @@ struct EventSubQueue {
 
 int EventSubQueue_init(EventSubQueue *sq, size_t n_events_size, sem_t *main_wr_sem);
 void EventSubQueue_deinit(EventSubQueue *sq);
-void EventSubQueue_send(EventSubQueue *sq, Event *evt, bool allow_drop);
+void EventSubQueue_send(EventSubQueue *sq, const Event *evt, bool allow_drop);
 // Try to read an event from this subqueue.
 // Sets *evt to either the value of the event received or NULL if the subqueue is empty.
 // NOTE: never blocks.
@@ -150,7 +150,7 @@ void EventSubQueue_deinit(EventSubQueue *sq) {
 	sq->data = NULL;
 }
 
-void EventSubQueue_send(EventSubQueue *sq, Event *evt, bool allow_drop) {
+void EventSubQueue_send(EventSubQueue *sq, const Event *evt, bool allow_drop) {
 	int wr = atomic_load(&sq->wr);
 	int rd = atomic_load(&sq->rd);
 

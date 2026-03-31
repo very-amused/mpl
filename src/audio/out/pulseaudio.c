@@ -26,8 +26,8 @@
 
 // PulseAudio backend context
 typedef struct Ctx {
-	// Event queue for communicating w/ the main thread (UI)
-	EventQueue *evt_queue;
+	// Event subqueue for communicating w/ the main thread (UI)
+	EventSubQueue *evt_sq;
 
 	// Asynchronous event loop
 	pa_threaded_mainloop *loop;
@@ -50,7 +50,7 @@ typedef struct Ctx {
 } Ctx;
 
 /* PulseAudio AudioBackend methods */
-static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Settings *settings);
+static enum AudioBackend_ERR init(void *ctx__, EventQueue *eq, const Settings *settings);
 static void deinit(void *ctx__);
 static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *track);
 static enum AudioBackend_ERR play(void *ctx__, bool pause);
@@ -86,12 +86,12 @@ static void pa_stream_state_cb_(pa_stream *stream, void *userdata);
 // Operation completion callback
 static void pa_stream_success_cb_(pa_stream *stream, int success, void *userdata);
 
-static enum AudioBackend_ERR init(void *userdata, const EventQueue *eq, const Settings *settings) {
+static enum AudioBackend_ERR init(void *userdata, EventQueue *eq, const Settings *settings) {
 	Ctx *ctx = userdata;
 
 	// Connect to event queue
-	ctx->evt_queue = EventQueue_connect_legacy(eq, O_WRONLY | O_NONBLOCK);
-	if (!ctx->evt_queue) {
+	ctx->evt_sq = EventQueue_connect(eq, BACKEND_EVT_QUEUE_SIZE);
+	if (!ctx->evt_sq) {
 		return AudioBackend_EVENT_QUEUE_ERR;
 	}
 	// Store config ref
@@ -188,9 +188,6 @@ static void deinit(void *ctx__) {
 
 	// Free the main loop
 	pa_threaded_mainloop_free(ctx->loop);
-
-	// Disconnect the event queue
-	EventQueue_free(ctx->evt_queue);
 }
 
 static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
@@ -330,7 +327,7 @@ static void seek(void *ctx__) {
 		.body_size = sizeof(EventBody_Timecode),
 		.body_inline = frames_read};
 	// Send timecode to the main thread
-	EventQueue_send_legacy(ctx->evt_queue, &evt);
+	EventSubQueue_send(ctx->evt_sq, &evt, false);
 
 	pa_threaded_mainloop_unlock(ctx->loop);
 }
@@ -401,12 +398,12 @@ static void pa_stream_write_cb_(pa_stream *stream, size_t n_bytes, void *userdat
 		.body_size = sizeof(EventBody_Timecode),
 		.body_inline = frames_read};
 	// Send timecode to the main thread
-	EventQueue_send_legacy(ctx->evt_queue, &evt);
+	EventSubQueue_send(ctx->evt_sq, &evt, false);
 	if (tb_size == 0) {
 		// Notify the main thread of track end
 		const Event end_evt = {
 			.event_type = mpl_TRACK_END,
 			.body_size = 0};
-		EventQueue_send_legacy(ctx->evt_queue, &end_evt);
+		EventSubQueue_send(ctx->evt_sq, &end_evt, false);
 	}
 }

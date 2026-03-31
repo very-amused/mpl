@@ -19,7 +19,7 @@
 // FAST backend context
 typedef struct Ctx {
 	// Event queue for communication w/ the main thread (UI)
-	EventQueue *evt_queue;
+	EventSubQueue *evt_sq;
 
 	// FAST server (runtime wrapper)
 	FastServer *server;
@@ -44,7 +44,7 @@ typedef struct Ctx {
 } Ctx;
 
 /* FAST audio backend methods */
-static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Settings *settings);
+static enum AudioBackend_ERR init(void *ctx__, EventQueue *eq, const Settings *settings);
 static void deinit(void *ctx__);
 static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *track);
 static enum AudioBackend_ERR play(void *ctx__, bool pause);
@@ -77,20 +77,13 @@ static void FastStream_write_cb_(FastStream *stream, size_t n_bytes, void *userd
 /* Transfer buffer management */
 static void realloc_buf(unsigned char **buf, size_t *buf_cap, size_t newsize);
 
-static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Settings *settings) {
+static enum AudioBackend_ERR init(void *ctx__, EventQueue *eq, const Settings *settings) {
 	Ctx *ctx = ctx__;
 
 	// Connect to event queue
-	// O_NONBLOCK is undefined in MSYS2 build environments
-#ifdef O_NONBLOCK
-#define EVT_QUEUE_OPTS O_WRONLY | O_NONBLOCK
-#else
-#define EVT_QUEUE_OPTS O_WRONLY
-#endif
-	ctx->evt_queue = EventQueue_connect(eq, EVT_QUEUE_OPTS);
-#undef EVT_QUEUE_OPTS
+	ctx->evt_sq = EventQueue_connect(eq, BACKEND_EVT_QUEUE_SIZE);
 
-	if (!ctx->evt_queue) {
+	if (!ctx->evt_sq) {
 		return AudioBackend_EVENT_QUEUE_ERR;
 	}
 	// Store config ref
@@ -120,7 +113,7 @@ static void deinit(void *ctx__) {
 	free(ctx->playback_tb);
 	free(ctx->next_tb);
 	// Disconnect the event queue
-	EventQueue_free(ctx->evt_queue);
+	// (handled in EventQueue_free now)
 }
 
 static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
@@ -240,13 +233,13 @@ static void FastStream_write_cb_(FastStream *stream, size_t n_bytes, void *userd
 		.body_size = sizeof(EventBody_Timecode),
 		.body_inline = frames_read};
 	// Send timecode to the main thread
-	EventQueue_send(ctx->evt_queue, &evt);
+	EventSubQueue_send(ctx->evt_sq, &evt, false);
 	if (tb_size == 0) {
 		// Notify the main thread of track end
 		const Event end_evt = {
 			.event_type = mpl_TRACK_END,
 			.body_size = 0};
-		EventQueue_send(ctx->evt_queue, &end_evt);
+		EventSubQueue_send(ctx->evt_sq, &end_evt, false);
 	}
 }
 

@@ -14,23 +14,19 @@
 #include "audio/pcm.h"
 #include "audio/track.h"
 #include "backend.h"
-#include "config/config.h"
 #include "error.h"
 #include "pipewire/core.h"
-#include "pipewire/keys.h"
-#include "pipewire/properties.h"
 #include "spa/param/audio/raw-utils.h"
 #include "spa/param/param.h"
 #include "spa/pod/pod.h"
 #include "spa/utils/defs.h"
-#include "spa/utils/dict.h"
 #include "ui/event.h"
 #include "ui/event_queue.h"
 
 // Pipewire backend context
 typedef struct Ctx {
-	// Event queue for communication with the main thread (UI)
-	EventQueue *evt_queue;
+	// Event subqueue for communication with the main thread (UI)
+	EventSubQueue *evt_sq;
 	// Config for ab_* settings
 	const Settings *settings;
 
@@ -52,7 +48,7 @@ typedef struct Ctx {
 } Ctx;
 
 /* PipeWire AudioBackend methods */
-static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Settings *settings);
+static enum AudioBackend_ERR init(void *ctx__, EventQueue *eq, const Settings *settings);
 static void deinit(void *ctx__);
 static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *track);
 static enum AudioBackend_ERR play(void *ctx__, bool pause);
@@ -80,12 +76,12 @@ static void pw_stream_write_cb_(void *ctx__);
 // Audio stream state change callback
 static void pw_stream_state_cb_(void *ctx__, enum pw_stream_state old_state, enum pw_stream_state state, const char *errmsg);
 
-static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Settings *settings) {
+static enum AudioBackend_ERR init(void *ctx__, EventQueue *eq, const Settings *settings) {
 	Ctx *ctx = ctx__;
 
 	// Connect to event queue
-	ctx->evt_queue = EventQueue_connect_legacy(eq, O_WRONLY | O_NONBLOCK);
-	if (!ctx->evt_queue) {
+	ctx->evt_sq = EventQueue_connect(eq, BACKEND_EVT_QUEUE_SIZE);
+	if (!ctx->evt_sq) {
 		return AudioBackend_EVENT_QUEUE_ERR;
 	}
 	// Store config reference
@@ -251,7 +247,7 @@ static void pw_stream_write_cb_(void *ctx__) {
 		.event_type = mpl_TIMECODE,
 		.body_size = sizeof(EventBody_Timecode),
 		.body_inline = frames_read};
-	EventQueue_send_legacy(ctx->evt_queue, &evt);
+	EventSubQueue_send(ctx->evt_sq, &evt, false);
 }
 
 static void pw_stream_state_cb_(void *ctx__, enum pw_stream_state old_state, enum pw_stream_state state, const char *errmsg) {

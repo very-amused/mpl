@@ -26,12 +26,13 @@ EventSubQueue *EventQueue_connect(EventQueue *eq, size_t subqueue_size);
 // Makes a copy of *evt (you don't need to heap-allocate events)
 // NOTE: may block if the subqueue is full. If this isn't desired, pass allow_drop=true,
 // which causes the subqueue to drop new events when it doesn't have room for them.
-void EventSubQueue_send(EventSubQueue *sq, Event *evt, bool allow_drop);
+void EventSubQueue_send(EventSubQueue *sq, const Event *evt, bool allow_drop);
 
 // Wait to receive an event on the EventQueue
 // NOTE: May allocate evt->body, caller is responsible for freeing
 // Returns 0 on success, nonzero on error
 int EventQueue_recv(EventQueue *eq, Event *evt);
+
 
 /* #region deprecated */
 // WARN: DEPRECATED in favor of EventQueue_connect

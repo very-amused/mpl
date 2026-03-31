@@ -12,6 +12,7 @@
 
 
 #define BACKEND_APP_NAME "mpl"
+#define BACKEND_EVT_QUEUE_SIZE 100
 
 // Functions indicating success by returning an int
 // return 0 on success, nonzero on error
@@ -22,8 +23,8 @@ typedef struct AudioBackend {
 	const char *name; // Backend name
 
 	// Initialize the audio backend for playback.
-	// The backend will open a nonblocking, write-only connection to EventQueue *eq.
-	enum AudioBackend_ERR (*init)(void *ctx, const EventQueue *eq, const Settings *settings);
+	// The backend will open a subqueue to send events to EventQueue *eq.
+	enum AudioBackend_ERR (*init)(void *ctx, EventQueue *eq, const Settings *settings);
 	// Deinitialize the audio backend
 	void (*deinit)(void *ctx);
 
@@ -65,7 +66,7 @@ typedef struct AudioBackend {
 
 // Initialize an AudioBackend for playback
 // The backend will open a nonblocking, write-only connection to EventQueue *eq.
-enum AudioBackend_ERR AudioBackend_init(AudioBackend *ab, const EventQueue *eq, const Settings *settings);
+enum AudioBackend_ERR AudioBackend_init(AudioBackend *ab, EventQueue *eq, const Settings *settings);
 // Deinitialize an AudioBackend
 void AudioBackend_deinit(AudioBackend *ab);
 
