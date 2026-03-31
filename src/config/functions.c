@@ -13,14 +13,14 @@
 
 static struct configState config_state;
 
-void configState_init(TrackQueue *track_queue) {
+void configState_init(Queue *track_queue, EventQueue *evt_queue) {
 	config_state.queue = track_queue;
-	config_state.evt_sq = EventQueue_connect(track_queue->evt_queue, 5);
+	config_state.evt_sq = EventQueue_connect(evt_queue, 5);
 }
 
 void play_toggle(void * _) {
 	const bool pause = config_state.queue->playback_state == Queue_PLAYING;
-	TrackQueue_play(config_state.queue, pause);
+	Queue_play(config_state.queue, pause);
 }
 
 void quit(void * _) {
@@ -32,11 +32,11 @@ void quit(void * _) {
 }
 
 void seek(const struct seekArgs *args) {
-	TrackQueue_seek(config_state.queue, args->ms, AudioSeek_Relative);
+	Queue_seek(config_state.queue, args->ms, AudioSeek_Relative);
 }
 
 void seek_snap(const struct seekArgs *args) {
-	TrackQueue_seek_snap(config_state.queue, args->ms);
+	Queue_seek_snap(config_state.queue, args->ms);
 }
 
 /* Macro functions */
