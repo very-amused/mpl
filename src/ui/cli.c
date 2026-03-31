@@ -9,33 +9,33 @@
 #include "util/log.h"
 #include <string.h>
 
-int UserInterface_CLI_init(UserInterface_CLI *ui) {
+int UI_CLI_init(UI_CLI *ui) {
 	// Zero pointers so we can use deinit as an escape hatch
-	memset(ui, 0, sizeof(UserInterface_CLI));
+	memset(ui, 0, sizeof(UI_CLI));
 
 	// Initialize event queue
 	ui->evt_queue = EventQueue_new();
 	if (!ui->evt_queue) {
-		UserInterface_CLI_deinit(ui);
+		UI_CLI_deinit(ui);
 		return 1;
 	}
 	// Initialize input thread
 	ui->input_thread = InputThread_new(ui->evt_queue);
 	if (!ui->input_thread) {
-		UserInterface_CLI_deinit(ui);
+		UI_CLI_deinit(ui);
 		return 1;
 	}
 
 	return 0;
 }
 
-void UserInterface_CLI_deinit(UserInterface_CLI *ui) {
+void UI_CLI_deinit(UI_CLI *ui) {
 	InputThread_free(ui->input_thread);
 	LOG(Verbosity_DEBUG, "InputThread_free finished\n");
 	EventQueue_free(ui->evt_queue);
 }
 
-static void UserInterface_CLI_display_metadata(const Track *track) {
+static void UI_CLI_display_metadata(const Track *track) {
 	// Display track metadata
 	static const char TERM_BOLD[] = "\x1b[1m";
 	static const char TERM_ITAL[] = "\x1b[3m";
@@ -54,7 +54,7 @@ static void UserInterface_CLI_display_metadata(const Track *track) {
 	}
 }
 
-static void UserInterface_CLI_display_timecode(const EventBody_Timecode timecode, const Track *cur_track, const Settings *settings) {
+static void UI_CLI_display_timecode(const EventBody_Timecode timecode, const Track *cur_track, const Settings *settings) {
 	AudioPCM pcm = cur_track->audio->buf_pcm;
 	const bool show_ms = settings->ui_timecode_ms;
 
@@ -68,11 +68,11 @@ static void UserInterface_CLI_display_timecode(const EventBody_Timecode timecode
 	fprintf(stderr, "%s/%s", timecode_buf, duration_buf);
 }
 
-int UserInterface_CLI_mainloop(UserInterface_CLI *ui, Queue *queue, Config *config) {
+int UI_CLI_mainloop(UI_CLI *ui, Queue *queue, Config *config) {
 	// Play the track provided via argv
 	const Track *track = Queue_cur_track(queue);
 	if (track) {
-		UserInterface_CLI_display_metadata(track);
+		UI_CLI_display_metadata(track);
 		Queue_play(queue, 0);
 	}
 
@@ -97,7 +97,7 @@ int UserInterface_CLI_mainloop(UserInterface_CLI *ui, Queue *queue, Config *conf
 
 		case mpl_TIMECODE:
 		{
-			UserInterface_CLI_display_timecode(evt.body_inline, Queue_cur_track(queue), &config->settings);
+			UI_CLI_display_timecode(evt.body_inline, Queue_cur_track(queue), &config->settings);
 			break;
 		}
 

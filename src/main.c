@@ -33,8 +33,8 @@ int main(int argc, const char **argv) {
 	int ret = 0;
 
 	// Fire up CLI user interface and the main EventQueue
-	UserInterface_CLI ui;
-	if (UserInterface_CLI_init(&ui) != 0) {
+	UI_CLI ui;
+	if (UI_CLI_init(&ui) != 0) {
 		LOG(Verbosity_NORMAL, "Failed to initialize user interface, exiting\n");
 		ret = 1;
 		goto deinit_config;
@@ -69,7 +69,7 @@ int main(int argc, const char **argv) {
 	// Initialize configState so keybinds work
 	configState_init(&queue, ui.evt_queue);
 
-	ret = UserInterface_CLI_mainloop(&ui, &queue, &config);
+	ret = UI_CLI_mainloop(&ui, &queue, &config);
 
 	// Cleanup
 	// (The UI must outlive everything that can send it events, including the Queue and AudioBackend)
@@ -79,7 +79,7 @@ deinit_queue: // deinitialize queue, ui, and config
 	free(url);
 deinit_ui: // deinitialize ui and config
 	LOG(Verbosity_DEBUG, "Deinitializing UI\n");
-	UserInterface_CLI_deinit(&ui);
+	UI_CLI_deinit(&ui);
 deinit_config: // deinitialize config
 	LOG(Verbosity_DEBUG, "Deinitializing config\n");
 	Config_deinit(&config);

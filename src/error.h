@@ -115,7 +115,7 @@ static inline const char *AudioBuffer_ERR_name(enum AudioBuffer_ERR err) {
 	VARIANT(Verbosity_DEBUG)
 
 /* Verbosity levels for logging facilities.
- * Currently only used in UserInterface_CLI */
+ * Currently only used in UI_CLI */
 enum Verbosity {
 	VERBOSITY(ENUM_VAL)
 };

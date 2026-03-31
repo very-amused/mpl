@@ -15,8 +15,6 @@ struct macroState {
 	Config *config;
 };
 
-
-
 // Initialize configuration state to be passed to bindable functions defined in
 // config/functions.h
 //
