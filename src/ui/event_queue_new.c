@@ -34,8 +34,9 @@ void EventSubQueue_deinit(EventSubQueue *sq);
 
 // Send an Event via this subqueue to the main EventQueue.
 // Makes a copy of *evt (you don't need to heap-allocate events)
-// NOTE: may block if the subqueue is full.
-void EventSubQueue_send(EventSubQueue *sq, Event *evt);
+// NOTE: may block if the subqueue is full. If this isn't desired, pass allow_drop=true,
+// which causes the subqueue to drop new events when it doesn't have room for them.
+void EventSubQueue_send(EventSubQueue *sq, Event *evt, bool allow_drop);
 // Try to read an event from this subqueue.
 // Sets *evt to either the value of the event received or NULL if the subqueue is empty.
 // NOTE: never blocks.
@@ -64,14 +65,15 @@ void EventSubQueue_deinit(EventSubQueue *sq) {
 	sq->data = NULL;
 }
 
-void EventSubQueue_send(EventSubQueue *sq, Event *evt) {
+void EventSubQueue_send(EventSubQueue *sq, Event *evt, bool allow_drop) {
 	int wr = atomic_load(&sq->wr);
 	int rd = atomic_load(&sq->rd);
 
-	// TODO: this is interesting
-	// we can block or not block. This should be configurable.
-	// Subqueues used for inputs may not want to block
 	if ((wr+1) % sq->n_events_size == rd) {
+		// I'm not using this option, but it's good to provide it while I'm implementing EventSubQueue
+		if (allow_drop) {
+			return;
+		}
 		sem_wait(&sq->rd_sem);
 		rd = atomic_load(&sq->rd);
 	}
