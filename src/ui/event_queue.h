@@ -18,8 +18,9 @@ void EventQueue_free(EventQueue *eq);
 
 // Open a new subqueue that feeds events to *eq.
 // Once returned, this subqueue may be used from a non-main thread.
+// [subqueue_size] is the number of events the subqueue can buffer before getting overwhelmed.
 // WARN: This routine MUST be called on the main thread.
-EventSubQueue *EventQueue_connect(EventQueue *eq);
+EventSubQueue *EventQueue_connect(EventQueue *eq, size_t subqueue_size);
 
 // Send an Event via this subqueue to the main EventQueue.
 // Makes a copy of *evt (you don't need to heap-allocate events)
