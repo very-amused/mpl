@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+### v0.4.5
+MPL is in AGGRESSIVE BUG HUNTING MODE for v0.4.5! No new features, all bugfixes for this next release. This is to pave the way for implementing a modular UserInterface struct similar to the modular AudioBackend we currently use.
+
+### v0.5.0
+The next release after v0.4.5 will be v0.5.0. This release will see a massive increase in the power of mpl.conf keybinds delivered by creating a modular UserInterface struct that's exposed to keybind functions. This will allow us to do things like "bind this key to show current config", "bind this key to change log level", "bind this key to show/hide this UI element", etc. Since keybinds are run on the main thread, the best part is there's absolutely no contention between the abstract UI methods and the main UI loop!
+
+## [0.4.4]
+
+### Internal
+- Completely rewrote EventQueue to be platform independent
+- Moved the bulk of what was in main to UI_CLI_mainloop
+
 ## [0.4.3]
 
 ### Added

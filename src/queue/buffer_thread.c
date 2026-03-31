@@ -185,6 +185,7 @@ void BufferThread_lock(BufferThread *thr) {
 
 	// If the thread is already paused, we don't need to do anything
 	if (thr->paused) {
+		LOG(Verbosity_DEBUG, "thr->paused == true");
 		pthread_mutex_unlock(&thr->paused_lock);
 		return;
 	}
