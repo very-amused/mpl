@@ -49,7 +49,7 @@ void EventQueue_free(EventQueue *eq) {
 	free(eq);
 }
 
-int EventQueue_send(EventQueue *eq, const Event *evt) {
+int EventQueue_send_legacy(EventQueue *eq, const Event *evt) {
 	int status = mq_send(eq->mq, (const char *)evt, sizeof(Event), 0);
 	if (status == -1) {
 		perror("EventQueue message send");

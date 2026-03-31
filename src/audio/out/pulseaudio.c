@@ -330,7 +330,7 @@ static void seek(void *ctx__) {
 		.body_size = sizeof(EventBody_Timecode),
 		.body_inline = frames_read};
 	// Send timecode to the main thread
-	EventQueue_send(ctx->evt_queue, &evt);
+	EventQueue_send_legacy(ctx->evt_queue, &evt);
 
 	pa_threaded_mainloop_unlock(ctx->loop);
 }
@@ -401,12 +401,12 @@ static void pa_stream_write_cb_(pa_stream *stream, size_t n_bytes, void *userdat
 		.body_size = sizeof(EventBody_Timecode),
 		.body_inline = frames_read};
 	// Send timecode to the main thread
-	EventQueue_send(ctx->evt_queue, &evt);
+	EventQueue_send_legacy(ctx->evt_queue, &evt);
 	if (tb_size == 0) {
 		// Notify the main thread of track end
 		const Event end_evt = {
 			.event_type = mpl_TRACK_END,
 			.body_size = 0};
-		EventQueue_send(ctx->evt_queue, &end_evt);
+		EventQueue_send_legacy(ctx->evt_queue, &end_evt);
 	}
 }

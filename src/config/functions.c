@@ -28,7 +28,7 @@ void quit(void * _) {
 		.event_type = mpl_QUIT,
 		.body_size = 0
 	};
-	EventQueue_send(config_state.evt_queue, &quit_evt);
+	EventQueue_send_legacy(config_state.evt_queue, &quit_evt);
 }
 
 void seek(const struct seekArgs *args) {

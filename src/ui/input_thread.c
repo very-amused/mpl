@@ -67,7 +67,7 @@ void *InputThread_loop(void *thr__) {
 				goto cancel;
 			}
 			Event evt = {.event_type = mpl_KEYPRESS, .body_size = sizeof(EventBody_Keypress), .body_inline = input_key};
-			EventQueue_send(thr->eq, &evt);
+			EventQueue_send_legacy(thr->eq, &evt);
 			break;
 		}
 		case InputMode_TEXT:

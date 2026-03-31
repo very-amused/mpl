@@ -195,3 +195,12 @@ void EventSubQueue_recv(EventSubQueue *sq, Event **evt) {
 	// (thus, wake any write on subqueue's thread blocking due to a full subqueue)
 	sem_post(&sq->rd_sem);
 }
+
+EventQueue *EventQueue_connect_legacy(const EventQueue *eq1, int oflags) {
+	fprintf(stderr, "YOU JUST CALLED A DEPRECATED EVENTQUEUE METHOD! GET SENT TO DAVY JONES LOCKER!\n");
+	exit(1);
+}
+int EventQueue_send_legacy(EventQueue *eq, const Event *evt) {
+	fprintf(stderr, "YOU JUST CALLED A DEPRECATED EVENTQUEUE METHOD! GET SENT TO DAVY JONES LOCKER!\n");
+	exit(1);
+}

@@ -394,13 +394,13 @@ static void wasapi_write_cb_(void *userdata) {
 		.body_size = sizeof(EventBody_Timecode),
 		.body_inline = frames_read};
 	// Send timecode to main thread
-	EventQueue_send(ctx->evt_queue, &evt);
+	EventQueue_send_legacy(ctx->evt_queue, &evt);
 	if (bytes_read == 0) {
 		// Notify the main thread of track end
 		const Event end_evt = {
 			.event_type = mpl_TRACK_END,
 			.body_size = 0};
-		EventQueue_send(ctx->evt_queue, &end_evt);
+		EventQueue_send_legacy(ctx->evt_queue, &end_evt);
 	}
 
 	LOG(Verbosity_DEBUG, "Wrote %zu bytes to WASAPI\n", bytes_read);

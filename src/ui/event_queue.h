@@ -39,5 +39,5 @@ EventQueue *EventQueue_connect_legacy(const EventQueue *eq1, int oflags);
 // Send *evt on the EventQueue (*evt is copied).
 // Returns 0 on success, nonzero on error
 // WARN: DEPRECATED in favor of EventSubQueue_send.
-int EventQueue_send(EventQueue *eq, const Event *evt);
+int EventQueue_send_legacy(EventQueue *eq, const Event *evt);
 /* #endregion */

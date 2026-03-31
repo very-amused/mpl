@@ -251,7 +251,7 @@ static void pw_stream_write_cb_(void *ctx__) {
 		.event_type = mpl_TIMECODE,
 		.body_size = sizeof(EventBody_Timecode),
 		.body_inline = frames_read};
-	EventQueue_send(ctx->evt_queue, &evt);
+	EventQueue_send_legacy(ctx->evt_queue, &evt);
 }
 
 static void pw_stream_state_cb_(void *ctx__, enum pw_stream_state old_state, enum pw_stream_state state, const char *errmsg) {
