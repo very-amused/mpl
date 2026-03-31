@@ -6,7 +6,7 @@
 // State passed to MPL's bindable functions
 struct configState {
 	Queue *queue; // used to control playback
-	EventQueue *evt_queue; // used to send exit messages
+	EventSubQueue *evt_sq; // used to send exit messages
 };
 
 // State passed only to macros

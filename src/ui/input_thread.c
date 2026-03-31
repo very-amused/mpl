@@ -15,8 +15,8 @@
 #include "util/log.h"
 
 struct InputThread {
-	// EventQueue for sending input events
-	EventQueue *eq;
+	// EventSubQueue for sending input events
+	EventSubQueue *evt_sq;
 
 	int input_fd; // FD to receive input on, usually stdin
 	FILE *input;
@@ -67,7 +67,7 @@ void *InputThread_loop(void *thr__) {
 				goto cancel;
 			}
 			Event evt = {.event_type = mpl_KEYPRESS, .body_size = sizeof(EventBody_Keypress), .body_inline = input_key};
-			EventQueue_send_legacy(thr->eq, &evt);
+			EventSubQueue_send(thr->evt_sq, &evt, false);
 			break;
 		}
 		case InputMode_TEXT:
@@ -86,7 +86,11 @@ cancel:
 
 InputThread *InputThread_new(EventQueue *eq) {
 	InputThread *thr = malloc(sizeof(InputThread));
-	thr->eq = eq;
+	thr->evt_sq = EventQueue_connect(eq, 100);
+	if (!thr->evt_sq) {
+		free(thr);
+		return NULL;
+	}
 	thr->mode = InputMode_KEY;
 	thr->input_fd = STDIN_FILENO;
 	thr->input = stdin;

@@ -15,7 +15,7 @@ static struct configState config_state;
 
 void configState_init(Queue *track_queue, EventQueue *evt_queue) {
 	config_state.queue = track_queue;
-	config_state.evt_queue = evt_queue;
+	config_state.evt_sq = EventQueue_connect(evt_queue, 5);
 }
 
 void play_toggle(void * _) {
@@ -28,7 +28,7 @@ void quit(void * _) {
 		.event_type = mpl_QUIT,
 		.body_size = 0
 	};
-	EventQueue_send_legacy(config_state.evt_queue, &quit_evt);
+	EventSubQueue_send(config_state.evt_sq, &quit_evt, false);
 }
 
 void seek(const struct seekArgs *args) {
