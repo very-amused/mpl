@@ -135,11 +135,12 @@ int main(int argc, const char **argv) {
 quit:
 
 	// Cleanup
-	LOG(Verbosity_DEBUG, "Deinitializing UI\n");
-	UserInterface_CLI_deinit(&ui);
+	// (The UI must outlive everything that can send it events, including the Queue and AudioBackend)
 	LOG(Verbosity_DEBUG, "Deinitializing Queue\n");
 	Queue_deinit(&queue);
 	free(url);
+	LOG(Verbosity_DEBUG, "Deinitializing UI\n");
+	UserInterface_CLI_deinit(&ui);
 	LOG(Verbosity_DEBUG, "Deinitializing config\n");
 	Config_deinit(&config);
 
