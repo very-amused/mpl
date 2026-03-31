@@ -12,6 +12,7 @@
 struct EventQueue {
 	EventSubQueue **subqueues;
 	uint32_t subqueues_size, subqueues_cap; // The number of subqueues we're receiving Events from.
+	bool has_prev_subqueue;
 	uint32_t prev_subqueue; // Index of the last subqueue we read an Event from. Used to check subqueues in a round-robin fashion whenever ANY subqueue wakes us.
 
 	// Main write semaphore. Posted whenever ANY subqueue sends an event.
@@ -33,15 +34,42 @@ struct EventSubQueue {
 
 int EventSubQueue_init(EventSubQueue *sq, size_t n_events_size, sem_t *main_wr_sem);
 void EventSubQueue_deinit(EventSubQueue *sq);
-// Send an Event via this subqueue to the main EventQueue.
-// Makes a copy of *evt (you don't need to heap-allocate events)
-// NOTE: may block if the subqueue is full. If this isn't desired, pass allow_drop=true,
-// which causes the subqueue to drop new events when it doesn't have room for them.
 void EventSubQueue_send(EventSubQueue *sq, Event *evt, bool allow_drop);
 // Try to read an event from this subqueue.
 // Sets *evt to either the value of the event received or NULL if the subqueue is empty.
 // NOTE: never blocks.
 void EventSubQueue_recv(EventSubQueue *sq, Event **evt);
+
+EventQueue *EventQueue_new() {
+	EventQueue *eq = malloc(sizeof(EventQueue));
+	if (!eq) {
+		return NULL;
+	}
+	memset(eq, 0, sizeof(EventQueue));
+
+	// initialize subqueues array
+	// BufferThread, InputThread, async loop for AudioBackend, round to power of 2
+	static const size_t N_AUX_THREADS = 4;
+	eq->subqueues_cap =	N_AUX_THREADS;
+	eq->subqueues = malloc(eq->subqueues_cap * sizeof(EventSubQueue *));
+
+
+	// Initialize main write semaphore
+	sem_init(&eq->main_wr_sem, 0, 0);
+
+	return eq;
+}
+
+void EventQueue_free(EventQueue *eq) {
+	for (size_t i = 0; i < eq->subqueues_size; i++) {
+		EventSubQueue *sq = eq->subqueues[i];
+		EventSubQueue_deinit(sq);
+		free(sq);
+		eq->subqueues[i] = NULL;
+	}
+	free(eq->subqueues);
+}
+
 
 EventSubQueue *EventQueue_connect(EventQueue *eq, size_t sq_size) {
 	// Create new subqueue
@@ -56,11 +84,6 @@ EventSubQueue *EventQueue_connect(EventQueue *eq, size_t sq_size) {
 
 	// Add to subqueues array
 	if (!eq->subqueues_cap) {
-		// initialize array
-		// BufferThread, InputThread, async loop for AudioBackend, round to power of 2
-		static const size_t N_AUX_THREADS = 4;
-		eq->subqueues_cap =	N_AUX_THREADS;
-		eq->subqueues = malloc(eq->subqueues_cap * sizeof(EventSubQueue *));
 	} else if (eq->subqueues_size == eq->subqueues_cap) {
 		// resize geometrically
 		eq->subqueues_cap *= 2;
