@@ -26,8 +26,8 @@
 
 // WASAPI backend context
 typedef struct Ctx {
-	// Event queue for communicating with UI
-	EventQueue *evt_queue;
+	// Event subqueue for communicating state to the main thread
+	EventSubQueue *evt_sq;
 
 	// Audio device enumerator (used to find the default audio device)
 	struct IMMDeviceEnumerator *audiodev_enum;
@@ -52,7 +52,7 @@ typedef struct Ctx {
 } Ctx;
 
 /* WASAPI AudioBackend methods */
-static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Settings *settings);
+static enum AudioBackend_ERR init(void *ctx__, EventQueue *eq, const Settings *settings);
 static void deinit(void *ctx__);
 static bool negotiate_pcm(void *ctx__, AudioPCM *dst_pcm, const AudioPCM *src_pcm);
 static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *track);
@@ -83,13 +83,13 @@ AudioBackend AB_WASAPI = {
 /* WASASPI callbacks. *userdata is of type *Ctx. */
 static void wasapi_write_cb_(void *userdata);
 
-static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Settings *settings) {
+static enum AudioBackend_ERR init(void *ctx__, EventQueue *eq, const Settings *settings) {
 	Ctx *ctx = ctx__;
 
 
-	// Connect to event queue, store settings
-	ctx->evt_queue = EventQueue_connect_legacy(eq, O_WRONLY);
-	if (!ctx->evt_queue) {
+	// Connect to event subqueue, store settings
+	ctx->evt_sq = EventQueue_connect(eq, BACKEND_EVT_QUEUE_SIZE);
+	if (!ctx->evt_sq) {
 		return AudioBackend_BAD_ALLOC;
 	}
 	ctx->settings = settings;
@@ -258,7 +258,7 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *t) {
 		return AudioBackend_STREAM_ERR;
 	}
 
-	LOG(Verbosity_VERBOSE, "AudioClient successfully initialized!\n");
+	LOG(Verbosity_VERBOSE, "Connected to WASAPI!\n");
 
 
 	// Set up write callback on its own thread
@@ -394,14 +394,14 @@ static void wasapi_write_cb_(void *userdata) {
 		.body_size = sizeof(EventBody_Timecode),
 		.body_inline = frames_read};
 	// Send timecode to main thread
-	EventQueue_send_legacy(ctx->evt_queue, &evt);
+	EventSubQueue_send(ctx->evt_sq, &evt, false);
 	if (bytes_read == 0) {
 		// Notify the main thread of track end
 		const Event end_evt = {
 			.event_type = mpl_TRACK_END,
 			.body_size = 0};
-		EventQueue_send_legacy(ctx->evt_queue, &end_evt);
+		EventSubQueue_send(ctx->evt_sq, &end_evt, false);
 	}
 
-	LOG(Verbosity_DEBUG, "Wrote %zu bytes to WASAPI\n", bytes_read);
+	//LOG(Verbosity_DEBUG, "Wrote %zu bytes to WASAPI\n", bytes_read);
 }

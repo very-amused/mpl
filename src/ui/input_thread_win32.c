@@ -21,8 +21,8 @@
 #include "util/log.h"
 
 struct InputThread {
-	// EventQueue for sending input events
-	EventQueue *eq;
+	// EventSubQueue for sending input events
+	EventSubQueue *evt_sq;
 
 	HANDLE input; // Console input handle
 	HANDLE shutdown_evt; // Shutdown event handle used to stop the input loop
@@ -98,7 +98,7 @@ static void *InputThread_loop(void *thr__) {
 			}
 			LOG(Verbosity_DEBUG, "Read keypress `%c`, sending to EventQueue\n", input_key);
 			Event evt = {.event_type = mpl_KEYPRESS, .body_size = sizeof(EventBody_Keypress), .body_inline = input_key};
-			EventQueue_send(thr->eq, &evt);
+			EventSubQueue_send(thr->evt_sq, &evt, false);
 			break;
 		}
 		case InputMode_TEXT:
@@ -118,7 +118,10 @@ cancel:
 
 InputThread *InputThread_new(EventQueue *eq) {
 	InputThread *thr = malloc(sizeof(InputThread));
-	thr->eq = eq;
+	thr->evt_sq = EventQueue_connect(eq, 100);
+	if (!thr->evt_sq) {
+		return NULL;
+	}
 	thr->mode = InputMode_KEY;
 	thr->input = GetStdHandle(STD_INPUT_HANDLE);
 	// ref https://learn.microsoft.com/en-us/windows/win32/sync/using-event-objects
