@@ -27,17 +27,24 @@ int main(int argc, const char **argv) {
 	CLI_args_parse(argc, argv);
 	configure_av_log(); // Configure libav logging
 	LOG(Verbosity_VERBOSE, "Logging enabled: %s\n", Verbosity_name(CLI_args.verbosity));
-
 	// Parse mpl.conf
 	Config config;
 	char *config_path = Config_find_path();
 	Config_parse(&config, config_path);
 	free(config_path);
 
-	// Fire up CLI user interface and the main EventQueue
-	UserInterface_CLI ui;
-	if (UserInterface_CLI_init(&ui) != 0) {
-		LOG(Verbosity_NORMAL, "Failed to initialize user interface, exiting\n");
+	// Initialize track queue and connect to system audio
+	TrackQueue queue;
+	if (TrackQueue_init(&queue, &config.settings) != 0) {
+		LOG(Verbosity_NORMAL, "Failed to initialize TrackQueue, exiting\n");
+		Config_deinit(&config);
+		return 1;
+	}
+	enum AudioBackend_ERR ab_err = TrackQueue_connect_audio(&queue, NULL);
+	if (ab_err != AudioBackend_OK) {
+		LOG(Verbosity_NORMAL, "Failed to connect AudioBackend: %s\n", AudioBackend_ERR_name(ab_err));
+		TrackQueue_deinit(&queue);
+		Config_deinit(&config);
 		return 1;
 	}
 
@@ -48,22 +55,23 @@ int main(int argc, const char **argv) {
 	const size_t url_len = LIBAV_PROTO_FILE_LEN + strlen(file);
 	char *url = malloc((url_len + 1) * sizeof(char));
 	snprintf(url, url_len, "%s%s", LIBAV_PROTO_FILE, file);
+	// Use URL to create a Track and add it to our TrackQueue
+	if (TrackQueue_prepend(&queue, Track_new(url, url_len)) != 0) {
+		TrackQueue_deinit(&queue);
+		Config_deinit(&config);
+		return 1;
+	}
+	TrackQueue_play(&queue, 0);
 
-	// Initialize queue w/ track
-	Queue queue;
-	Queue_init(&queue, &config.settings);
-	enum AudioBackend_ERR ab_err = Queue_connect_audio(&queue, NULL, ui.evt_queue);
-	if (ab_err != AudioBackend_OK) {
-		LOG(Verbosity_NORMAL, "Failed to connect AudioBackend: %s\n", AudioBackend_ERR_name(ab_err));
-		goto quit;
+	// Fire up CLI user interface
+	UserInterface_CLI ui;
+	if (UserInterface_CLI_init(&ui, queue.evt_queue) != 0) {
+		LOG(Verbosity_NORMAL, "Failed to initialize user interface, exiting\n");
+		return 1;
 	}
-	if (Queue_prepend(&queue, Track_new(url, url_len)) != 0) {
-		goto quit;
-	}
-	Queue_play(&queue, 0);
 
 	// Display metadata
-	const Track *track = Queue_cur_track(&queue);
+	const Track *track = TrackQueue_cur_track(&queue);
 	static const char TERM_BOLD[] = "\x1b[1m";
 	static const char TERM_ITAL[] = "\x1b[3m";
 	static const char TERM_RESET[] = "\x1b[0m";
@@ -80,12 +88,12 @@ int main(int argc, const char **argv) {
 				TERM_ITAL, track->meta.album, TERM_RESET);
 	}
 
-	// WIP: Initialize configState so bindings work
-	configState_init(&queue, ui.evt_queue);
+	// Initialize configState so bindings work
+	configState_init(&queue);
 
 	// Handle events on the main thread
 	Event evt;
-	while (EventQueue_recv(ui.evt_queue, &evt) == 0) {
+	while (EventQueue_recv(queue.evt_queue, &evt) == 0) {
 		switch (evt.event_type) {
 		case mpl_QUIT:
 			LOG(Verbosity_DEBUG, "Quitting from mpl_QUIT\n");
@@ -99,17 +107,11 @@ int main(int argc, const char **argv) {
 				LOG(Verbosity_VERBOSE, "Keybind error: %s\n", Keybind_ERR_name(err));
 			}
 			break;
-#if 0
-			if (call_keybind(key) != 0) {
-				LOG(Verbosity_VERBOSE, "Unknown key: %lc\n", key);
-			}
-			break;
-#endif
 		}
 		case mpl_TIMECODE:
 		{
 			EventBody_Timecode timecode = evt.body_inline;
-			const Track *tr = Queue_cur_track(&queue);
+			const Track *tr = TrackQueue_cur_track(&queue);
 			AudioPCM pcm = tr->audio->buf_pcm;
 			char timecode_buf[255];
 			char duration_buf[255];
@@ -123,7 +125,7 @@ int main(int argc, const char **argv) {
 		}
 		case mpl_TRACK_END:
 		{
-			const Track *next = Queue_next_track(&queue);
+			const Track *next = TrackQueue_next_track(&queue);
 			if (!next) {
 				goto quit;
 			}
@@ -138,7 +140,7 @@ quit:
 	LOG(Verbosity_DEBUG, "Deinitializing UI\n");
 	UserInterface_CLI_deinit(&ui);
 	LOG(Verbosity_DEBUG, "Deinitializing Queue\n");
-	Queue_deinit(&queue);
+	TrackQueue_deinit(&queue);
 	free(url);
 	LOG(Verbosity_DEBUG, "Deinitializing config\n");
 	Config_deinit(&config);
