@@ -105,8 +105,9 @@ int EventQueue_recv(EventQueue *eq, Event *evt) {
 
 	// Go through subqueues round-robin until we can read an event from ANY subqueue
 	// This prevents one subqueue from being able to overwhelm the others
-	size_t i = eq->has_prev_subqueue ? eq->prev_subqueue + 1 : 0;
-	while (i != eq->prev_subqueue) {
+	const size_t i_start = eq->has_prev_subqueue ? (eq->prev_subqueue + 1) % eq->subqueues_size : 0;
+	const size_t i_end = eq->has_prev_subqueue ? eq->has_prev_subqueue : eq->subqueues_size;
+	for (size_t i = i_start; i != i_end; i++, i %= eq->subqueues_size) {
 		EventSubQueue *sq = eq->subqueues[i];
 
 		// Try to recv an event from this subqueue
@@ -114,9 +115,6 @@ int EventQueue_recv(EventQueue *eq, Event *evt) {
 			eq->prev_subqueue = i;
 			return 0;
 		}
-
-		i++;
-		i %= eq->subqueues_size;
 	}
 
 	LOG(Verbosity_VERBOSE, "EventQueue_recv failed to get an event. EventQueue->main_wr_sem should make this impossible!\n");
