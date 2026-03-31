@@ -1,6 +1,8 @@
 #include "cli.h"
 #include "config/internal/state.h"
+#include "config/settings.h"
 #include "queue/queue.h"
+#include "ui/event.h"
 #include "ui/event_queue.h"
 #include "ui/input_thread.h"
 #include "ui/timecode.h"
@@ -52,6 +54,20 @@ static void UserInterface_CLI_display_metadata(const Track *track) {
 	}
 }
 
+static void UserInterface_CLI_display_timecode(const EventBody_Timecode timecode, const Track *cur_track, const Settings *settings) {
+	AudioPCM pcm = cur_track->audio->buf_pcm;
+	const bool show_ms = settings->ui_timecode_ms;
+
+	static char timecode_buf[255];
+	static char duration_buf[255];
+	fmt_timecode(timecode_buf, sizeof(timecode_buf), timecode, &pcm, show_ms);
+	fmt_timecode(duration_buf, sizeof(duration_buf), cur_track->audio->duration_timecode, &pcm, show_ms);
+
+	static const char CLEAR_LINE_VT100[] = "\033[2K\r";
+	fprintf(stderr, CLEAR_LINE_VT100);
+	fprintf(stderr, "%s/%s", timecode_buf, duration_buf);
+}
+
 int UserInterface_CLI_mainloop(UserInterface_CLI *ui, Queue *queue, Config *config) {
 	// Play the track provided via argv
 	const Track *track = Queue_cur_track(queue);
@@ -59,7 +75,6 @@ int UserInterface_CLI_mainloop(UserInterface_CLI *ui, Queue *queue, Config *conf
 		UserInterface_CLI_display_metadata(track);
 		Queue_play(queue, 0);
 	}
-
 
 	// Handle events on the main thread
 	Event evt;
@@ -82,17 +97,7 @@ int UserInterface_CLI_mainloop(UserInterface_CLI *ui, Queue *queue, Config *conf
 
 		case mpl_TIMECODE:
 		{
-			EventBody_Timecode timecode = evt.body_inline;
-			const Track *tr = Queue_cur_track(queue);
-			AudioPCM pcm = tr->audio->buf_pcm;
-			char timecode_buf[255];
-			char duration_buf[255];
-			const bool show_ms = config->settings.ui_timecode_ms;
-			fmt_timecode(timecode_buf, sizeof(timecode_buf), timecode, &pcm, show_ms);
-			fmt_timecode(duration_buf, sizeof(duration_buf), tr->audio->duration_timecode, &pcm, show_ms);
-			static const char CLEAR_LINE_VT100[] = "\033[2K\r";
-			fprintf(stderr, CLEAR_LINE_VT100);
-			fprintf(stderr, "%s/%s", timecode_buf, duration_buf);
+			UserInterface_CLI_display_timecode(evt.body_inline, Queue_cur_track(queue), &config->settings);
 			break;
 		}
 
