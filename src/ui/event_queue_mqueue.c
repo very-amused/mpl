@@ -70,7 +70,7 @@ int EventQueue_recv(EventQueue *eq, Event *evt) {
 	return 0;
 }
 
-EventQueue *EventQueue_connect(const EventQueue *eq1, int oflags) {
+EventQueue *EventQueue_connect_legacy(const EventQueue *eq1, int oflags) {
 	EventQueue *eq = malloc(sizeof(EventQueue));
 
 	strncpy(eq->name, eq1->name, sizeof(eq->name));

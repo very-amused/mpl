@@ -84,7 +84,7 @@ static enum AudioBackend_ERR init(void *ctx__, const EventQueue *eq, const Setti
 	Ctx *ctx = ctx__;
 
 	// Connect to event queue
-	ctx->evt_queue = EventQueue_connect(eq, O_WRONLY | O_NONBLOCK);
+	ctx->evt_queue = EventQueue_connect_legacy(eq, O_WRONLY | O_NONBLOCK);
 	if (!ctx->evt_queue) {
 		return AudioBackend_EVENT_QUEUE_ERR;
 	}

@@ -11,3 +11,4 @@ option('ascii_keybinds', type : 'boolean', value : false)
 option('test_config', type : 'boolean', value : false) # Read ../test/mpl.conf instead of the usual config locations
 option('ao_fast', type : 'boolean', value : false) # Support libFAST fake audio output for testing
 option('test_resampling', type : 'boolean', value : false) # Enable resampling on audio backends that don't require it
+option('new_event_queue', type : 'boolean', value : false) # Enable new platform-independent EventQueue impl (alpha, this will break things)
