@@ -36,9 +36,9 @@ int EventSubQueue_init(EventSubQueue *sq, size_t n_events_size, sem_t *main_wr_s
 void EventSubQueue_deinit(EventSubQueue *sq);
 void EventSubQueue_send(EventSubQueue *sq, const Event *evt, bool allow_drop);
 // Try to read an event from this subqueue.
-// Sets *evt to either the value of the event received or NULL if the subqueue is empty.
+// Returns whether an event was read.
 // NOTE: never blocks.
-void EventSubQueue_recv(EventSubQueue *sq, Event **evt);
+bool EventSubQueue_recv(EventSubQueue *sq, Event *evt);
 
 EventQueue *EventQueue_new() {
 	EventQueue *eq = malloc(sizeof(EventQueue));
@@ -68,6 +68,7 @@ void EventQueue_free(EventQueue *eq) {
 		eq->subqueues[i] = NULL;
 	}
 	free(eq->subqueues);
+	free(eq);
 }
 
 
@@ -90,7 +91,7 @@ EventSubQueue *EventQueue_connect(EventQueue *eq, size_t sq_size) {
 		eq->subqueues = realloc(eq->subqueues, eq->subqueues_cap * sizeof(EventSubQueue *));
 	}
 	eq->subqueues[eq->subqueues_size] = sq;
-	eq->subqueues++;
+	eq->subqueues_size++;
 
 	return sq;
 }
@@ -104,15 +105,12 @@ int EventQueue_recv(EventQueue *eq, Event *evt) {
 
 	// Go through subqueues round-robin until we can read an event from ANY subqueue
 	// This prevents one subqueue from being able to overwhelm the others
-	size_t i = eq->prev_subqueue + 1;
-	Event *sq_evt;
+	size_t i = eq->has_prev_subqueue ? eq->prev_subqueue + 1 : 0;
 	while (i != eq->prev_subqueue) {
 		EventSubQueue *sq = eq->subqueues[i];
 
 		// Try to recv an event from this subqueue
-		EventSubQueue_recv(sq, &sq_evt);
-		if (sq_evt) {
-			*evt = *sq_evt;
+		if (EventSubQueue_recv(sq, evt)) {
 			eq->prev_subqueue = i;
 			return 0;
 		}
@@ -175,15 +173,17 @@ void EventSubQueue_send(EventSubQueue *sq, const Event *evt, bool allow_drop) {
 	sem_post(sq->main_wr_sem);
 }
 
-void EventSubQueue_recv(EventSubQueue *sq, Event **evt) {
+bool EventSubQueue_recv(EventSubQueue *sq, Event *evt) {
 	const int wr = atomic_load(&sq->wr);
 	int rd = atomic_load(&sq->rd);
 
 	if (rd == wr) {
 		// ring buffer is empty
-		*evt = NULL;
-		return;
+		return false;
 	}
+
+	// Read event -> *evt
+	memcpy(evt, &sq->data[rd], sizeof(Event));
 
 	// Increment rd idx 
 	rd++;
@@ -194,6 +194,8 @@ void EventSubQueue_recv(EventSubQueue *sq, Event **evt) {
 	// Notify subqueue's thread that an Event has been read
 	// (thus, wake any write on subqueue's thread blocking due to a full subqueue)
 	sem_post(&sq->rd_sem);
+
+	return true;
 }
 
 EventQueue *EventQueue_connect_legacy(const EventQueue *eq1, int oflags) {
