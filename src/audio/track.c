@@ -75,7 +75,7 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url, AudioBackend
 	t->src_pcm.sample_fmt = codec_params->format;
 	t->src_pcm.sample_rate = codec_params->sample_rate;
 	t->src_pcm.n_channels = codec_params->ch_layout.nb_channels;
-	LOG(Verbosity_VERBOSE, "AudioTrack: is_planar: %d\n\tsample rate: %d\nsample_fmt: %s\n",
+	LOG(Verbosity_VERBOSE, "AudioTrack:\n\tis_planar: %d\n\tsample rate: %d\n\tsample_fmt: %s\n",
 			av_sample_fmt_is_planar(t->src_pcm.sample_fmt), t->src_pcm.sample_rate, av_get_sample_fmt_name(t->src_pcm.sample_fmt));
 
 	// Negotiate in-house resampling iff the AudioBackend is incapable of its own resampling
