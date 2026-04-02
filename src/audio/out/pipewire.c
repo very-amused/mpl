@@ -22,10 +22,8 @@
 #include "spa/param/audio/raw-utils.h"
 #include "spa/param/param.h"
 #include "spa/pod/pod.h"
-#include "spa/utils/defs.h"
 #include "ui/event.h"
 #include "ui/event_queue.h"
-#include "util/log.h"
 
 // Pipewire backend context
 typedef struct Ctx {
@@ -86,6 +84,8 @@ AudioBackend AB_Pipewire = {
 static void pw_stream_write_cb_(void *ctx__);
 // Audio stream state change callback
 static void pw_stream_state_cb_(void *ctx__, enum pw_stream_state old_state, enum pw_stream_state state, const char *errmsg);
+// Audio stream has been drained, send TRACK_END
+static void pw_stream_drained_cb_(void *ctx__);
 
 
 static enum AudioBackend_ERR init(void *ctx__, EventQueue *eq, const Settings *settings) {
@@ -149,6 +149,14 @@ static enum AudioBackend_ERR init(void *ctx__, EventQueue *eq, const Settings *s
 static void deinit(void *ctx__) {
 	Ctx *ctx = ctx__;
 
+	pw_thread_loop_lock(ctx->loop);
+	if (ctx->stream) {
+		pw_stream_destroy(ctx->stream);
+	}
+	if (ctx->next_stream) {
+		pw_stream_destroy(ctx->next_stream);
+	}
+
 	pw_core_disconnect(ctx->pw_core);
 	pw_context_destroy(ctx->pw_ctx);
 	pw_thread_loop_destroy(ctx->loop);
@@ -167,7 +175,6 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *tr) {
 
 	// ref https://docs.pipewire.org/audio-src_8c-example.html
 	// "If you plan to autoconnect your stream, you need to provide at least media, category, and role properties"
-	// TODO: set PW_KEY_TARGET_OBJECT to default sink node
 	struct pw_properties *props = pw_properties_new(
 			PW_KEY_MEDIA_TYPE, "Audio",
 			PW_KEY_MEDIA_CATEGORY, "Playback",
@@ -186,7 +193,8 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *tr) {
 	// Set up callbacks
 	static const struct pw_stream_events STREAM_EVENTS = {PW_VERSION_STREAM_EVENTS,
 		.process = pw_stream_write_cb_,
-		.state_changed = pw_stream_state_cb_};
+		.state_changed = pw_stream_state_cb_,
+		.drained = pw_stream_drained_cb_};
 	struct spa_hook stream_events_handle;
 	pw_stream_add_listener(ctx->stream, &stream_events_handle, &STREAM_EVENTS, ctx);
 
@@ -195,9 +203,9 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *tr) {
 	uint8_t params_buf[1024]; // backing memory for the POD builder
 	struct spa_pod_builder pod_builder = SPA_POD_BUILDER_INIT(params_buf, sizeof(params_buf));
 
+	// TODO: respect ab_buffer_ms by setting a param to control buffer size
 	const struct spa_pod *stream_params[1];
 	const struct spa_audio_info_raw audio_info = AudioPCM_pipewire_info(&tr->buf_pcm);
-	// FIXME: this should be spa_format_audio NOT spa_format_audio_raw
 	stream_params[0] = spa_format_audio_raw_build(&pod_builder,
 			SPA_PARAM_EnumFormat, // Declare type as an SPA_PARAM holding a 1-value format enum. Yes, my head hurts too
 			&audio_info);
@@ -312,6 +320,7 @@ static void pw_stream_write_cb_(void *ctx__) {
 	tb.chunk->stride = frame_size;
 	tb.chunk->size = AudioBuffer_read(buf, tb.data, n_frames * frame_size, true);
 	pw_buf->size = tb.chunk->size / tb.chunk->stride;
+	const size_t pw_buf_size = pw_buf->size;
 
 	// Return transfer buffer to PW
 	pw_stream_queue_buffer(ctx->stream, pw_buf);
@@ -324,5 +333,21 @@ static void pw_stream_write_cb_(void *ctx__) {
 		.body_size = sizeof(EventBody_Timecode),
 		.body_inline = frames_read};
 	EventSubQueue_send(ctx->evt_sq, &evt, false);
+
+	if (pw_buf_size == 0) {
+		// Drain what's left in the stream, then the drained callback will TRACK_END
+		pw_stream_flush(ctx->stream, true);
+	}
 }
 
+
+static void pw_stream_drained_cb_(void *ctx__) {
+	Ctx *ctx = ctx__;
+
+	// Send TRACK_END event now that the stream is drained
+	Event evt = {
+		.event_type = mpl_TRACK_END,
+		.body_size = 0
+	};
+	EventSubQueue_send(ctx->evt_sq, &evt, false);
+}
