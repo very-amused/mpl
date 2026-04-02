@@ -16,7 +16,7 @@ AudioBackend *AB_Configured(const Settings *settings) {
 
 	static const char ERR_UNSUPPORTED[] = "audio_backend '%s' is unsupported on this build, falling back to default (%s)\n";
 
-	if (strcmp(settings->audio_backend, "pulseaudio")) {
+	if (strcmp(settings->audio_backend, "pulseaudio") == 0) {
 #if defined(AO_PULSEAUDIO)
 		return &AB_PulseAudio;
 #else
@@ -24,7 +24,7 @@ AudioBackend *AB_Configured(const Settings *settings) {
 		return def;
 #endif
 	}
-	if (strcmp(settings->audio_backend, "pipewire")) {
+	if (strcmp(settings->audio_backend, "pipewire") == 0) {
 #if defined(AO_PIPEWIRE)
 		return &AB_Pipewire;
 #else
@@ -33,7 +33,7 @@ AudioBackend *AB_Configured(const Settings *settings) {
 #endif
 	}
 
-	if (strcmp(settings->audio_backend, "wasapi")) {
+	if (strcmp(settings->audio_backend, "wasapi") == 0) {
 #if defined(AO_WASAPI)
 		return &AB_WASAPI;
 #else
@@ -42,7 +42,7 @@ AudioBackend *AB_Configured(const Settings *settings) {
 #endif
 	}
 
-	if (strcmp(settings->audio_backend, "fast")) {
+	if (strcmp(settings->audio_backend, "fast") == 0) {
 #if defined(AO_FAST)
 		return &AB_FAST;
 #else
