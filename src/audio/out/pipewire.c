@@ -261,7 +261,6 @@ static enum AudioBackend_ERR play(void *ctx__, bool pause) {
 	pw_stream_set_active(ctx->stream, !pause);
 
 	pw_thread_loop_wait(ctx->loop);
-	LOG(Verbosity_NORMAL, "Here in PW play\n");
 	enum pw_stream_state stream_state = pw_stream_get_state(ctx->stream, NULL);
 	const bool paused = stream_state == PW_STREAM_STATE_PAUSED;
 
