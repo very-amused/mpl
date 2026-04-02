@@ -24,6 +24,7 @@
 #include "spa/pod/pod.h"
 #include "ui/event.h"
 #include "ui/event_queue.h"
+#include "util/log.h"
 
 // Pipewire backend context
 typedef struct Ctx {
@@ -150,15 +151,22 @@ static void deinit(void *ctx__) {
 	Ctx *ctx = ctx__;
 
 	pw_thread_loop_lock(ctx->loop);
+
 	if (ctx->stream) {
+		pw_stream_disconnect(ctx->stream);
 		pw_stream_destroy(ctx->stream);
 	}
 	if (ctx->next_stream) {
+		pw_stream_disconnect(ctx->next_stream);
 		pw_stream_destroy(ctx->next_stream);
 	}
 
 	pw_core_disconnect(ctx->pw_core);
 	pw_context_destroy(ctx->pw_ctx);
+
+	pw_thread_loop_unlock(ctx->loop);
+
+	pw_thread_loop_stop(ctx->loop);
 	pw_thread_loop_destroy(ctx->loop);
 }
 
@@ -212,7 +220,7 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *tr) {
 
 	// Connect stream
 	int status = pw_stream_connect(ctx->stream, PW_DIRECTION_OUTPUT, PW_ID_ANY,
-			PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_INACTIVE,
+			PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_INACTIVE | PW_STREAM_FLAG_NO_CONVERT,
 			stream_params,
 			sizeof(stream_params) / sizeof(stream_params[0]));
 	if (status < 0) {
