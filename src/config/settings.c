@@ -7,6 +7,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#ifdef __WIN32
+#include "util/compat/string_win32.h"
+#endif
 
 void Settings_init(Settings *opts) {
 	memcpy(opts, &default_settings, sizeof(Settings));
