@@ -43,7 +43,9 @@ typedef struct Ctx {
 
 	// Audio playback streams
 	struct pw_stream *stream;
+	struct spa_hook *stream_evt_handle; // holds function pointers to callbacks
 	struct pw_stream *next_stream;
+	struct spa_hook *next_stream_evt_handle;
 
 	// Audio track data
 	const AudioTrack *track;
@@ -156,10 +158,12 @@ static void deinit(void *ctx__) {
 		pw_stream_disconnect(ctx->stream);
 		pw_stream_destroy(ctx->stream);
 	}
+	free(ctx->stream_evt_handle);
 	if (ctx->next_stream) {
 		pw_stream_disconnect(ctx->next_stream);
 		pw_stream_destroy(ctx->next_stream);
 	}
+	free(ctx->next_stream_evt_handle);
 
 	pw_core_disconnect(ctx->pw_core);
 	pw_context_destroy(ctx->pw_ctx);
@@ -203,8 +207,8 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *tr) {
 		.process = pw_stream_write_cb_,
 		.state_changed = pw_stream_state_cb_,
 		.drained = pw_stream_drained_cb_};
-	struct spa_hook stream_events_handle;
-	pw_stream_add_listener(ctx->stream, &stream_events_handle, &STREAM_EVENTS, ctx);
+	ctx->stream_evt_handle = malloc(sizeof(struct spa_hook));
+	pw_stream_add_listener(ctx->stream, ctx->stream_evt_handle, &STREAM_EVENTS, ctx);
 
 	/* Configure stream params
 	(this is way more complex than it needs to be thanks to PipeWire's reliance on the Simple Pile of Abstractions (SPA)) */
@@ -254,9 +258,10 @@ static enum AudioBackend_ERR play(void *ctx__, bool pause) {
 	Ctx *ctx = ctx__;
 
 	pw_thread_loop_lock(ctx->loop);
-
 	pw_stream_set_active(ctx->stream, !pause);
+
 	pw_thread_loop_wait(ctx->loop);
+	LOG(Verbosity_NORMAL, "Here in PW play\n");
 	enum pw_stream_state stream_state = pw_stream_get_state(ctx->stream, NULL);
 	const bool paused = stream_state == PW_STREAM_STATE_PAUSED;
 
@@ -276,7 +281,7 @@ static void unlock(void *ctx__) {
 }
 
 static void seek(void *ctx__) {
-	Ctx *ctx = ctx__;	
+	Ctx *ctx = ctx__;
 
 	pw_thread_loop_lock(ctx->loop);
 
