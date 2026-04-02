@@ -16,12 +16,16 @@
 #include "backend.h"
 #include "error.h"
 #include "pipewire/core.h"
+#include "pipewire/keys.h"
+#include "pipewire/port.h"
+#include "pipewire/properties.h"
 #include "spa/param/audio/raw-utils.h"
 #include "spa/param/param.h"
 #include "spa/pod/pod.h"
 #include "spa/utils/defs.h"
 #include "ui/event.h"
 #include "ui/event_queue.h"
+#include "util/log.h"
 
 // Pipewire backend context
 typedef struct Ctx {
@@ -75,6 +79,9 @@ AudioBackend AB_Pipewire = {
 static void pw_stream_write_cb_(void *ctx__);
 // Audio stream state change callback
 static void pw_stream_state_cb_(void *ctx__, enum pw_stream_state old_state, enum pw_stream_state state, const char *errmsg);
+// Audio stream parameter change callback
+static void pw_stream_param_cb_(void *ctx__, uint32_t id, const struct spa_pod *param);
+
 
 static enum AudioBackend_ERR init(void *ctx__, EventQueue *eq, const Settings *settings) {
 	Ctx *ctx = ctx__;
@@ -151,8 +158,18 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *tr) {
 		return AudioBackend_STREAM_EXISTS;
 	}
 
+	// ref https://docs.pipewire.org/audio-src_8c-example.html
+	// "If you plan to autoconnect your stream, you need to provide at least media, category, and role properties"
+	// TODO: set PW_KEY_TARGET_OBJECT to default sink node
+	struct pw_properties *props = pw_properties_new(
+			PW_KEY_MEDIA_CLASS, "Audio/Source",
+			PW_KEY_MEDIA_TYPE, "Audio",
+			PW_KEY_MEDIA_CATEGORY, "Playback",
+			PW_KEY_MEDIA_ROLE, "Music",
+			NULL);
+
 	// Allocate stream
-	ctx->stream = pw_stream_new(ctx->pw_core, BACKEND_APP_NAME, NULL);
+	ctx->stream = pw_stream_new(ctx->pw_core, BACKEND_APP_NAME, props);
 	if (!ctx->stream) {
 		pw_thread_loop_unlock(ctx->loop);
 		return AudioBackend_STREAM_ERR;
@@ -172,12 +189,14 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *tr) {
 
 	const struct spa_pod *stream_params[1];
 	const struct spa_audio_info_raw audio_info = AudioPCM_pipewire_info(&tr->buf_pcm);
+	// FIXME: this should be spa_format_audio NOT spa_format_audio_raw
 	stream_params[0] = spa_format_audio_raw_build(&pod_builder,
 			SPA_PARAM_EnumFormat, // Declare type as an SPA_PARAM holding a 1-value format enum. Yes, my head hurts too
 			&audio_info);
 
 	// Connect stream
-	int status = pw_stream_connect(ctx->stream, SPA_DIRECTION_OUTPUT, PW_ID_ANY,
+	LOG(Verbosity_DEBUG, "About to call pw_stream_connect\n");
+	int status = pw_stream_connect(ctx->stream, PW_DIRECTION_OUTPUT, PW_ID_ANY,
 			PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_INACTIVE,
 			stream_params,
 			sizeof(stream_params) / sizeof(stream_params[0]));
@@ -185,15 +204,21 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *tr) {
 		pw_thread_loop_unlock(ctx->loop);
 		return AudioBackend_CONNECT_ERR;
 	}
+	LOG(Verbosity_DEBUG, "Done with call to pw_stream_connect\n");
+	while (pw_stream_get_state(ctx->stream, NULL) == PW_STREAM_STATE_CONNECTING) {
+		fprintf(stderr, "YUH");
+	}
 
 	// Wait for stream connection to finish
 	pw_thread_loop_wait(ctx->loop);
+	LOG(Verbosity_DEBUG, "Done with call to pw_thread_loop_wait\n");
 	if (pw_stream_get_state(ctx->stream, NULL) != PW_STREAM_STATE_PAUSED) {
 		pw_thread_loop_unlock(ctx->loop);
 		return AudioBackend_CONNECT_ERR;
 	}
 
 	pw_thread_loop_unlock(ctx->loop);
+
 
 	return AudioBackend_OK;
 }
@@ -213,8 +238,39 @@ static enum AudioBackend_ERR play(void *ctx__, bool pause) {
 	return (pause ^ !paused) ? AudioBackend_OK : AudioBackend_PLAY_ERR;
 }
 
+static void pw_stream_param_cb_(void *ctx__, uint32_t spa_id, const struct spa_pod *param) {
+	Ctx *ctx = ctx__;
+
+	if (spa_id != SPA_PARAM_EnumFormat) {
+		return;
+	}
+	const struct spa_audio_info_raw audio_info = 
+}
+
+static void pw_stream_state_cb_(void *ctx__, enum pw_stream_state old_state, enum pw_stream_state state, const char *errmsg) {
+	Ctx *ctx = ctx__;
+
+	LOG(Verbosity_DEBUG, "pw_stream_state_cb_ called\n");
+
+	switch (state) {
+	case PW_STREAM_STATE_STREAMING:
+	case PW_STREAM_STATE_ERROR:
+	case PW_STREAM_STATE_PAUSED:
+		pw_thread_loop_signal(ctx->loop, 0);
+	
+	case PW_STREAM_STATE_UNCONNECTED:
+		fprintf(stderr, "state is UNCONNECTED\n");
+		break;
+	case PW_STREAM_STATE_CONNECTING:
+		fprintf(stderr, "state is CONNECTING\n");
+		break;
+	}
+}
+
 static void pw_stream_write_cb_(void *ctx__) {
 	Ctx *ctx = ctx__;
+
+	LOG(Verbosity_DEBUG, "pw_stream_write_cb_ called\n");
 
 	if (!(ctx->stream && ctx->track)) {
 		return;
@@ -250,17 +306,3 @@ static void pw_stream_write_cb_(void *ctx__) {
 	EventSubQueue_send(ctx->evt_sq, &evt, false);
 }
 
-static void pw_stream_state_cb_(void *ctx__, enum pw_stream_state old_state, enum pw_stream_state state, const char *errmsg) {
-	Ctx *ctx = ctx__;
-
-	switch (state) {
-	case PW_STREAM_STATE_STREAMING:
-	case PW_STREAM_STATE_ERROR:
-	case PW_STREAM_STATE_PAUSED:
-		pw_thread_loop_signal(ctx->loop, 0);
-	
-	case PW_STREAM_STATE_UNCONNECTED:
-	case PW_STREAM_STATE_CONNECTING:
-		break;
-	}
-}
