@@ -199,12 +199,12 @@ int Queue_play(Queue *q, bool pause) {
 
 	// Start a nonblocking buffer loop
 	AudioTrack *cur_audio = q->cur != q->head ? q->cur->track->audio : NULL;
-	AudioTrack *next_audio = q->cur->next != q->head ? q->cur->next->track->audio : NULL;
 	if (!cur_audio) {
 		// TODO: implement error code
+		// FIXME: holy hell we never got around to this. Queue_ERR needed!
 		return 1;
 	}
-	return BufferThread_start(q->buffer_thread, cur_audio, next_audio);
+	return BufferThread_start(q->buffer_thread, cur_audio);
 }
 
 // The inner logic of Queue_seek that holds a lock on an AudioBuffer (by pausing its BufferThread) and AudioBackend

@@ -13,10 +13,7 @@ void BufferThread_free(BufferThread *thr);
 
 // Start a BufferThread to buffer track *t in the background.
 // Returns 0 on success, nonzero on error
-int BufferThread_start(BufferThread *thr, AudioTrack *track, AudioTrack *next_track);
-
-// Play/pause buffering
-void BufferThread_play(BufferThread *thr, bool play);
+int BufferThread_start(BufferThread *thr, AudioTrack *track);
 
 /* Locking a BufferThread is very similar to pausing it,
 except the lock/unlock methods use a semaphore to enable recursive locking.
