@@ -18,15 +18,15 @@ ThreadRC *ThreadRC_new(ThreadRC_AntiDeadlock anti_deadlock, void *userdata);
 // Deinitialize and free a ThreadRC.
 void ThreadRC_free(ThreadRC *rc);
 
-/* Locking a ThreadRC pauses the aux thread with a semaphore to enable recursive locking.
+/* Locking a ThreadRC pauses the aux thread in a way that enables recursive locking.
  * This is necessary for things like the ability to seek (which locks a BufferThread)
  * while paused (which also locks the BufferThread) */
 void ThreadRC_lock(ThreadRC *rc);
 // Unlock a ThreadRC, causing the aux thread to rerun ThreadRC_preloop and then begin its next cycle
-// Recursive locking is enabled through an internal semaphore.
-// NOTE: ThreadRC_unlock() will return EAGAIN when the thread hasn't actually been unlocked.
+// NOTE: ThreadRC_unlock() will return EAGAIN when the thread hasn't actually been unlocked (recursive locking).
 int ThreadRC_unlock(ThreadRC *rc);
 
+// Cause the aux thread to break its loop and shutdown
 void ThreadRC_shutdown(ThreadRC *rc);
 
 // If the aux thread is in a fail state, recover from it and continue the loop.

@@ -1,10 +1,9 @@
 #include <pthread.h>
-#include <semaphore.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
+#include <errno.h> // IWYU pragma: keep
 
 #include "thread_rc.h"
 #include "error.h"
