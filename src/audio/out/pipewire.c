@@ -79,8 +79,6 @@ AudioBackend AB_Pipewire = {
 static void pw_stream_write_cb_(void *ctx__);
 // Audio stream state change callback
 static void pw_stream_state_cb_(void *ctx__, enum pw_stream_state old_state, enum pw_stream_state state, const char *errmsg);
-// Audio stream parameter change callback
-static void pw_stream_param_cb_(void *ctx__, uint32_t id, const struct spa_pod *param);
 
 
 static enum AudioBackend_ERR init(void *ctx__, EventQueue *eq, const Settings *settings) {
@@ -136,6 +134,8 @@ static enum AudioBackend_ERR init(void *ctx__, EventQueue *eq, const Settings *s
 		return AudioBackend_LOOP_STALL;
 	}
 
+	pw_thread_loop_unlock(ctx->loop);
+
 	return 0;
 }
 
@@ -162,7 +162,6 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *tr) {
 	// "If you plan to autoconnect your stream, you need to provide at least media, category, and role properties"
 	// TODO: set PW_KEY_TARGET_OBJECT to default sink node
 	struct pw_properties *props = pw_properties_new(
-			PW_KEY_MEDIA_CLASS, "Audio/Source",
 			PW_KEY_MEDIA_TYPE, "Audio",
 			PW_KEY_MEDIA_CATEGORY, "Playback",
 			PW_KEY_MEDIA_ROLE, "Music",
@@ -174,6 +173,8 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *tr) {
 		pw_thread_loop_unlock(ctx->loop);
 		return AudioBackend_STREAM_ERR;
 	}
+	ctx->track = tr;
+	
 
 	// Set up callbacks
 	static const struct pw_stream_events STREAM_EVENTS = {PW_VERSION_STREAM_EVENTS,
@@ -195,7 +196,6 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *tr) {
 			&audio_info);
 
 	// Connect stream
-	LOG(Verbosity_DEBUG, "About to call pw_stream_connect\n");
 	int status = pw_stream_connect(ctx->stream, PW_DIRECTION_OUTPUT, PW_ID_ANY,
 			PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_INACTIVE,
 			stream_params,
@@ -204,14 +204,18 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *tr) {
 		pw_thread_loop_unlock(ctx->loop);
 		return AudioBackend_CONNECT_ERR;
 	}
-	LOG(Verbosity_DEBUG, "Done with call to pw_stream_connect\n");
-	while (pw_stream_get_state(ctx->stream, NULL) == PW_STREAM_STATE_CONNECTING) {
-		fprintf(stderr, "YUH");
+	// This pattern is for format negotiation with clients.
+	// we refuse to resample for a backend as robust as Pipewire,
+	// so it refusing our PCM format is a fail state.
+	status = pw_stream_update_params(ctx->stream,
+			stream_params, sizeof(stream_params) / sizeof(stream_params[0]));
+	if (status < 0) {
+		pw_thread_loop_unlock(ctx->loop);
+		return AudioBackend_BAD_PCM_FMT;
 	}
 
 	// Wait for stream connection to finish
 	pw_thread_loop_wait(ctx->loop);
-	LOG(Verbosity_DEBUG, "Done with call to pw_thread_loop_wait\n");
 	if (pw_stream_get_state(ctx->stream, NULL) != PW_STREAM_STATE_PAUSED) {
 		pw_thread_loop_unlock(ctx->loop);
 		return AudioBackend_CONNECT_ERR;
@@ -238,19 +242,8 @@ static enum AudioBackend_ERR play(void *ctx__, bool pause) {
 	return (pause ^ !paused) ? AudioBackend_OK : AudioBackend_PLAY_ERR;
 }
 
-static void pw_stream_param_cb_(void *ctx__, uint32_t spa_id, const struct spa_pod *param) {
-	Ctx *ctx = ctx__;
-
-	if (spa_id != SPA_PARAM_EnumFormat) {
-		return;
-	}
-	const struct spa_audio_info_raw audio_info = 
-}
-
 static void pw_stream_state_cb_(void *ctx__, enum pw_stream_state old_state, enum pw_stream_state state, const char *errmsg) {
 	Ctx *ctx = ctx__;
-
-	LOG(Verbosity_DEBUG, "pw_stream_state_cb_ called\n");
 
 	switch (state) {
 	case PW_STREAM_STATE_STREAMING:
@@ -259,18 +252,13 @@ static void pw_stream_state_cb_(void *ctx__, enum pw_stream_state old_state, enu
 		pw_thread_loop_signal(ctx->loop, 0);
 	
 	case PW_STREAM_STATE_UNCONNECTED:
-		fprintf(stderr, "state is UNCONNECTED\n");
-		break;
 	case PW_STREAM_STATE_CONNECTING:
-		fprintf(stderr, "state is CONNECTING\n");
 		break;
 	}
 }
 
 static void pw_stream_write_cb_(void *ctx__) {
 	Ctx *ctx = ctx__;
-
-	LOG(Verbosity_DEBUG, "pw_stream_write_cb_ called\n");
 
 	if (!(ctx->stream && ctx->track)) {
 		return;
@@ -283,15 +271,19 @@ static void pw_stream_write_cb_(void *ctx__) {
 		return;
 	}
 
-	// Compute max number of frames to write (n)
+	// Decide how many frames to write
 	AudioBuffer *buf = ctx->track->buffer;
 	const size_t frame_size = buf->frame_size;
 	uint32_t n_frames = tb.maxsize / frame_size;
 	if (pw_buf->requested != 0 && pw_buf->requested < n_frames) {
 		n_frames = pw_buf->requested;
 	}
-	// Read frames from track buffer
-	pw_buf->size = AudioBuffer_read(buf, tb.data, n_frames * frame_size, true) / frame_size;
+
+	// Read frames from track buffer into transfer buffer
+	tb.chunk->offset = 0;
+	tb.chunk->stride = frame_size;
+	tb.chunk->size = AudioBuffer_read(buf, tb.data, n_frames * frame_size, true);
+	pw_buf->size = tb.chunk->size / tb.chunk->stride;
 
 	// Return transfer buffer to PW
 	pw_stream_queue_buffer(ctx->stream, pw_buf);

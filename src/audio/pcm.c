@@ -96,6 +96,7 @@ pa_buffer_attr AudioPCM_pulseaudio_buffer_attr(const AudioPCM *pcm, uint32_t ab_
 #endif
 
 #ifdef AO_PIPEWIRE
+#include <spa/param/audio/format.h>
 
 struct spa_audio_info_raw AudioPCM_pipewire_info(const AudioPCM *pcm) {
 	struct spa_audio_info_raw info;
@@ -140,6 +141,46 @@ struct spa_audio_info_raw AudioPCM_pipewire_info(const AudioPCM *pcm) {
 	info.rate = pcm->sample_rate;
 
 	return info;
+}
+
+void AudioPCM_from_pipewire_info(AudioPCM *dst_pcm, const struct spa_audio_info_raw *info) {
+	dst_pcm->n_channels = info->channels;
+	dst_pcm->sample_rate = info->rate;
+
+	switch (info->format) {
+		case SPA_AUDIO_FORMAT_U8:
+			dst_pcm->sample_fmt = AV_SAMPLE_FMT_U8;
+			break;
+		case SPA_AUDIO_FORMAT_U8P:
+			dst_pcm->sample_fmt = AV_SAMPLE_FMT_U8P;
+			break;
+		case SPA_AUDIO_FORMAT_S16:
+			dst_pcm->sample_fmt = AV_SAMPLE_FMT_S16;
+			break;
+		case SPA_AUDIO_FORMAT_S16P:
+			dst_pcm->sample_fmt = AV_SAMPLE_FMT_S16P;
+			break;
+		case SPA_AUDIO_FORMAT_S32:
+			dst_pcm->sample_fmt = AV_SAMPLE_FMT_S32;
+			break;
+		case SPA_AUDIO_FORMAT_S32P:
+			dst_pcm->sample_fmt = AV_SAMPLE_FMT_S32P;
+			break;
+		case SPA_AUDIO_FORMAT_F32:
+			dst_pcm->sample_fmt = AV_SAMPLE_FMT_FLT;
+			break;
+		case SPA_AUDIO_FORMAT_F32P:
+			dst_pcm->sample_fmt = AV_SAMPLE_FMT_FLTP;
+			break;
+		case SPA_AUDIO_FORMAT_F64:
+			dst_pcm->sample_fmt = AV_SAMPLE_FMT_DBL;
+			break;
+		case SPA_AUDIO_FORMAT_F64P:
+			dst_pcm->sample_fmt = AV_SAMPLE_FMT_DBLP;
+			break;
+		default:
+			dst_pcm->sample_fmt = AV_SAMPLE_FMT_NONE;
+	}
 }
 #endif
 
