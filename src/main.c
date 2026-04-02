@@ -55,7 +55,7 @@ int main(int argc, const char **argv) {
 		ret = 1;
 		goto deinit_ui;
 	}
-	enum AudioBackend_ERR ab_err = Queue_connect_audio(&queue, NULL, ui.evt_queue);
+	enum AudioBackend_ERR ab_err = Queue_connect_audio(&queue, &config.settings, ui.evt_queue);
 	if (ab_err != AudioBackend_OK) {
 		LOG(Verbosity_NORMAL, "Failed to connect AudioBackend: %s\n", AudioBackend_ERR_name(ab_err));
 		ret = 1;

@@ -1,4 +1,4 @@
-src_audio_out = files('backend.c', 'default.c')
+src_audio_out = files('backend.c', 'auto.c')
 
 if pulseaudio.found()
 	src_audio_out += files('pulseaudio.c')

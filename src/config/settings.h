@@ -18,6 +18,7 @@ typedef struct Settings {
 static const Settings default_settings = {
 	.at_buffer_ahead = 30,
 
+	.audio_backend = NULL, // use default AudioBackened
 	.ab_buffer_ms = 100,
 
 	.ui_timecode_ms = false
@@ -34,7 +35,8 @@ enum Settings_ERR Settings_parse_setting(Settings *opts, const char *line);
 
 #define SETTINGS_TYPE(VARIANT) \
 	VARIANT(Settings_U32) \
-	VARIANT(Settings_BOOL)
+	VARIANT(Settings_BOOL) \
+	VARIANT(Settings_STR)
 
 // The type of a settings value
 enum Settings_t {

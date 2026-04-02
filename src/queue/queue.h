@@ -34,8 +34,8 @@ int Queue_init(Queue *q, const Settings *settings);
 void Queue_deinit(Queue *q);
 
 // Connect the queue to the system's audio output.
-// If ab == NULL, a 'best' audio backend for the system will be automatically determined from mpl.conf or defaults. This is the recommended strategy.
-enum AudioBackend_ERR Queue_connect_audio(Queue *q, AudioBackend *ab, EventQueue *eq);
+// If settings->audio_backend is unset or invalid, uses AB_Default() to choose the default AudioBackend
+enum AudioBackend_ERR Queue_connect_audio(Queue *q, const Settings *settings, EventQueue *eq);
 // Disconnect the queue from the system's audio output.
 void Queue_disconnect_audio(Queue *q);
 

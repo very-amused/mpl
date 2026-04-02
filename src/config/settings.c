@@ -6,14 +6,14 @@
 
 #include <stdio.h>
 #include <string.h>
-
+#include <stdlib.h>
 
 void Settings_init(Settings *opts) {
 	memcpy(opts, &default_settings, sizeof(Settings));
 }
 
 void Settings_deinit(Settings *opts) {
-	(void)0;
+	free(opts->audio_backend);
 }
 
 enum Settings_ERR Settings_parse_setting(Settings *opts, const char *line) {
@@ -36,9 +36,13 @@ enum Settings_ERR Settings_parse_setting(Settings *opts, const char *line) {
 	switch (optname[0]) {
 	case 'a':
 	{
+		static const char AUDIO_BACKEND[] = "audio_backend";
 		static const char AT_BUFFER_AHEAD[] = "at_buffer_ahead";
 		static const char AB_BUFFER_MS[] = "ab_buffer_ms";
-		if (strcmp(optname, AT_BUFFER_AHEAD) == 0) {
+		if (strcmp(optname, AUDIO_BACKEND) == 0) {
+			opt_t = Settings_STR;
+			opt_dst = (unsigned char *)&opts->audio_backend;
+		} else if (strcmp(optname, AT_BUFFER_AHEAD) == 0) {
 			opt_t = Settings_U32;
 			opt_dst = (unsigned char *)&opts->at_buffer_ahead;
 		} else if (strcmp(optname, AB_BUFFER_MS) == 0) {
@@ -104,6 +108,21 @@ enum Settings_ERR Settings_parse_setting(Settings *opts, const char *line) {
 			return Settings_SYNTAX_ERR;
 		}
 		LOG(Verbosity_DEBUG, "Parsed setting: %s = %s (%s)\n", optname, *dst ? "true" : "false", Settings_t_name(opt_t));
+		break;
+	}
+
+	case Settings_STR:
+	{
+		// Support both double and single quoted strings
+#define ENCLOSED(s,q) (s[0] == q && val_str[parse_state.tok_len-1] == q)
+		if (parse_state.tok_len < 2 ||
+				!(ENCLOSED(val_str, '"') || ENCLOSED(val_str, '\''))) {
+			return Settings_SYNTAX_ERR;
+		}
+#undef ENCLOSED
+		char **dst = (char **)opt_dst;
+		*dst = strndup(&val_str[1], parse_state.tok_len-2);  // Copy without enclosing quotes
+		LOG(Verbosity_DEBUG, "Parsed setting: %s = '%s' (%s)\n", optname, *dst, Settings_t_name(opt_t));
 		break;
 	}
 	}

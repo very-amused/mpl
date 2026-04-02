@@ -21,6 +21,8 @@ void Config_init(Config *conf) {
 }
 void Config_deinit(Config *conf) {
 	KeybindMap_free(conf->keybinds);
+	// Free heap-allocations used for Settings_STR
+	Settings_deinit(&conf->settings);
 }
 
 int Config_parse(Config *conf, const char *path) {
