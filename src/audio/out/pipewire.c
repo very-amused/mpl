@@ -56,6 +56,9 @@ static enum AudioBackend_ERR init(void *ctx__, EventQueue *eq, const Settings *s
 static void deinit(void *ctx__);
 static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *track);
 static enum AudioBackend_ERR play(void *ctx__, bool pause);
+static void lock(void *ctx__);
+static void unlock(void *ctx__);
+static void seek(void *ctx__);
 
 /* PipeWire AudioBackend impl */
 AudioBackend AB_Pipewire = {
@@ -67,6 +70,10 @@ AudioBackend AB_Pipewire = {
 	.prepare = prepare,
 
 	.play = play,
+
+	.lock = lock,
+	.unlock = unlock,
+	.seek = seek,
 
 	.ctx_size = sizeof(Ctx)
 };
@@ -240,6 +247,27 @@ static enum AudioBackend_ERR play(void *ctx__, bool pause) {
 	pw_thread_loop_unlock(ctx->loop);
 
 	return (pause ^ !paused) ? AudioBackend_OK : AudioBackend_PLAY_ERR;
+}
+
+static void lock(void *ctx__) {
+	Ctx *ctx = ctx__;
+	pw_thread_loop_lock(ctx->loop);
+}
+
+static void unlock(void *ctx__) {
+	Ctx *ctx = ctx__;
+	pw_thread_loop_unlock(ctx->loop);
+}
+
+static void seek(void *ctx__) {
+	Ctx *ctx = ctx__;	
+
+	pw_thread_loop_lock(ctx->loop);
+
+	pw_stream_flush(ctx->stream, false);
+
+	pw_thread_loop_unlock(ctx->loop);
+
 }
 
 static void pw_stream_state_cb_(void *ctx__, enum pw_stream_state old_state, enum pw_stream_state state, const char *errmsg) {
