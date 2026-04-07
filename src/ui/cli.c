@@ -1,5 +1,4 @@
 #include "cli.h"
-#include "config/internal/state.h"
 #include "config/settings.h"
 #include "queue/queue.h"
 #include "ui/event.h"
@@ -9,27 +8,27 @@
 #include "util/log.h"
 #include <string.h>
 
-int UI_CLI_init(UI_CLI *ui) {
+int UI_CLI_legacy_init(UI_CLI_legacy *ui) {
 	// Zero pointers so we can use deinit as an escape hatch
-	memset(ui, 0, sizeof(UI_CLI));
+	memset(ui, 0, sizeof(UI_CLI_legacy));
 
 	// Initialize event queue
 	ui->evt_queue = EventQueue_new();
 	if (!ui->evt_queue) {
-		UI_CLI_deinit(ui);
+		UI_CLI_legacy_deinit(ui);
 		return 1;
 	}
 	// Initialize input thread
 	ui->input_thread = InputThread_new(ui->evt_queue);
 	if (!ui->input_thread) {
-		UI_CLI_deinit(ui);
+		UI_CLI_legacy_deinit(ui);
 		return 1;
 	}
 
 	return 0;
 }
 
-void UI_CLI_deinit(UI_CLI *ui) {
+void UI_CLI_legacy_deinit(UI_CLI_legacy *ui) {
 	InputThread_free(ui->input_thread);
 	LOG(Verbosity_DEBUG, "InputThread_free finished\n");
 	EventQueue_free(ui->evt_queue);
@@ -68,7 +67,7 @@ static void UI_CLI_display_timecode(const EventBody_Timecode timecode, const Tra
 	fprintf(stderr, "%s/%s", timecode_buf, duration_buf);
 }
 
-int UI_CLI_mainloop(UI_CLI *ui, Queue *queue, Config *config) {
+int UI_CLI_legacy_mainloop(UI_CLI_legacy *ui, Queue *queue, Config *config) {
 	// Play the track provided via argv
 	const Track *track = Queue_cur_track(queue);
 	if (track) {

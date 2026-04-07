@@ -20,9 +20,9 @@ int main(int argc, const char **argv) {
 		fprintf(stderr, "usage: mpl [-v] [-vv] {file}\n");
 		return 1;
 	}
-	CLI_args_parse(argc, argv);
+	args_parse(argc, argv);
 	configure_av_log(); // Configure libav logging
-	LOG(Verbosity_VERBOSE, "Logging enabled: %s\n", Verbosity_name(CLI_args.verbosity));
+	LOG(Verbosity_VERBOSE, "Logging enabled: %s\n", Verbosity_name(args.verbosity));
 
 	// Parse mpl.conf
 	Config config;
@@ -33,8 +33,8 @@ int main(int argc, const char **argv) {
 	int ret = 0;
 
 	// Fire up CLI user interface and the main EventQueue
-	UI_CLI ui;
-	if (UI_CLI_init(&ui) != 0) {
+	UI_CLI_legacy ui;
+	if (UI_CLI_legacy_init(&ui) != 0) {
 		LOG(Verbosity_NORMAL, "Failed to initialize user interface, exiting\n");
 		ret = 1;
 		goto deinit_config;
@@ -69,7 +69,7 @@ int main(int argc, const char **argv) {
 	// Initialize configState so keybinds work
 	configState_init(&queue, ui.evt_queue);
 
-	ret = UI_CLI_mainloop(&ui, &queue, &config);
+	ret = UI_CLI_legacy_mainloop(&ui, &queue, &config);
 
 	// Cleanup
 	// (The UI must outlive everything that can send it events, including the Queue and AudioBackend)
@@ -79,7 +79,7 @@ deinit_queue: // deinitialize queue, ui, and config
 	free(url);
 deinit_ui: // deinitialize ui and config
 	LOG(Verbosity_DEBUG, "Deinitializing UI\n");
-	UI_CLI_deinit(&ui);
+	UI_CLI_legacy_deinit(&ui);
 deinit_config: // deinitialize config
 	LOG(Verbosity_DEBUG, "Deinitializing config\n");
 	Config_deinit(&config);

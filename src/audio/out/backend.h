@@ -1,7 +1,7 @@
 #pragma once
 #include "audio/track.h"
-#include "audio/pcm.h"
-#include "config/config.h"
+#include "audio/pcm.h" // IWYU pragma: keep
+#include "config/config.h" // IWYU pragma: keep
 #include "config/settings.h"
 #include "error.h"
 #include "ui/event_queue.h"
