@@ -170,3 +170,22 @@ static inline const char *Settings_ERR_name(enum Settings_ERR err) {
 }
 
 #undef SETTINGS_ERR
+
+#define USERINTERFACE_ERR(VARIANT) \
+	VARIANT(UserInterface_OK) \
+	VARIANT(UserInterface_EVENT_QUEUE_ERR) \
+	VARIANT(UserInterface_BAD_ALLOC)
+
+// Errors returned by a UserInterface_* method
+enum UserInterface_ERR {
+	USERINTERFACE_ERR(ENUM_VAL)
+};
+
+static inline const char *UserInterface_ERR_name(enum UserInterface_ERR err) {
+	switch (err) {
+		USERINTERFACE_ERR(ENUM_KEY)
+	}
+	return DEFAULT_ERR_NAME;
+}
+
+#undef USERINTERFACE_ERR
