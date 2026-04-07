@@ -155,6 +155,7 @@ static enum UserInterface_ERR refresh_metadata(void *ud) {
 	Ctx *ctx = ud;
 	const Track *track = ctx->cur_track;
 	if (!track) {
+		fprintf(stderr, "YUH\n");
 		return UserInterface_NO_TRACK;
 	}
 

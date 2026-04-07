@@ -186,16 +186,26 @@ int Queue_select(Queue *q, QueueNode *node) {
 	return 0;
 }
 
+// FIXME: we can do a much better job of synchonizing state between the AudioBackend and BufferThread
+// I'm almost convinced the Queue struct needs a ground-up rewrite, but we'll see
 int Queue_play(Queue *q, bool pause) {
 	int status = AudioBackend_play(q->backend, pause);
 	if (status != 0) {
 		return status;
 	}
-	q->playback_state = pause ? Queue_PAUSED : Queue_PLAYING;
-	if (pause) {
+
+	if (pause && q->playback_state == Queue_PLAYING) {
+		q->playback_state = Queue_PAUSED;
 		BufferThread_lock(q->buffer_thread);
 		return 0;
+	} else if (q->playback_state == Queue_PAUSED) {
+		status = BufferThread_unlock(q->buffer_thread);
+		if (status == 0) {
+			q->playback_state = Queue_PLAYING;
+		}
+		return status;
 	}
+	q->playback_state = pause ? Queue_PAUSED : Queue_PLAYING;
 
 	// Start a nonblocking buffer loop
 	AudioTrack *cur_audio = q->cur != q->head ? q->cur->track->audio : NULL;
