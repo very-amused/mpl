@@ -7,14 +7,16 @@
 #include "queue/state.h"
 #include "ui/event.h"
 #include "ui/event_queue.h"
+#include "ui/interface/interface.h"
 
 
 /* Bindable functions */
 
 static struct configState config_state;
 
-void configState_init(Queue *track_queue, EventQueue *evt_queue) {
+void configState_init(Queue *track_queue, const UI_Control *ui_ctrl, EventQueue *evt_queue) {
 	config_state.queue = track_queue;
+	config_state.ui_ctrl = ui_ctrl;
 	config_state.evt_sq = EventQueue_connect(evt_queue, 5);
 }
 

@@ -2,10 +2,12 @@
 #include "config/config.h"
 #include "queue/queue.h"
 #include "ui/event_queue.h"
+#include "ui/interface/interface.h"
 
 // State passed to MPL's bindable functions
 struct configState {
 	Queue *queue; // used to control playback
+	const UI_Control *ui_ctrl; // used to control UI
 	EventSubQueue *evt_sq; // used to send exit messages
 };
 
@@ -20,7 +22,7 @@ struct macroState {
 //
 // NOTE: configState holds non-owning references and is only used on the main thread,
 // so there is no configState_deinit()
-void configState_init(Queue *track_queue, EventQueue *evt_queue);
+void configState_init(Queue *track_queue, const UI_Control *UI_Control, EventQueue *evt_queue);
 // Initialize configuration state to passed to macro functions defined in
 // config/functions.h
 void macroState_init(Config *config);

@@ -1,15 +1,11 @@
 src_ui = files('cli_args.c', 'event_queue.c', 'timecode.c')
 
-if get_option('ui_next')
-	subdir('interface')
-else
-	src_ui += files('cli.c')
-endif
-
 if build_machine.system() == 'windows'
 	src_ui += files('input_thread_win32.c')
 else
 	src_ui += files('input_thread.c')
 endif
+
+subdir('interface')
 
 src += src_ui

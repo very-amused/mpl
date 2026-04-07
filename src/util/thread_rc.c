@@ -137,6 +137,7 @@ bool ThreadRC_preloop(ThreadRC *rc) {
 check_switches:
 	pthread_cond_signal(&rc->sw.rd);
 	if (switches->thread_shutdown) {
+		free(switches->thread_selflock_err_msg_);
 		pthread_mutex_unlock(&rc->sw.mutex);
 		return false; // break aux thread loop
 	}
