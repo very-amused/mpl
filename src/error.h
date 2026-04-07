@@ -174,7 +174,9 @@ static inline const char *Settings_ERR_name(enum Settings_ERR err) {
 #define USERINTERFACE_ERR(VARIANT) \
 	VARIANT(UserInterface_OK) \
 	VARIANT(UserInterface_EVENT_QUEUE_ERR) \
-	VARIANT(UserInterface_BAD_ALLOC)
+	VARIANT(UserInterface_EVENT_QUEUE_EOF) \
+	VARIANT(UserInterface_BAD_ALLOC) \
+	VARIANT(UserInterface_NO_TRACK) \
 
 // Errors returned by a UserInterface_* method
 enum UserInterface_ERR {

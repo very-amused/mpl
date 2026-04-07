@@ -1,6 +1,6 @@
 src_ui = files('cli_args.c', 'event_queue.c', 'timecode.c')
 
-if get_option('ui_control')
+if get_option('ui_next')
 	subdir('interface')
 else
 	src_ui += files('cli.c')

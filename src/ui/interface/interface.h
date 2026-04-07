@@ -15,12 +15,12 @@ typedef struct UI_Control UI_Control;
 typedef struct UserInterface UserInterface;
 struct UserInterface {
 	const char *name; // UI name
+	const UI_Control *ctrl; // UI control methods
+
 	EventQueue *evt_queue; // Main event queue owned and handled by the UI. Allows aux threads to message the main thread
 
 	// Initialize UI context (including registering control methods)
-	enum UserInterface_ERR (*init)(void *ctx);
-	// Get control methods that expose UI functionality
-	const UI_Control *(*get_control)(void *ctx);
+	enum UserInterface_ERR (*init)(void *ctx, EventQueue *evt_queue, const Settings *settings);
 	// Deinitialize the UI
 	void (*deinit)(void *ctx);
 
@@ -42,12 +42,9 @@ struct UI_Control {
 };
 
 // Initialize the UI for the main loop to run.
-enum UserInterface_ERR UserInterface_init(UserInterface *ui);
+enum UserInterface_ERR UserInterface_init(UserInterface *ui, const Settings *settings);
 // Deinitialize the UI for shutdown
 void UserInterface_deinit(UserInterface *ui);
-
-// Get control methods that expose UI functionality
-const UI_Control *UserInterface_get_control(const UserInterface *ui);
 
 // Run the main UI loop
 enum UserInterface_ERR UserInterface_mainloop(UserInterface *ui, Queue *track_queue, Config *config);

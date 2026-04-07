@@ -5,9 +5,10 @@
 #include "track.h"
 #include "ui/cli.h"
 #include "ui/cli_args.h"
-#include "util/log.h"
-#ifdef UI_CONTROL
 #include "ui/interface/interface.h"
+#include "util/log.h"
+#ifdef UI_NEXT
+#include "ui/interface/interfaces.h"
 #endif
 
 #include <assert.h>
@@ -35,15 +36,66 @@ int main(int argc, const char **argv) {
 
 	int ret = 0;
 
-	// Fire up user interface and the main EventQueue
+#ifdef UI_CLI
+	// Fire up user interface and main EventQueue	
+	UserInterface *ui = UI_Configured(&config.settings);
+	enum UserInterface_ERR ui_err = UserInterface_init(ui, &config.settings);
+	if (ui_err != UserInterface_OK) {
+		LOG(Verbosity_NORMAL, "Failed to initialize user interface: %s\n", UserInterface_ERR_name(ui_err));
+		ret = 1;
+		goto deinit_config;
+	}
 
-#ifdef UI_CONTROL
+	// Form URL from file argv
+	const char *file = argv[argc-1];
+	static const char LIBAV_PROTO_FILE[] = "file:";
+	static const size_t LIBAV_PROTO_FILE_LEN = sizeof(LIBAV_PROTO_FILE);
+	const size_t url_len = LIBAV_PROTO_FILE_LEN + strlen(file);
+	char *url = malloc((url_len + 1) * sizeof(char));
+	snprintf(url, url_len, "%s%s", LIBAV_PROTO_FILE, file);
+
+	// Initialize track queue
+	Queue queue;
+	int queue_err = Queue_init(&queue, &config.settings);
+	if (queue_err != 0) {
+		LOG(Verbosity_NORMAL, "Failed to initialize track queue, exiting\n");
+		ret = 1;
+		goto deinit_ui;
+	}
+	// Connect audio
+	enum AudioBackend_ERR ab_err = Queue_connect_audio(&queue, &config.settings, ui->evt_queue);
+	if (ab_err != AudioBackend_OK) {
+		LOG(Verbosity_NORMAL, "Failed to connect AudioBackend: %s\n", AudioBackend_ERR_name(ab_err));
+		ret = 1;
+		goto deinit_queue;
+	}
+	queue_err = Queue_prepend(&queue, Track_new(url, url_len));
+	if (queue_err != 0) {
+		ret = 1;
+		goto deinit_queue;
+	}
+
+	// Initialize configState so keybinds work
+	configState_init(&queue, ui->evt_queue);
+
+	ui_err = UserInterface_mainloop(ui, &queue, &config);
+	if (ui_err != UserInterface_OK) {
+		LOG(Verbosity_NORMAL, "Error encountered in main UI loop: %s\n", UserInterface_ERR_name(ui_err));
+		ret = 1;
+	}
+
+	// Cleanup
+	// (The UI must outlive everything that can send it events, including the Queue and AudioBackend)
+deinit_queue:
+	LOG(Verbosity_DEBUG, "Deinitializing Queue\n");
+	Queue_deinit(&queue);
+	free(url);
+deinit_ui:
+	LOG(Verbosity_DEBUG, "Deinitializing UI\n");
+	UserInterface_deinit(ui);
 deinit_config:
 	LOG(Verbosity_DEBUG, "Deinitializing config\n");
 	Config_deinit(&config);
-deinit_ui:
-	LOG(Verbosity_DEBUG, "Deinitializing UI\n");
-	//UserInterface_deinit();
 #else
 	// Fire up CLI user interface and the main EventQueue
 	UI_CLI_legacy ui;

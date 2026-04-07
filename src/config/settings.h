@@ -11,6 +11,7 @@ typedef struct Settings {
 	char *audio_backend; // Name of audio backend to use (e.g "pulseaudio", "pipewire", "wasapi", "fast")
 	uint32_t ab_buffer_ms; // number of ms to buffer with the audio backend (i.e pulseaudio)
 
+	char *user_interface; // Name of user interface to use (e.g "cli")
 	bool ui_timecode_ms; // Display milliseconds in timecodes (i.e track position)
 } Settings;
 
@@ -21,6 +22,7 @@ static const Settings default_settings = {
 	.audio_backend = NULL, // use default AudioBackened
 	.ab_buffer_ms = 100,
 
+	.user_interface = NULL, // use default UserInterface
 	.ui_timecode_ms = false
 };
 

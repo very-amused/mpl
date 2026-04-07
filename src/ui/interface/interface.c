@@ -5,11 +5,10 @@
 #include <string.h>
 
 
-enum UserInterface_ERR UserInterface_init(UserInterface *ui) {
-	memset(ui, 0, sizeof(UserInterface));
+enum UserInterface_ERR UserInterface_init(UserInterface *ui, const Settings *settings) {
 	// Initialize event queue
 	ui->evt_queue = EventQueue_new();
-	if (ui->evt_queue) {
+	if (!ui->evt_queue) {
 		return UserInterface_BAD_ALLOC;
 	}
 
@@ -21,7 +20,7 @@ enum UserInterface_ERR UserInterface_init(UserInterface *ui) {
 		}
 	}
 
-	return ui->init(ui->ctx);
+	return ui->init(ui->ctx, ui->evt_queue, settings);
 }
 
 void UserInterface_deinit(UserInterface *ui) {
@@ -35,10 +34,6 @@ void UserInterface_deinit(UserInterface *ui) {
 		EventQueue_free(ui->evt_queue);
 		ui->evt_queue = NULL;
 	}
-}
-
-const UI_Control *UserInterface_get_control(const UserInterface *ui) {
-	return ui->get_control(ui->ctx);
 }
 
 enum UserInterface_ERR UserInterface_mainloop(UserInterface *ui, Queue *track_queue, Config *config) {

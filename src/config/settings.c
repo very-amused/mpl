@@ -55,8 +55,12 @@ enum Settings_ERR Settings_parse_setting(Settings *opts, const char *line) {
 
 	case 'u':
 	{
+		static const char USER_INTERFACE[] = "user_interface";
 		static const char UI_TIMECODE_MS[] = "ui_timecode_ms";
-		if (strcmp(optname, UI_TIMECODE_MS) == 0) {
+		if (strcmp(optname, USER_INTERFACE) == 0) {
+			opt_t = Settings_STR;
+			opt_dst = (unsigned char *)&opts->user_interface;
+		} else if (strcmp(optname, UI_TIMECODE_MS) == 0) {
 			opt_t = Settings_BOOL;
 			opt_dst = (unsigned char *)&opts->ui_timecode_ms;
 		}

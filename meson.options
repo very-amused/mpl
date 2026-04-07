@@ -14,4 +14,4 @@ option('cli', type : 'feature', value : 'auto')
 option('test_config', type : 'boolean', value : false) # Read ../test/mpl.conf instead of the usual config locations
 option('ao_fast', type : 'boolean', value : false) # Support libFAST fake audio output for testing
 option('test_resampling', type : 'boolean', value : false) # Enable resampling on audio backends that don't require it
-option('ui_control', type : 'boolean', value : false) # Enable new UserInterface program structure (w/ UI_Control)
+option('ui_next', type : 'boolean', value : false) # Enable new UserInterface program structure (w/ UI_Control)

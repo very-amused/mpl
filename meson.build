@@ -72,8 +72,8 @@ if get_option('ao_fast')
 	cflags += '-DAO_FAST'
 endif
 # TODO: remove before release
-if get_option('ui_control')
-	cflags += '-DUI_CONTROL'
+if get_option('ui_next')
+	cflags += '-DUI_NEXT'
 endif
 if get_option('cli').allowed()
 	cflags += '-DUI_CLI'

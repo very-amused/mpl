@@ -7,9 +7,8 @@
 #include <stdbool.h>
 
 AudioBackend *AB_Configured(const Settings *settings) {
-	const char *name = settings->audio_backend;
 	AudioBackend *def = AB_Default();
-	if (!name) {
+	if (!settings->audio_backend) {
 		LOG(Verbosity_VERBOSE, "audio_backend setting is unset, using default AudioBackend (%s)\n", def->name);
 		return def;
 	}
