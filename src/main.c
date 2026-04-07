@@ -6,6 +6,9 @@
 #include "ui/cli.h"
 #include "ui/cli_args.h"
 #include "util/log.h"
+#ifdef UI_CONTROL
+#include "ui/interface/interface.h"
+#endif
 
 #include <assert.h>
 #include <stdint.h>
@@ -32,6 +35,16 @@ int main(int argc, const char **argv) {
 
 	int ret = 0;
 
+	// Fire up user interface and the main EventQueue
+
+#ifdef UI_CONTROL
+deinit_config:
+	LOG(Verbosity_DEBUG, "Deinitializing config\n");
+	Config_deinit(&config);
+deinit_ui:
+	LOG(Verbosity_DEBUG, "Deinitializing UI\n");
+	//UserInterface_deinit();
+#else
 	// Fire up CLI user interface and the main EventQueue
 	UI_CLI_legacy ui;
 	if (UI_CLI_legacy_init(&ui) != 0) {
@@ -83,6 +96,7 @@ deinit_ui: // deinitialize ui and config
 deinit_config: // deinitialize config
 	LOG(Verbosity_DEBUG, "Deinitializing config\n");
 	Config_deinit(&config);
+#endif
 
 	return ret;
 }

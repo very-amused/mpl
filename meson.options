@@ -7,6 +7,9 @@ option('wasapi', type : 'feature', value : 'auto')
 # By default, MPL uses the UTF-8 implementation in keybind_map.cpp
 option('ascii_keybinds', type : 'boolean', value : false)
 
+# Enable various UserInterfaces
+option('cli', type : 'feature', value : 'auto')
+
 # Options for MPL development - don't enable these unless you know what you're doing:
 option('test_config', type : 'boolean', value : false) # Read ../test/mpl.conf instead of the usual config locations
 option('ao_fast', type : 'boolean', value : false) # Support libFAST fake audio output for testing
