@@ -13,6 +13,7 @@ UserInterface *UI_Configured(const Settings *settings) {
 	}
 
 	static const char ERR_UNSUPPORTED[] = "user_interface '%s' is unsupported on this build, falling back to default (%s)\n";
+	(void)ERR_UNSUPPORTED; // Silence unused variable warning
 
 	if (strcmp(settings->user_interface, "cli") == 0) {
 #if defined(UI_CLI)
