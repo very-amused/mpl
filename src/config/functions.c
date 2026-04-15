@@ -11,7 +11,7 @@
 
 /* Bindable functions */
 
-static struct configState config_state;
+static struct fnState config_state;
 
 void configState_init(TrackQueue *track_queue, EventQueue *evt_queue) {
 	config_state.queue = track_queue;

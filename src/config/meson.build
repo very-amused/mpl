@@ -14,3 +14,6 @@ src += src_config
 subdir('internal')
 subdir('keybind')
 subdir('macro')
+if get_option('config_functions_next')
+	subdir('function')
+endif

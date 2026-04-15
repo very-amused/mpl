@@ -68,11 +68,14 @@ if enable_wasapi
   # Provides KSDATAFORMAT_SUBTYPE idents
   deps += cc.find_library('ksuser', required : true)
 endif
+if get_option('cli').allowed()
+	cflags += '-DUI_CLI'
+endif
 if get_option('ao_fast')
 	cflags += '-DAO_FAST'
 endif
-if get_option('cli').allowed()
-	cflags += '-DUI_CLI'
+if get_option('config_functions_next')
+	cflags += '-DCONFIG_FUNCTIONS_NEXT'
 endif
 
 # Debug options

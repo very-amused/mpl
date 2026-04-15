@@ -129,6 +129,25 @@ static inline const char *Verbosity_name(enum Verbosity lvl) {
 
 #undef VERBOSITY
 
+#define CONFIG_FN_ERR(VARIANT) \
+	VARIANT(ConfigFn_OK) \
+	VARIANT(ConfigFn_SYNTAX_ERR) /* Syntax error while parsing a config function */ \
+	VARIANT(ConfigFn_INVALID_FN) /* Invalid function identifier */ \
+	VARIANT(ConfigFn_INVALID_ARG) /* Invalid function argument(s) */
+
+enum ConfigFn_ERR {
+	CONFIG_FN_ERR(ENUM_VAL)
+};
+
+static inline const char *ConfigFn_ERR_name(enum ConfigFn_ERR err) {
+	switch (err) {
+		CONFIG_FN_ERR(ENUM_KEY)
+	}
+	return DEFAULT_ERR_NAME;
+}
+
+#undef CONFIG_FN_ERR
+
 #define KEYBIND_ERR(VARIANT) \
 	VARIANT(Keybind_OK) \
 	VARIANT(Keybind_NOT_FOUND) /* A binding was not found for the provided key */ \
