@@ -2,6 +2,7 @@
 #include "config/functions.h"
 #include "error.h"
 #include "util/strtokn.h"
+#include "util/compat/string_win32.h"
 
 #include <stdio.h>
 #include <string.h>

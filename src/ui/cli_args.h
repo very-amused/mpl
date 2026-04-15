@@ -8,7 +8,7 @@ typedef struct Args {
 } Args;
 
 // Global CLI args object
-extern struct Args args;
+extern struct Args cli_args;
 
 // Initialize CLI args default values (called by args_parse)
 void args_init();

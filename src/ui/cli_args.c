@@ -2,10 +2,10 @@
 
 #include <string.h>
 
-struct Args args;
+struct Args cli_args;
 
 void args_init() {
-	args.verbosity = Verbosity_NORMAL;
+	cli_args.verbosity = Verbosity_NORMAL;
 }
 
 void args_parse(const int argc, const char **argv) {
@@ -21,7 +21,7 @@ void args_parse(const int argc, const char **argv) {
 
 		switch (arg[1]) {
 		case 'v':
-			args.verbosity = arg_len > 2 ? Verbosity_DEBUG : Verbosity_VERBOSE;
+			cli_args.verbosity = arg_len > 2 ? Verbosity_DEBUG : Verbosity_VERBOSE;
 			break;
 		// Respect `--` delimiter to stop parsing CLI args
 		case '-':

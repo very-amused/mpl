@@ -23,7 +23,7 @@ int main(int argc, const char **argv) {
 	}
 	args_parse(argc, argv);
 	configure_av_log(); // Configure libav logging
-	LOG(Verbosity_VERBOSE, "Logging enabled: %s\n", Verbosity_name(args.verbosity));
+	LOG(Verbosity_VERBOSE, "Logging enabled: %s\n", Verbosity_name(cli_args.verbosity));
 
 	// Parse mpl.conf
 	Config config;

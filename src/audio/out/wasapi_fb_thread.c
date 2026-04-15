@@ -1,3 +1,4 @@
+#include "util/log.h"
 #include <pthread.h>
 #include <stdatomic.h>
 #include <stddef.h>
@@ -17,7 +18,7 @@
 #include <handleapi.h>
 
 #include "wasapi_fb_thread.h"
-#include "util/log.h"
+#include "error.h"
 
 struct WASAPI_fbThread {
 	pthread_t *thread;
