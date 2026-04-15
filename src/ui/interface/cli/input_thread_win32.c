@@ -11,12 +11,10 @@
 #include <synchapi.h>
 #include <consoleapi2.h>
 
-// FIXME: we need to soft exit. InputThread_loop is hanging forever since it never hits a recognized async-safe cancellation point
-
 // NOTE: We can't poll on win32, so we rely on pthread_cancel instead
 #include "error.h"
 #include "input_thread.h"
-#include "event_queue.h"
+#include "ui/event_queue.h"
 #include "ui/event.h"
 #include "util/log.h"
 

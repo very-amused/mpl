@@ -4,7 +4,7 @@
 #include "track_queue/queue.h"
 #include "ui/event.h"
 #include "ui/event_queue.h"
-#include "ui/input_thread.h"
+#include "cli/input_thread.h"
 #include "ui/timecode.h"
 #include "util/log.h"
 #include <string.h>

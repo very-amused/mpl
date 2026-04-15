@@ -10,7 +10,7 @@
 #include <sys/poll.h>
 
 #include "input_thread.h"
-#include "event_queue.h"
+#include "ui/event_queue.h"
 #include "ui/event.h"
 #include "util/log.h"
 
