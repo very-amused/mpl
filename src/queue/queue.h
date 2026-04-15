@@ -6,6 +6,7 @@
 #include "state.h"
 #include "track.h"
 #include "buffer_thread.h"
+#include "ui/event_queue.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -20,7 +21,9 @@ typedef struct Queue {
 
 	AudioBackend *backend;
 	BufferThread *buffer_thread;
+	EventSubQueue *evt_sq;
 
+	// TODO: remove
 	enum Queue_PLAYBACK_STATE playback_state;
 
 	// User settings
@@ -29,7 +32,7 @@ typedef struct Queue {
 
 
 // Initialize an empty queue.
-int Queue_init(Queue *q, const Settings *settings);
+int Queue_init(Queue *q, const Settings *settings, EventQueue *eq);
 // Deinitialize a queue and disconnect audio output.
 void Queue_deinit(Queue *q);
 

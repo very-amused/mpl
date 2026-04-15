@@ -52,7 +52,7 @@ int main(int argc, const char **argv) {
 
 	// Initialize track queue
 	Queue queue;
-	int queue_err = Queue_init(&queue, &config.settings);
+	int queue_err = Queue_init(&queue, &config.settings, ui->evt_queue);
 	if (queue_err != 0) {
 		LOG(Verbosity_NORMAL, "Failed to initialize track queue, exiting\n");
 		ret = 1;

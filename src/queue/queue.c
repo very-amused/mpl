@@ -9,6 +9,8 @@
 #include "state.h"
 #include "track.h"
 #include "error.h"
+#include "ui/event.h"
+#include "ui/event_queue.h"
 #include "util/log.h"
 
 #include <pthread.h>
@@ -22,13 +24,15 @@ struct QueueNode {
 };
 
 // Initialize an empty queue
-int Queue_init(Queue *q, const Settings *settings) {
+int Queue_init(Queue *q, const Settings *settings, EventQueue *eq) {
 	q->head = malloc(sizeof(QueueNode));
 	q->head->prev = q->head->next = q->head;
 	q->cur = q->tail = q->head;
 
 	// Don't automatically connect to any backend, in case the user wants to choose a specific backend
 	q->backend = NULL;
+	// We do automatically connect this however
+	q->evt_sq = EventQueue_connect(eq, 5);
 
 	// Initialize state enums
 	q->playback_state = Queue_STOPPED;
@@ -237,6 +241,15 @@ static int Queue_seek_inner(Queue *q, int32_t offset, enum AudioSeek from, Audio
 	}
 	// Apply seek with audio backend
 	AudioBackend_seek(q->backend);
+
+	// Send updated timecode to main thread
+	// (this is needed so seeks when paused are visible)
+	Event evt = {
+		.event_type = mpl_TIMECODE,
+		.body_size = sizeof(EventBody_Timecode),
+		.body_inline = cur_audio->buffer->n_read / cur_audio->buffer->frame_size
+	};
+	EventSubQueue_send(q->evt_sq, &evt, false);
 
 	return 0;
 }
