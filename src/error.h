@@ -136,7 +136,8 @@ static inline const char *Verbosity_name(enum Verbosity lvl) {
 	VARIANT(Keybind_INVALID_FN) /* A function was called that doesn't exist */ \
 	VARIANT(Keybind_INVALID_ARG) /* An invalid argument was provided in the binding definition */ \
 	VARIANT(Keybind_BINDING_CONFLICT) /* A key that was already bound cannot be bound again without explicitly rebinding it */ \
-	VARIANT(Keybind_NON_ASCII) /* Non-ASCII codepoint provided when MPL was built with the 'ascii_keybinds' feature */
+	VARIANT(Keybind_NON_ASCII) /* Non-ASCII codepoint provided when MPL was built with the 'ascii_keybinds' feature */ \
+	VARIANT(Keybind_BAD_ALLOC)
 
 // Errors returned by a KeybindMap_* method
 enum Keybind_ERR {
@@ -191,3 +192,5 @@ static inline const char *UserInterface_ERR_name(enum UserInterface_ERR err) {
 }
 
 #undef USERINTERFACE_ERR
+
+#define CHECK_ALLOC(var, err) if (!var) return err

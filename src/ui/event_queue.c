@@ -42,9 +42,7 @@ bool EventSubQueue_recv(EventSubQueue *sq, Event *evt);
 
 EventQueue *EventQueue_new() {
 	EventQueue *eq = malloc(sizeof(EventQueue));
-	if (!eq) {
-		return NULL;
-	}
+	CHECK_ALLOC(eq, NULL);
 	memset(eq, 0, sizeof(EventQueue));
 
 	// initialize subqueues array
@@ -52,6 +50,10 @@ EventQueue *EventQueue_new() {
 	static const size_t N_AUX_THREADS = 4;
 	eq->subqueues_cap =	N_AUX_THREADS;
 	eq->subqueues = malloc(eq->subqueues_cap * sizeof(EventSubQueue *));
+	if (!eq->subqueues) {
+		free(eq);
+		return NULL;
+	}
 
 
 	// Initialize main write semaphore
@@ -75,9 +77,7 @@ void EventQueue_free(EventQueue *eq) {
 EventSubQueue *EventQueue_connect(EventQueue *eq, size_t sq_size) {
 	// Create new subqueue
 	EventSubQueue *sq = malloc(sizeof(EventSubQueue));
-	if (!sq) {
-		return NULL;
-	}
+	CHECK_ALLOC(sq, NULL);
 	if (EventSubQueue_init(sq, sq_size, &eq->main_wr_sem) != 0) {
 		free(sq);
 		return NULL;
@@ -128,9 +128,7 @@ int EventSubQueue_init(EventSubQueue *sq, size_t n_events_size, sem_t *main_wr_s
 
 	sq->n_events_size = n_events_size;
 	sq->data = malloc((n_events_size + 1) * sizeof(Event));
-	if (!sq->data) {
-		return 1;
-	}
+	CHECK_ALLOC(sq->data, 1);
 	sq->rd = 0;
 	sq->wr = 0;
 

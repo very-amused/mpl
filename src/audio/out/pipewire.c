@@ -208,6 +208,10 @@ static enum AudioBackend_ERR prepare(void *ctx__, AudioTrack *tr) {
 		.state_changed = pw_stream_state_cb_,
 		.drained = pw_stream_drained_cb_};
 	ctx->stream_evt_handle = malloc(sizeof(struct spa_hook));
+	if (!ctx->stream_evt_handle) {
+		pw_thread_loop_unlock(ctx->loop);
+		return AudioBackend_BAD_ALLOC;
+	}
 	pw_stream_add_listener(ctx->stream, ctx->stream_evt_handle, &STREAM_EVENTS, ctx);
 
 	/* Configure stream params

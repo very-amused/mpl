@@ -67,6 +67,7 @@ static enum Keybind_ERR argparse_seekArgs(KeybindFn *fn, StrtoknState *parse_sta
 		return Keybind_SYNTAX_ERR;
 	}
 	struct seekArgs *args = malloc(sizeof(struct seekArgs));
+	CHECK_ALLOC(args, Keybind_BAD_ALLOC);
 	char arg_str[parse_state->tok_len + 1];
 	strncpy(arg_str, &parse_state->s[parse_state->offset], parse_state->tok_len);
 	arg_str[parse_state->tok_len] = '\0';
@@ -152,12 +153,13 @@ enum Keybind_ERR KeybindFnArray_parse(KeybindFnArray *arr, StrtoknState *parse_s
 
 	// Allocate and zero array
 	arr->fns = malloc(arr->n * sizeof(KeybindFn *));
+	CHECK_ALLOC(arr->fns, Keybind_BAD_ALLOC);
 	memset(arr->fns, 0, arr->n * sizeof(KeybindFn *));
-	// TODO: we've gotten pretty bad about checking malloc's, a whole-codebase QC for allocation error handling is needed down the road
 
 	// Parse each KeybindFn
 	for (size_t i = 0; i < arr->n; i++) {
 		arr->fns[i] = malloc(sizeof(KeybindFn));
+		CHECK_ALLOC(arr->fns[i], Keybind_BAD_ALLOC);
 		enum Keybind_ERR err = KeybindFn_parse(arr->fns[i], parse_state);
 		if (err != Keybind_OK) {
 			return err;

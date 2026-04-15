@@ -10,12 +10,7 @@
 enum AudioBackend_ERR AudioBackend_init(AudioBackend *ab, EventQueue *eq, const Settings *settings) {
 	// Allocate and zero ctx
 	ab->ctx = malloc(ab->ctx_size);
-	if (ab->ctx == NULL) {
-		fprintf(stderr, "Error: failed to allocate audio backend context.\n");
-		return 1;
-	}
-	// Zeroing ctx allows us to always recover an error state using ab->deinit,
-	// including error states occuring at any point in ab->init
+	CHECK_ALLOC(ab->ctx, AudioBackend_BAD_ALLOC);
 	memset(ab->ctx, 0, ab->ctx_size);
 
 	return ab->init(ab->ctx, eq, settings);

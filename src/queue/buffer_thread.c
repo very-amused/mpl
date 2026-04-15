@@ -31,6 +31,7 @@ static void BufferThread_wake(void *ud) {
 
 BufferThread *BufferThread_new() {
 	BufferThread *thr = malloc(sizeof(BufferThread));
+	CHECK_ALLOC(thr, NULL);
 	memset(thr, 0, sizeof(BufferThread));
 	
 	ThreadRC_AntiDeadlock anti_deadlock = {
@@ -99,6 +100,7 @@ int BufferThread_start(BufferThread *thr, AudioTrack *track) {
 
 	// Start buffering
 	thr->thread = malloc(sizeof(pthread_t));
+	CHECK_ALLOC(thr->thread, 1);
 	return pthread_create(thr->thread, NULL, BufferThread_routine, thr);
 }
 

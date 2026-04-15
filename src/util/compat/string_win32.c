@@ -1,4 +1,5 @@
 #include "string_win32.h"
+#include "error.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,6 +7,7 @@
 
 char *strndup(const char *s, const size_t n) {
     char *copy = malloc((n + 1) + sizeof(char));
+		CHECK_ALLOC(copy, NULL);
 
     for (size_t i = 0; i < n; i++) {
         copy[i] = s[i];

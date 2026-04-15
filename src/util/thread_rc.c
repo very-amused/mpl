@@ -41,6 +41,7 @@ struct ThreadRC {
 
 ThreadRC *ThreadRC_new(ThreadRC_AntiDeadlock anti_deadlock, void *userdata) {
 	ThreadRC *rc = malloc(sizeof(ThreadRC));
+	CHECK_ALLOC(rc, NULL);
 	memset(rc, 0, sizeof(ThreadRC));
 
 	ThreadRC_Switches_init(&rc->sw);

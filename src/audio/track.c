@@ -105,7 +105,8 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url, AudioBackend
 
 	// Allocate playback buffer
 	t->buffer = malloc(sizeof(AudioBuffer));
-	if (t->buffer == NULL || AudioBuffer_init(t->buffer, &t->buf_pcm, t->settings) != 0) {
+	CHECK_ALLOC(t->buffer, AudioTrack_BAD_ALLOC);
+	if (AudioBuffer_init(t->buffer, &t->buf_pcm, t->settings) != 0) {
 		return AudioTrack_BUFFER_ERR;
 	}
 
@@ -320,6 +321,7 @@ enum AudioTrack_ERR AudioTrack_buffer_packet(AudioTrack *t, size_t *n_bytes) {
 		if (is_planar) {
 			// Interleave samples
 			av_fast_malloc(&interleave_buf, &interleave_buf_size, frame_size);
+			CHECK_ALLOC(interleave_buf, AudioTrack_BAD_ALLOC);
 
 			size_t interleave_idx = 0;
 			for (size_t samp = 0; samp < frame->nb_samples; samp++) {

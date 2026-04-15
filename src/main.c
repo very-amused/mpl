@@ -48,6 +48,7 @@ int main(int argc, const char **argv) {
 	static const size_t LIBAV_PROTO_FILE_LEN = sizeof(LIBAV_PROTO_FILE);
 	const size_t url_len = LIBAV_PROTO_FILE_LEN + strlen(file);
 	char *url = malloc((url_len + 1) * sizeof(char));
+	if (!url) goto deinit_config;
 	snprintf(url, url_len, "%s%s", LIBAV_PROTO_FILE, file);
 
 	// Initialize track queue

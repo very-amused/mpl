@@ -15,9 +15,7 @@ enum UserInterface_ERR UserInterface_init(UserInterface *ui, const Settings *set
 	// Allocate UI context
 	if (ui->ctx_size) {
 		ui->ctx = malloc(ui->ctx_size);
-		if (!ui->ctx) {
-			return UserInterface_BAD_ALLOC;
-		}
+		CHECK_ALLOC(ui->ctx, UserInterface_BAD_ALLOC);
 	}
 
 	return ui->init(ui->ctx, ui->evt_queue, settings);

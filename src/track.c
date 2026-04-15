@@ -8,6 +8,7 @@
 
 Track *Track_new(const char *url, const size_t url_len) {
 	Track *t = malloc(sizeof(Track));
+	CHECK_ALLOC(t, NULL);
 	t->url_len = url_len;
 	t->url = strndup(url, url_len);
 

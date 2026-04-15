@@ -1,4 +1,5 @@
 #include "path.h"
+#include "error.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -23,6 +24,7 @@ int path_join(char **dst, size_t *dst_len,
 
 	// Pass 2: write the joined path itself
 	*dst = malloc((*dst_len + 1) * sizeof(char));
+	CHECK_ALLOC(*dst, 1);
 	size_t n = 0;
 	for (size_t i = 0; i < n_subpaths; i++) {
 		strncpy(&(*dst)[n], subpaths[i], subpath_lens[i]);

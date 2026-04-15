@@ -33,9 +33,7 @@ struct WASAPI_fbThread {
 
 WASAPI_fbThread *WASAPI_fbThread_new() {
 	WASAPI_fbThread *thr = malloc(sizeof(WASAPI_fbThread));
-	if (!thr) {
-		return NULL;
-	}
+	CHECK_ALLOC(thr, NULL);
 	memset(thr, 0, sizeof(*thr));
 
 	// Initialize events
@@ -121,5 +119,6 @@ static void *WASAPI_fbThread_routine(void *args) {
 
 int WASAPI_fbThread_start(WASAPI_fbThread *thr) {
 	thr->thread = malloc(sizeof(pthread_t));
+	CHECK_ALLOC(thr->thread, 1);
 	return pthread_create(thr->thread, NULL, WASAPI_fbThread_routine, thr);
 }

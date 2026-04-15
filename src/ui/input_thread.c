@@ -86,6 +86,7 @@ cancel:
 
 InputThread *InputThread_new(EventQueue *eq) {
 	InputThread *thr = malloc(sizeof(InputThread));
+	CHECK_ALLOC(thr, NULL);
 	thr->evt_sq = EventQueue_connect(eq, 100);
 	if (!thr->evt_sq) {
 		free(thr);

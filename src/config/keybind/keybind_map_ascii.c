@@ -18,6 +18,7 @@ struct KeybindMap {
 
 KeybindMap *KeybindMap_new() {
 	KeybindMap *keybinds = malloc(sizeof(KeybindMap));
+	CHECK_ALLOC(keybinds, NULL);
 	memset(keybinds->map, 0, sizeof(KeybindMap));
 	return keybinds;
 }
@@ -74,6 +75,7 @@ enum Keybind_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *line
 	
 	// {function}({args}...); {function2}({args2}...)
 	KeybindFnArray *fn_arr = malloc(sizeof(KeybindFnArray));
+	CHECK_ALLOC(fn_arr, Keybind_BAD_ALLOC);
 	enum Keybind_ERR status = KeybindFnArray_parse(fn_arr, &parse_state);
 	if (status != Keybind_OK) {
 		KeybindFnArray_deinit(fn_arr);

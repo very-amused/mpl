@@ -26,6 +26,7 @@ struct QueueNode {
 // Initialize an empty queue
 int Queue_init(Queue *q, const Settings *settings, EventQueue *eq) {
 	q->head = malloc(sizeof(QueueNode));
+	CHECK_ALLOC(q->head, 1);
 	q->head->prev = q->head->next = q->head;
 	q->cur = q->tail = q->head;
 
@@ -79,6 +80,7 @@ const Track *Queue_next_track(const Queue *q) {
 int Queue_append(Queue *q, Track *t) {
 	// Wrap the track in a QueueNode
 	QueueNode *node = malloc(sizeof(QueueNode));
+	CHECK_ALLOC(node, 1);
 	node->track = t; // This takes ownership of *t
 
 	// Position node between tail and head
@@ -96,6 +98,7 @@ int Queue_append(Queue *q, Track *t) {
 }
 int Queue_prepend(Queue *q, Track *t) {
 	QueueNode *node = malloc(sizeof(QueueNode));
+	CHECK_ALLOC(node, 1);
 	node->track = t;
 
 	// Position node between head and first track
@@ -113,6 +116,7 @@ int Queue_prepend(Queue *q, Track *t) {
 }
 int Queue_insert(Queue *q, Track *t, bool before) {
 	QueueNode *node = malloc(sizeof(QueueNode));
+	CHECK_ALLOC(node, 1);
 	node->track = t;
 
 	if (before) {
@@ -159,6 +163,7 @@ int Queue_select(Queue *q, QueueNode *node) {
 	// Initialize track audio if needed
 	if (!node->track->audio) {
 		node->track->audio = malloc(sizeof(AudioTrack));
+		CHECK_ALLOC(node->track->audio, 1);
 		enum AudioTrack_ERR at_err = AudioTrack_init(node->track->audio, node->track->url, q->backend, q->settings);
 		if (at_err != AudioTrack_OK) {
 			fprintf(stderr, "Failed to initialize AudioTrack for track %s: %s\n", node->track->url, AudioTrack_ERR_name(at_err));

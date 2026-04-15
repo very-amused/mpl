@@ -29,9 +29,7 @@ int AudioBuffer_init(AudioBuffer *buf, const AudioPCM *pcm, const Settings *sett
 	// NOTE: we zero this so an accidental read of unintialized data is silent,
 	// instead of loud and often surprising white noise
 	buf->data = av_mallocz(buf->size);
-	if (!buf->data) {
-		return 1;
-	}
+	CHECK_ALLOC(buf->data, 1);
 	buf->rd = 0;
 	buf->wr = 0;
 	buf->n_read = 0;
