@@ -11,6 +11,19 @@ MPL is in AGGRESSIVE BUG HUNTING MODE for v0.4.5+ until we hit v0.5.0!
 ### v0.5.0
 The next major release in terms of new features will be v0.5.0.
 
+## [0.4.8]
+### Added
+- show_metadata() keybind function
+- default keybind m = show_metadata()
+
+### Fixed
+- Seeks now immediately update the timecode displayed, including when playback is paused
+
+### Internal
+- Wrote a UserInterface API similar to the AudioBackend API
+- Each UserInterface provides ini, deinit, and a mainloop in which it handles events
+- MPL now has the groundwork for additional UI's in the near future
+
 ## [0.4.7]
 ### Fixed
 - Rewrote and vastly improved thread control for BufferThread
