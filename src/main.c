@@ -72,7 +72,7 @@ int main(int argc, const char **argv) {
 	}
 
 	// Initialize configState so keybinds work
-	configState_init(&queue, ui->ctrl, ui->evt_queue);
+	configState_init(&queue, ui->evt_queue);
 
 	ui_err = UserInterface_mainloop(ui, &queue, &config);
 	if (ui_err != UserInterface_OK) {

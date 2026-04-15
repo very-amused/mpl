@@ -1,6 +1,7 @@
 #include "config/keybind/keybind_map.h"
 #include "error.h"
 #include "interface.h"
+#include "queue/queue.h"
 #include "ui/event.h"
 #include "ui/event_queue.h"
 #include "ui/input_thread.h"
@@ -11,9 +12,6 @@
 // CLI context
 typedef struct Ctx {
 	InputThread *input_thread;	
-	const Settings *settings;
-	const Track *cur_track;
-	EventBody_Timecode track_pos;
 } Ctx;
 
 // UserInterface methods
@@ -22,16 +20,9 @@ static void deinit(void *ud);
 static enum UserInterface_ERR mainloop(void *ud, EventQueue *evt_queue,
 		Queue *track_queue, Config *config);
 
-// UI_Control methods
-static enum UserInterface_ERR refresh_timecode(void *ud);
-static enum UserInterface_ERR refresh_metadata(void *ud);
-//static enum UserInterface_ERR show_config(void *ud);
-
-static UI_Control ctrl = {0};
 
 UserInterface UI_CommandLine = {
 	.name = "Command Line Interface",
-	.ctrl = &ctrl,
 
 	.evt_queue = NULL,
 
@@ -51,11 +42,6 @@ static enum UserInterface_ERR init(void *ud, EventQueue *evt_queue, const Settin
 	if (!ctx->input_thread) {
 		return UserInterface_BAD_ALLOC;
 	}
-	ctx->settings = settings;
-
-	// Register UI control methods
-	ctrl.refresh_timecode = refresh_timecode;
-	ctrl.refresh_metadata = refresh_metadata;
 
 	return UserInterface_OK;
 }
@@ -70,15 +56,18 @@ static void deinit(void *ud) {
 
 /* Mainloop for CLI */
 
-static enum UserInterface_ERR mainloop(void *ud, EventQueue *evt_queue,
-		Queue *track_queue, Config *config) {
-	Ctx *ctx = ud;
+// Print track timecode and duration
+static void refresh_timecode(EventBody_Timecode timecode, const AudioTrack *audio, const Settings *settings);
+// Print track metadata
+static void refresh_metadata(const TrackMeta *meta);
+
+static enum UserInterface_ERR mainloop(void * _,
+		EventQueue *evt_queue, Queue *track_queue, Config *config) {
 
 	// Handle if there's a track loaded in the queue
 	const Track *track = Queue_cur_track(track_queue);
 	if (track) {
-		ctx->cur_track = track;
-		refresh_metadata(ctx);
+		refresh_metadata(&track->meta);
 		Queue_play(track_queue, 0);
 	}
 
@@ -103,8 +92,14 @@ static enum UserInterface_ERR mainloop(void *ud, EventQueue *evt_queue,
 
 		case mpl_TIMECODE:
 		{
-			ctx->track_pos = evt.body_inline;
-			refresh_timecode(ctx);
+			refresh_timecode(evt.body_inline, Queue_cur_track(track_queue)->audio, &config->settings);
+			break;
+		}
+	
+		case mpl_TRACK_META:
+		{
+			refresh_metadata(evt.body);
+			free(evt.body);
 			break;
 		}
 
@@ -114,7 +109,6 @@ static enum UserInterface_ERR mainloop(void *ud, EventQueue *evt_queue,
 			if (!next) {
 				return 0;
 			}
-			ctx->cur_track = next;
 			// TODO: implement track switching
 			// (we need a mpl_TRACK_BUFFERED event to initiate prebuffering of the next track in the queue)
 		}
@@ -127,54 +121,36 @@ static enum UserInterface_ERR mainloop(void *ud, EventQueue *evt_queue,
 	return UserInterface_EVENT_QUEUE_EOF;
 }
 
-/* UI_Control methods */
-
-static enum UserInterface_ERR refresh_timecode(void *ud) {
-	Ctx *ctx = ud;
-	const Track *track = ctx->cur_track;
-	if (!track) {
-		return UserInterface_NO_TRACK;
-	}
-
-	const AudioPCM pcm = ctx->cur_track->audio->buf_pcm;
-	const bool show_ms = ctx->settings->ui_timecode_ms;
+static void refresh_timecode(EventBody_Timecode timecode,
+		const AudioTrack *audio, const Settings *settings) {
+	const AudioPCM pcm = audio->buf_pcm;
+	const bool show_ms = settings->ui_timecode_ms;
 
 	static char timecode_buf[255];
 	static char duration_buf[255];
-	fmt_timecode(timecode_buf, sizeof(timecode_buf), ctx->track_pos, &pcm, show_ms);
-	fmt_timecode(duration_buf, sizeof(duration_buf), ctx->cur_track->audio->duration_timecode, &pcm, show_ms);
+	fmt_timecode(timecode_buf, sizeof(timecode_buf), timecode, &pcm, show_ms);
+	fmt_timecode(duration_buf, sizeof(duration_buf), audio->duration_timecode, &pcm, show_ms);
 
 	static const char CLEAR_LINE_VT100[] = "\033[2K\r";
 	fprintf(stderr, CLEAR_LINE_VT100);
 	fprintf(stderr, "%s/%s", timecode_buf, duration_buf);
-
-	return UserInterface_OK;
 }
 
-static enum UserInterface_ERR refresh_metadata(void *ud) {
-	Ctx *ctx = ud;
-	const Track *track = ctx->cur_track;
-	if (!track) {
-		fprintf(stderr, "YUH\n");
-		return UserInterface_NO_TRACK;
-	}
-
+static void refresh_metadata(const TrackMeta *meta) {
 	// Display track metadata
 	static const char TERM_BOLD[] = "\x1b[1m";
 	static const char TERM_ITAL[] = "\x1b[3m";
 	static const char TERM_RESET[] = "\x1b[0m";
-	if (track->meta.artist) {
+	if (meta->artist) {
 		fprintf(stderr, "%sArtist:%s %s%s%s\n", TERM_BOLD, TERM_RESET,
-				TERM_ITAL, track->meta.artist, TERM_RESET);
+				TERM_ITAL, meta->artist, TERM_RESET);
 	}
-	if (track->meta.name) {
+	if (meta->name) {
 		fprintf(stderr, "%sTitle:%s %s%s%s\n", TERM_BOLD, TERM_RESET,
-				TERM_ITAL, track->meta.name, TERM_RESET);
+				TERM_ITAL, meta->name, TERM_RESET);
 	}
-	if (track->meta.album) {
+	if (meta->album) {
 		fprintf(stderr, "%sAlbum:%s %s%s%s\n", TERM_BOLD, TERM_RESET,
-				TERM_ITAL, track->meta.album, TERM_RESET);
+				TERM_ITAL, meta->album, TERM_RESET);
 	}
-
-	return UserInterface_OK;
 }

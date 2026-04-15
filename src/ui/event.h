@@ -1,5 +1,6 @@
 #pragma once
 #include "error.h"
+#include "track_meta.h"
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -8,6 +9,7 @@
 #define MPL_EVENT_ENUM(VARIANT) \
 	VARIANT(mpl_KEYPRESS) \
 	VARIANT(mpl_TIMECODE) \
+	VARIANT(mpl_TRACK_META) \
 	VARIANT(mpl_TRACK_END) \
 	VARIANT(mpl_QUIT)
 
@@ -37,3 +39,6 @@ typedef char EventBody_Keypress;
 // The number of audio frames that have been played in the current track.
 // Divide by the track's PCM->sample_rate to get the timecode in seconds.
 typedef uint64_t EventBody_Timecode;
+
+// Track metadata to render
+typedef TrackMeta EventBody_TrackMeta;

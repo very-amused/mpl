@@ -7,16 +7,14 @@
 #include "queue/state.h"
 #include "ui/event.h"
 #include "ui/event_queue.h"
-#include "ui/interface/interface.h"
 
 
 /* Bindable functions */
 
 static struct configState config_state;
 
-void configState_init(Queue *track_queue, const UI_Control *ui_ctrl, EventQueue *evt_queue) {
+void configState_init(Queue *track_queue, EventQueue *evt_queue) {
 	config_state.queue = track_queue;
-	config_state.ui_ctrl = ui_ctrl;
 	config_state.evt_sq = EventQueue_connect(evt_queue, 5);
 }
 
@@ -39,6 +37,23 @@ void seek(const struct seekArgs *args) {
 
 void seek_snap(const struct seekArgs *args) {
 	Queue_seek_snap(config_state.queue, args->ms);
+}
+
+void show_metadata(void * _) {
+	// Get current track
+	const Track *tr = Queue_cur_track(config_state.queue);
+	if (!tr) {
+		return;
+	}
+	// Package TrackMeta as event
+	Event evt = {
+		.event_type = mpl_TRACK_META,
+		.body_size = sizeof(TrackMeta),
+		.body = malloc(sizeof(EventBody_TrackMeta))
+	};
+	memcpy(evt.body, &tr->meta, sizeof(EventBody_TrackMeta));
+	// Send it
+	EventSubQueue_send(config_state.evt_sq, &evt, false);
 }
 
 /* Macro functions */

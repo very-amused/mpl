@@ -21,6 +21,8 @@ enum KeybindFnID KeybindFnID_from_ident(const char *ident) {
 			return kbfn_seek;
 		} else if (strcmp(ident, "seek_snap") == 0) {
 			return kbfn_seek_snap;
+		} else if (strcmp(ident, "show_metadata") == 0) {
+			return kbfn_show_metadata;
 		}
 		break;
 	case 'q':
@@ -43,6 +45,8 @@ KeybindFnRoutine KeybindFnID_get_fn(const enum KeybindFnID fn_id) {
 		return (KeybindFnRoutine)seek;
 	case kbfn_seek_snap:
 		return (KeybindFnRoutine)seek_snap;
+	case kbfn_show_metadata:
+		return (KeybindFnRoutine)show_metadata;
 	}
 	return NULL;
 }
@@ -84,6 +88,7 @@ static enum Keybind_ERR KeybindFn_parse_args(KeybindFn *fn, StrtoknState *parse_
 	switch (fn->id) {
 		case kbfn_play_toggle:
 		case kbfn_quit:
+		case kbfn_show_metadata:
 			return argparse_noArgs(fn, parse_state);
 		case kbfn_seek:
 		case kbfn_seek_snap:
@@ -104,9 +109,7 @@ enum Keybind_ERR KeybindFn_parse(KeybindFn *fn, StrtoknState *parse_state) {
 	if (strtokn(parse_state, "(") == -1) {
 		return Keybind_SYNTAX_ERR;
 	}
-	fn->ident = malloc((parse_state->tok_len + 1) * sizeof(char));
-	strncpy(fn->ident, &parse_state->s[parse_state->offset], parse_state->tok_len);
-	fn->ident[parse_state->tok_len] = '\0';
+	fn->ident = strndup(&parse_state->s[parse_state->offset], parse_state->tok_len);
 
 	// Get function ID
 	fn->id = KeybindFnID_from_ident(fn->ident);

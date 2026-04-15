@@ -15,6 +15,7 @@ void Settings_init(Settings *opts) {
 
 void Settings_deinit(Settings *opts) {
 	free(opts->audio_backend);
+	free(opts->user_interface);
 }
 
 enum Settings_ERR Settings_parse_setting(Settings *opts, const char *line) {

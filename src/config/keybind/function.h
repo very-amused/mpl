@@ -6,7 +6,8 @@
 	VARIANT(kbfn_play_toggle) \
 	VARIANT(kbfn_quit) \
 	VARIANT(kbfn_seek) \
-	VARIANT(kbfn_seek_snap)
+	VARIANT(kbfn_seek_snap) \
+	VARIANT(kbfn_show_metadata)
 
 // We can't switch on function pointers,
 // so we'll switch on an enum instead.
