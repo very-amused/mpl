@@ -1,7 +1,7 @@
 #include "config/keybind/keybind_map.h"
 #include "error.h"
 #include "interface.h"
-#include "queue/queue.h"
+#include "track_queue/queue.h"
 #include "ui/event.h"
 #include "ui/event_queue.h"
 #include "ui/input_thread.h"

@@ -1,7 +1,7 @@
 #include "config/config.h"
 #include "config/internal/state.h"
 #include "error.h"
-#include "queue/queue.h"
+#include "track_queue/queue.h"
 #include "track.h"
 #include "ui/cli_args.h"
 #include "util/log.h"

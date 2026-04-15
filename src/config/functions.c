@@ -3,8 +3,8 @@
 #include "config.h"
 #include "config/internal/parse.h"
 #include "config/internal/state.h"
-#include "queue/queue.h"
-#include "queue/state.h"
+#include "track_queue/queue.h"
+#include "track_queue/state.h"
 #include "ui/event.h"
 #include "ui/event_queue.h"
 

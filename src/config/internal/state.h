@@ -1,8 +1,7 @@
 #pragma once
 #include "config/config.h"
-#include "queue/queue.h"
+#include "track_queue/queue.h"
 #include "ui/event_queue.h"
-#include "ui/interface/interface.h"
 
 // State passed to MPL's bindable functions
 struct configState {
