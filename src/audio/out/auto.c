@@ -13,7 +13,7 @@ AudioBackend *AB_Configured(const Settings *settings) {
 		return def;
 	}
 
-	static const char ERR_UNSUPPORTED[] = "audio_backend '%s' is unsupported on this build, falling back to default (%s)\n";
+	static const char ERR_UNSUPPORTED[] = "audio_backend '%s' is unsupported on this build, falling back to default (%s)\n"; // IWYU pragma: keep
 
 	if (strcmp(settings->audio_backend, "pulseaudio") == 0) {
 #if defined(AO_PULSEAUDIO)
