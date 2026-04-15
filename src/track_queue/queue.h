@@ -11,13 +11,13 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-typedef struct QueueNode QueueNode;
+typedef struct TrackQueueNode TrackQueueNode;
 
 // A queue performing non-blocking track management
-typedef struct Queue {
-	QueueNode *cur; // Currently playing track
-	QueueNode *head; // Top of the queue (sentinel node). head->next is the first actual track (iff head->next != head)
-	QueueNode *tail; // Bottom of the queue (last playable track). tail->next == head
+typedef struct TrackQueue {
+	TrackQueueNode *cur; // Currently playing track
+	TrackQueueNode *head; // Top of the queue (sentinel node). head->next is the first actual track (iff head->next != head)
+	TrackQueueNode *tail; // Bottom of the queue (last playable track). tail->next == head
 
 	AudioBackend *backend;
 	BufferThread *buffer_thread;
@@ -28,44 +28,44 @@ typedef struct Queue {
 
 	// User settings
 	const Settings *settings;
-} Queue;
+} TrackQueue;
 
 
 // Initialize an empty queue.
-int Queue_init(Queue *q, const Settings *settings, EventQueue *eq);
+int TrackQueue_init(TrackQueue *q, const Settings *settings, EventQueue *eq);
 // Deinitialize a queue and disconnect audio output.
-void Queue_deinit(Queue *q);
+void TrackQueue_deinit(TrackQueue *q);
 
 // Connect the queue to the system's audio output.
 // If settings->audio_backend is unset or invalid, uses AB_Default() to choose the default AudioBackend
-enum AudioBackend_ERR Queue_connect_audio(Queue *q, const Settings *settings, EventQueue *eq);
+enum AudioBackend_ERR TrackQueue_connect_audio(TrackQueue *q, const Settings *settings, EventQueue *eq);
 // Disconnect the queue from the system's audio output.
-void Queue_disconnect_audio(Queue *q);
+void TrackQueue_disconnect_audio(TrackQueue *q);
 
 // Get the currently playing track in the queue
-const Track *Queue_cur_track(const Queue *q);
+const Track *TrackQueue_cur_track(const TrackQueue *q);
 // Get the next track queued after the currently playing track
-const Track *Queue_next_track(const Queue *q);
+const Track *TrackQueue_next_track(const TrackQueue *q);
 
 // Clear all tracks in a queue
-int Queue_clear(Queue *q);
+int TrackQueue_clear(TrackQueue *q);
 
 // Append track *t to the end of the queue
-int Queue_append(Queue *q, Track *t);
+int TrackQueue_append(TrackQueue *q, Track *t);
 // Prepend track *t  to the beginning of the queue
 // NOTE: takes ownership of *t
-int Queue_prepend(Queue *q, Track *t);
+int TrackQueue_prepend(TrackQueue *q, Track *t);
 // Insert track *t  either ahead of or before the current track in the queue
 // NOTE: takes ownership of *t
-int Queue_insert(Queue *q, Track *t, bool before);
+int TrackQueue_insert(TrackQueue *q, Track *t, bool before);
 
 // Select a track to be q->cur. Handles playback
-int Queue_select(Queue *q, QueueNode *node);
+int TrackQueue_select(TrackQueue *q, TrackQueueNode *node);
 // Play or pause the currently selected track.
-int	Queue_play(Queue *q, bool pause);
+int	TrackQueue_play(TrackQueue *q, bool pause);
 // Seek within the currently playing track.
 // Handles necessary locks as well as buffer + decoding context updates
-int Queue_seek(Queue *q, int32_t offset_ms, enum AudioSeek from);
+int TrackQueue_seek(TrackQueue *q, int32_t offset_ms, enum AudioSeek from);
 // Seek within the current track, snapping to the nearest multiple of offset_ms.
 // [AudioSeek_Relative] is always used as `from`.
 // Examples:
@@ -77,9 +77,9 @@ int Queue_seek(Queue *q, int32_t offset_ms, enum AudioSeek from);
 //
 // This is basically Queue_seek with better UX
 // WIP
-int Queue_seek_snap(Queue *q, int32_t offset_ms);
+int TrackQueue_seek_snap(TrackQueue *q, int32_t offset_ms);
 
 
 // Get playback state from the queue and its AudioBackend
-enum Queue_PLAYBACK_STATE Queue_get_playback_state(const Queue *q);
+enum Queue_PLAYBACK_STATE Queue_get_playback_state(const TrackQueue *q);
 

@@ -20,7 +20,7 @@ struct UserInterface {
 	// Run the main UI loop. This always runs on the main thread.
 	// This MUST handle events sent on evt_queue
 	enum UserInterface_ERR (*mainloop)(void *ctx, EventQueue *evt_queue,
-			Queue *track_queue, Config *config);
+			TrackQueue *track_queue, Config *config);
 
 	// Private UI-specific context
 	const size_t ctx_size;
@@ -33,4 +33,4 @@ enum UserInterface_ERR UserInterface_init(UserInterface *ui, const Settings *set
 void UserInterface_deinit(UserInterface *ui);
 
 // Run the main UI loop
-enum UserInterface_ERR UserInterface_mainloop(UserInterface *ui, Queue *track_queue, Config *config);
+enum UserInterface_ERR UserInterface_mainloop(UserInterface *ui, TrackQueue *track_queue, Config *config);

@@ -52,21 +52,21 @@ int main(int argc, const char **argv) {
 	snprintf(url, url_len, "%s%s", LIBAV_PROTO_FILE, file);
 
 	// Initialize track queue
-	Queue queue;
-	int queue_err = Queue_init(&queue, &config.settings, ui->evt_queue);
+	TrackQueue queue;
+	int queue_err = TrackQueue_init(&queue, &config.settings, ui->evt_queue);
 	if (queue_err != 0) {
 		LOG(Verbosity_NORMAL, "Failed to initialize track queue, exiting\n");
 		ret = 1;
 		goto deinit_ui;
 	}
 	// Connect audio
-	enum AudioBackend_ERR ab_err = Queue_connect_audio(&queue, &config.settings, ui->evt_queue);
+	enum AudioBackend_ERR ab_err = TrackQueue_connect_audio(&queue, &config.settings, ui->evt_queue);
 	if (ab_err != AudioBackend_OK) {
 		LOG(Verbosity_NORMAL, "Failed to connect AudioBackend: %s\n", AudioBackend_ERR_name(ab_err));
 		ret = 1;
 		goto deinit_queue;
 	}
-	queue_err = Queue_prepend(&queue, Track_new(url, url_len));
+	queue_err = TrackQueue_prepend(&queue, Track_new(url, url_len));
 	if (queue_err != 0) {
 		ret = 1;
 		goto deinit_queue;
@@ -85,7 +85,7 @@ int main(int argc, const char **argv) {
 	// (The UI must outlive everything that can send it events, including the Queue and AudioBackend)
 deinit_queue:
 	LOG(Verbosity_DEBUG, "Deinitializing Queue\n");
-	Queue_deinit(&queue);
+	TrackQueue_deinit(&queue);
 	free(url);
 deinit_ui:
 	LOG(Verbosity_DEBUG, "Deinitializing UI\n");

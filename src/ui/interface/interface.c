@@ -34,7 +34,7 @@ void UserInterface_deinit(UserInterface *ui) {
 	}
 }
 
-enum UserInterface_ERR UserInterface_mainloop(UserInterface *ui, Queue *track_queue, Config *config) {
+enum UserInterface_ERR UserInterface_mainloop(UserInterface *ui, TrackQueue *track_queue, Config *config) {
 	return ui->mainloop(ui->ctx, ui->evt_queue,
 			track_queue, config);
 }

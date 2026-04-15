@@ -18,7 +18,7 @@ typedef struct Ctx {
 static enum UserInterface_ERR init(void *ud, EventQueue *evt_queue, const Settings *settings);
 static void deinit(void *ud);
 static enum UserInterface_ERR mainloop(void *ud, EventQueue *evt_queue,
-		Queue *track_queue, Config *config);
+		TrackQueue *track_queue, Config *config);
 
 
 UserInterface UI_CommandLine = {
@@ -62,13 +62,13 @@ static void refresh_timecode(EventBody_Timecode timecode, const AudioTrack *audi
 static void refresh_metadata(const TrackMeta *meta);
 
 static enum UserInterface_ERR mainloop(void * _,
-		EventQueue *evt_queue, Queue *track_queue, Config *config) {
+		EventQueue *evt_queue, TrackQueue *track_queue, Config *config) {
 
 	// Handle if there's a track loaded in the queue
-	const Track *track = Queue_cur_track(track_queue);
+	const Track *track = TrackQueue_cur_track(track_queue);
 	if (track) {
 		refresh_metadata(&track->meta);
-		Queue_play(track_queue, 0);
+		TrackQueue_play(track_queue, 0);
 	}
 
 	// Handle events on the main thread
@@ -92,7 +92,7 @@ static enum UserInterface_ERR mainloop(void * _,
 
 		case mpl_TIMECODE:
 		{
-			refresh_timecode(evt.body_inline, Queue_cur_track(track_queue)->audio, &config->settings);
+			refresh_timecode(evt.body_inline, TrackQueue_cur_track(track_queue)->audio, &config->settings);
 			break;
 		}
 	
@@ -105,7 +105,7 @@ static enum UserInterface_ERR mainloop(void * _,
 
 		case mpl_TRACK_END:
 		{
-			const Track *next = Queue_next_track(track_queue);
+			const Track *next = TrackQueue_next_track(track_queue);
 			if (!next) {
 				return 0;
 			}

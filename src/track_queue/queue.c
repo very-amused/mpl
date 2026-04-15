@@ -17,15 +17,15 @@
 #include <semaphore.h>
 #include <sys/param.h>
 
-struct QueueNode {
+struct TrackQueueNode {
 	Track *track;
-	QueueNode *prev;
-	QueueNode *next;
+	TrackQueueNode *prev;
+	TrackQueueNode *next;
 };
 
 // Initialize an empty queue
-int Queue_init(Queue *q, const Settings *settings, EventQueue *eq) {
-	q->head = malloc(sizeof(QueueNode));
+int TrackQueue_init(TrackQueue *q, const Settings *settings, EventQueue *eq) {
+	q->head = malloc(sizeof(TrackQueueNode));
 	CHECK_ALLOC(q->head, 1);
 	q->head->prev = q->head->next = q->head;
 	q->cur = q->tail = q->head;
@@ -46,18 +46,18 @@ int Queue_init(Queue *q, const Settings *settings, EventQueue *eq) {
 	return 0;
 }
 // Deinitialize a queue and disconnect audio output.
-void Queue_deinit(Queue *q) {
+void TrackQueue_deinit(TrackQueue *q) {
 	/* NOTE: We have to stop the buffer thread before disconnecting audio,
 	otherwise we have a deadlock b/c AudioTrack_buffer_packet() will hang forever
 	due to the AudioBuffer's read semaphore being dead after audio is disconnected */
 	BufferThread_free(q->buffer_thread);
 	if (q->backend) {
-		Queue_disconnect_audio(q);
+		TrackQueue_disconnect_audio(q);
 	}
-	Queue_clear(q);
+	TrackQueue_clear(q);
 }
 
-enum AudioBackend_ERR Queue_connect_audio(Queue *q, const Settings *settings, EventQueue *eq) {
+enum AudioBackend_ERR TrackQueue_connect_audio(TrackQueue *q, const Settings *settings, EventQueue *eq) {
 	// Set q->backend to a defined AudioBackend
 	q->backend = AB_Configured(settings);
 
@@ -65,21 +65,21 @@ enum AudioBackend_ERR Queue_connect_audio(Queue *q, const Settings *settings, Ev
 	return AudioBackend_init(q->backend, eq, q->settings);
 }
 // Disconnect the queue from the system's audio backend. Frees q->backend
-void Queue_disconnect_audio(Queue *q) {
+void TrackQueue_disconnect_audio(TrackQueue *q) {
 	AudioBackend_deinit(q->backend);
 }
 
 
-const Track *Queue_cur_track(const Queue *q) {
+const Track *TrackQueue_cur_track(const TrackQueue *q) {
 	return q->cur != q->head ? q->cur->track : NULL;
 }
-const Track *Queue_next_track(const Queue *q) {
+const Track *TrackQueue_next_track(const TrackQueue *q) {
 	return q->cur->next != q->head ? q->cur->next->track : NULL;
 }
 
-int Queue_append(Queue *q, Track *t) {
+int TrackQueue_append(TrackQueue *q, Track *t) {
 	// Wrap the track in a QueueNode
-	QueueNode *node = malloc(sizeof(QueueNode));
+	TrackQueueNode *node = malloc(sizeof(TrackQueueNode));
 	CHECK_ALLOC(node, 1);
 	node->track = t; // This takes ownership of *t
 
@@ -92,12 +92,12 @@ int Queue_append(Queue *q, Track *t) {
 	q->tail = node;
 
 	if (q->cur == q->head) {
-		return Queue_select(q, node);
+		return TrackQueue_select(q, node);
 	}
 	return 0;
 }
-int Queue_prepend(Queue *q, Track *t) {
-	QueueNode *node = malloc(sizeof(QueueNode));
+int TrackQueue_prepend(TrackQueue *q, Track *t) {
+	TrackQueueNode *node = malloc(sizeof(TrackQueueNode));
 	CHECK_ALLOC(node, 1);
 	node->track = t;
 
@@ -110,12 +110,12 @@ int Queue_prepend(Queue *q, Track *t) {
 	q->head->next = node;
 
 	if (q->cur == q->head) {
-		return Queue_select(q, node);
+		return TrackQueue_select(q, node);
 	}
 	return 0;
 }
-int Queue_insert(Queue *q, Track *t, bool before) {
-	QueueNode *node = malloc(sizeof(QueueNode));
+int TrackQueue_insert(TrackQueue *q, Track *t, bool before) {
+	TrackQueueNode *node = malloc(sizeof(TrackQueueNode));
 	CHECK_ALLOC(node, 1);
 	node->track = t;
 
@@ -136,16 +136,16 @@ int Queue_insert(Queue *q, Track *t, bool before) {
 	}
 
 	if (q->cur == q->head) {
-		return Queue_select(q, node);
+		return TrackQueue_select(q, node);
 	}
 	return 0;
 }
 
-int Queue_clear(Queue *q) {
-	QueueNode *node = q->head->next;
+int TrackQueue_clear(TrackQueue *q) {
+	TrackQueueNode *node = q->head->next;
 	while (node != q->head) {
 		LOG(Verbosity_VERBOSE, "Freeing track %s\n", node->track->url);
-		QueueNode *const next = node->next;
+		TrackQueueNode *const next = node->next;
 		Track_free(node->track);
 		free(node);
 
@@ -156,7 +156,7 @@ int Queue_clear(Queue *q) {
 	return 0;
 }
 
-int Queue_select(Queue *q, QueueNode *node) {
+int TrackQueue_select(TrackQueue *q, TrackQueueNode *node) {
 	q->cur = node;
 	// FIXME: if the queue is playing we want to enqueue and then skip with the backend. otherwise we do what's below
 
@@ -197,7 +197,7 @@ int Queue_select(Queue *q, QueueNode *node) {
 
 // FIXME: we can do a much better job of synchonizing state between the AudioBackend and BufferThread
 // I'm almost convinced the Queue struct needs a ground-up rewrite, but we'll see
-int Queue_play(Queue *q, bool pause) {
+int TrackQueue_play(TrackQueue *q, bool pause) {
 	int status = AudioBackend_play(q->backend, pause);
 	if (status != 0) {
 		return status;
@@ -230,7 +230,7 @@ int Queue_play(Queue *q, bool pause) {
 // NOTE: This function does NOT release these locks. That is left up to the caller.
 //
 // This is its own function so this logic can be called from both [Queue_seek] and [Queue_seek_snap]
-static int Queue_seek_inner(Queue *q, int32_t offset, enum AudioSeek from, AudioTrack *cur_audio) {
+static int Queue_seek_inner(TrackQueue *q, int32_t offset, enum AudioSeek from, AudioTrack *cur_audio) {
 	if (from != AudioSeek_Relative) {
 		LOG(Verbosity_NORMAL, "Warning: only AudioSeek_Relative is currently supported\n");
 		return 1;
@@ -259,7 +259,7 @@ static int Queue_seek_inner(Queue *q, int32_t offset, enum AudioSeek from, Audio
 	return 0;
 }
 
-int Queue_seek(Queue *q, int32_t offset_ms, enum AudioSeek from) {
+int TrackQueue_seek(TrackQueue *q, int32_t offset_ms, enum AudioSeek from) {
 	AudioTrack *cur_audio = q->cur != q->head ? q->cur->track->audio : NULL;
 	if (!cur_audio) {
 		// TODO: err code
@@ -285,7 +285,7 @@ int Queue_seek(Queue *q, int32_t offset_ms, enum AudioSeek from) {
 }
 
 // WIP
-int Queue_seek_snap(Queue *q, int32_t offset_ms) {
+int TrackQueue_seek_snap(TrackQueue *q, int32_t offset_ms) {
 	
 	AudioTrack *cur_audio = q->cur != q->head ? q->cur->track->audio : NULL;
 	if (!cur_audio) {
@@ -331,6 +331,6 @@ int Queue_seek_snap(Queue *q, int32_t offset_ms) {
 }
 
 // Get playback state from the queue and its AudioBackend
-enum Queue_PLAYBACK_STATE Queue_get_playback_state(const Queue *q) {
+enum Queue_PLAYBACK_STATE Queue_get_playback_state(const TrackQueue *q) {
 	return q->playback_state;
 }
