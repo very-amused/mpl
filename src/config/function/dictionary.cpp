@@ -6,6 +6,8 @@ extern "C" {
 #include <string.h>
 }
 
+#include "register.h"
+
 #include <string>
 #include <unordered_map>
 #include <memory>
@@ -28,7 +30,7 @@ void ConfigFnDict_free(ConfigFnDict *dict) {
 	delete dict;
 }
 
-void ConfigFnDict_define(ConfigFnDict *dict, const char *ident, const bool is_macro,
+void ConfigFnDict_define_old(ConfigFnDict *dict, const char *ident, const bool is_macro,
 		void (*routine)(void *args),
 		enum ConfigFn_ERR (*parse_args)(void **args, StrtoknState *parse_state),
 		void (*free_args)(void *args)) {
@@ -54,4 +56,55 @@ enum ConfigFn_ERR ConfigFnDict_lookup(ConfigFnDict *dict, const ConfigFn **dst,
 	return ConfigFn_OK;
 }
 
+}
+
+
+template <typename T>
+void ConfigFnDict_define_fn(ConfigFnDict *dict, const char *ident,
+		void (*routine)(T *args),
+		enum ConfigFn_ERR (*parse_args)(T **args, StrtoknState *parse_state),
+		void (*free_args)(T *args)) {
+	std::unique_ptr<ConfigFn> fn = std::unique_ptr<ConfigFn>(new ConfigFn);
+	fn->ident = strdup(ident);
+	fn->is_macro = false;
+	fn->routine = routine;
+	fn->parse_args = parse_args;
+	fn->free_args = free_args;
+
+	dict->map[std::string(fn->ident)] = std::move(fn);
+}
+template <typename T>
+void ConfigFnDict_define_fn(ConfigFnDict *dict, const char *ident,
+		void (*routine)(T *args),
+		enum ConfigFn_ERR (*parse_args)(T **args, StrtoknState *parse_state),
+		void (*free_args)(void *args)) {
+	ConfigFnDict_define_fn(dict, ident,
+			routine,
+			parse_args,
+			(void (*)(T *))free_args);
+}
+
+template <typename T>
+void ConfigFnDict_define_macro(ConfigFnDict *dict, const char *ident,
+		void (*routine)(T *args),
+		enum ConfigFn_ERR (*parse_args)(T **args, StrtoknState *parse_state),
+		void (*free_args)(T *args)) {
+	std::unique_ptr<ConfigFn> macro = std::unique_ptr<ConfigFn>(new ConfigFn);
+	macro->ident = strdup(ident);
+	macro->is_macro = true;
+	macro->routine = routine;
+	macro->parse_args = parse_args;
+	macro->free_args = free_args;
+
+	dict->map[std::string(macro->ident)] = std::move(macro);
+}
+template <typename T>
+void ConfigFnDict_define_macro(ConfigFnDict *dict, const char *ident,
+		void (*routine)(T *args),
+		enum ConfigFn_ERR (*parse_args)(T **args, StrtoknState *parse_state),
+		void (*free_args)(void *args)) {
+	ConfigFnDict_define_macro(dict, ident,
+			routine,
+			parse_args,
+			(void (*)(T *))free_args);
 }

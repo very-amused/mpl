@@ -12,11 +12,15 @@ ConfigFnDict *ConfigFnDict_new();
 void ConfigFnDict_free(ConfigFnDict *dict);
 
 // Define a config function and add it to the dictionary
-void ConfigFnDict_define(ConfigFnDict *dict, const char *ident, const bool is_macro,
+// TODO: remove
+void ConfigFnDict_define_old(ConfigFnDict *dict, const char *ident, const bool is_macro,
 		void (*routine)(void *args),
 		enum ConfigFn_ERR (*parse_args)(void **args, StrtoknState *parse_state),
 		void (*free_args)(void *args));
+
 // Lookup a config function in the dictionary
+// NOTE: see register.h for how to define config functions so they can be loaded
 typedef struct ConfigFn ConfigFn;
 enum ConfigFn_ERR ConfigFnDict_lookup(ConfigFnDict *dict, const ConfigFn **dst,
 		const char *ident);
+
