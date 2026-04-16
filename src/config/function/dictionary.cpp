@@ -42,7 +42,8 @@ void ConfigFnDict_define(ConfigFnDict *dict, const char *ident, const bool is_ma
 	dict->map[std::string(fn->ident)] = std::move(fn);
 }
 
-enum ConfigFn_ERR ConfigFnDict_lookup(ConfigFnDict *dict, ConfigFn **dst, const char *ident) {
+enum ConfigFn_ERR ConfigFnDict_lookup(ConfigFnDict *dict, const ConfigFn **dst,
+		const char *ident) {
 	const bool exists = dict->map.find(ident) != dict->map.end();
 	if (!exists) {
 		return ConfigFn_INVALID_FN;

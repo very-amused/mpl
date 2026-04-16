@@ -18,4 +18,5 @@ void ConfigFnDict_define(ConfigFnDict *dict, const char *ident, const bool is_ma
 		void (*free_args)(void *args));
 // Lookup a config function in the dictionary
 typedef struct ConfigFn ConfigFn;
-enum ConfigFn_ERR ConfigFnDict_lookup(ConfigFnDict *dict, ConfigFn **dst, const char *ident);
+enum ConfigFn_ERR ConfigFnDict_lookup(ConfigFnDict *dict, const ConfigFn **dst,
+		const char *ident);

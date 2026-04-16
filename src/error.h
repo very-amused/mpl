@@ -131,6 +131,7 @@ static inline const char *Verbosity_name(enum Verbosity lvl) {
 
 #define CONFIG_FN_ERR(VARIANT) \
 	VARIANT(ConfigFn_OK) \
+	VARIANT(ConfigFn_BAD_ALLOC) /* Failed heap allocation */ \
 	VARIANT(ConfigFn_SYNTAX_ERR) /* Syntax error while parsing a config function */ \
 	VARIANT(ConfigFn_INVALID_FN) /* Invalid function identifier */ \
 	VARIANT(ConfigFn_INVALID_ARG) /* Invalid function argument(s) */

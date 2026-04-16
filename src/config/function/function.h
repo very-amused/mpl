@@ -29,7 +29,7 @@ typedef struct ConfigFn {
 } ConfigFn;
 
 typedef struct ConfigFnCall {
-	const ConfigFn fn; // function definition
+	const ConfigFn *fn; // function definition
 	void *args; // function args
 } ConfigFnCall;
 
@@ -37,9 +37,12 @@ typedef struct ConfigFnCall {
 void ConfigFn_deinit(ConfigFn *fn);
 
 // Parse a single config function call
-enum ConfigFn_ERR ConfigFnCall_parse(ConfigFnCall *call, StrtoknState *parse_state, ConfigFnDict *fn_dict);
+enum ConfigFn_ERR ConfigFnCall_parse(ConfigFnCall *fn_call, StrtoknState *parse_state, ConfigFnDict *fn_dict);
 // Deinitialize a config function call, freeing any memory allocated during parsing
-void ConfigFnCall_deinit(ConfigFnCall *call);
+void ConfigFnCall_deinit(ConfigFnCall *fn_call);
+
+// Delimiter between config function calls
+static const char ConfigFn_DELIM = ';';
 
 // An array of one or more ConfigFn calls that can be
 // executed in a sequence.
