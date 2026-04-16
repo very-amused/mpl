@@ -1,4 +1,4 @@
-src_config = files('functions.c', 'config.c', 'settings.c')
+src_config = files('config.c', 'settings.c')
 
 if build_machine.system() == 'linux'
     # WARNING: due to meson not understanding .incbin and
@@ -9,11 +9,14 @@ if build_machine.system() == 'linux'
     src_config += files('default_config.s')
 endif
 
-src += src_config
 
 subdir('internal')
 subdir('keybind')
 subdir('macro')
 if get_option('config_functions_next')
 	subdir('function')
+else
+	src_config += files('function.sc')
 endif
+
+src += src_config
