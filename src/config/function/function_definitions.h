@@ -1,9 +1,15 @@
 #pragma once
 
+#include "config/function/dictionary.h"
 #include <stdint.h>
+
+/* #region Register defined functions with a ConfigFnDict.
+ * This is the ONLY step needed to make config functions automatically parseable and callable */
+void register_ConfigFn_functions(ConfigFnDict *dict);
 
 /* These functions can be bound to keys and called in mpl.conf.
  * They control MPL's behavior. */
+
 
 void play_toggle(void * _); // Play/pause
 

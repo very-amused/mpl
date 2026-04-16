@@ -1,9 +1,13 @@
 #include "function_definitions.h"
 #include "audio/seek.h"
+#include "config/function/dictionary.h"
+#include "config/function/function.h"
+#include "error.h"
 #include "state.h"
 #include "ui/event_queue.h"
 #include "track_queue/queue.h"
 #include "track_queue/state.h"
+#include "util/strtokn.h"
 
 /* #region Config function state */
 
@@ -14,6 +18,63 @@ void ConfigFn_fnState_init(TrackQueue *track_queue, EventQueue *eq) {
 	state.evt_sq = EventQueue_connect(eq, 5);
 }
 
+
+/* #endregion */
+
+
+/* #region Argument parsing */
+
+static enum ConfigFn_ERR argparse_noArgs(void **args, StrtoknState *parse_state) {
+	*args = NULL;
+	if (strtokn(parse_state, ")") == -1) {
+		return ConfigFn_SYNTAX_ERR;
+	} else if (parse_state->tok_len > 0) {
+		return ConfigFn_INVALID_ARG;
+	}
+	return ConfigFn_OK;
+}
+static enum ConfigFn_ERR argparse_seekArgs(struct seekArgs **args, StrtoknState *parse_state) {
+	// 1 arg: milliseconds (int32_t)
+	if (strtokn(parse_state, ")") == -1) {
+		return ConfigFn_SYNTAX_ERR;
+	}
+	*args = malloc(sizeof(struct seekArgs));
+	CHECK_ALLOC(args, ConfigFn_BAD_ALLOC);
+	char *arg_str = strndup(&parse_state->s[parse_state->offset], parse_state->tok_len);
+	if (!arg_str) {
+		free(*args);
+		return ConfigFn_BAD_ALLOC;
+	}
+	if (sscanf(arg_str, "%d", &(*args)->ms) != 1) {
+		free(arg_str);
+		free(*args);
+		return ConfigFn_INVALID_ARG;
+	}
+	free(arg_str);
+	return ConfigFn_OK;
+}
+
+/* #endregion */
+
+/* #region Function registration (make functions automatically parse and work) **/
+
+void register_ConfigFn_functions(ConfigFnDict *dict) {
+	/* WARNING: you may have to cast when registering functions.
+	 * Be ABSOLUTELY CERTAIN that any casts made are safe!
+	 * The compiler will NOT check these for you AT ALL! */
+	ConfigFnDict_define(dict, "play_toggle", false,
+			play_toggle,
+			argparse_noArgs, free);
+	ConfigFnDict_define(dict, "quit", false,
+			quit,
+			argparse_noArgs, free);
+	ConfigFnDict_define(dict, "seek", false,
+			(ConfigFn_routine)seek,
+			(ConfigFn_argparse)argparse_seekArgs, free);
+	ConfigFnDict_define(dict, "seek_snap", false,
+			(ConfigFn_routine)seek_snap,
+			(ConfigFn_argparse)argparse_seekArgs, free);
+}
 /* #endregion */
 
 void play_toggle(void * _) {

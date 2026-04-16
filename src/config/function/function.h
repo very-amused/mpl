@@ -5,6 +5,10 @@
 
 #include <stdbool.h>
 
+typedef void (*ConfigFn_routine)(void *args);
+typedef enum ConfigFn_ERR (*ConfigFn_argparse)(void **args, StrtoknState *parse_state);
+typedef void (*ConfigFn_argfree)(void *args);
+
 // A function callable from keybinds or MPL's shell
 // These are defined using [ConfigFn_define] to define them
 // in a ConfigFnDict
@@ -15,12 +19,12 @@ typedef struct ConfigFn {
 	bool is_macro;
 
 	// The function itself
-	void (*routine)(void *args);
+	ConfigFn_routine routine;
 
 	// Argument parser for the function
-	enum ConfigFn_ERR (*parse_args)(void **args, StrtoknState *parse_state);
+	ConfigFn_argparse parse_args;
 	// Argument deleter (deinit + free) for the function
-	void (*free_args)(void *args);
+	ConfigFn_argfree free_args;
 
 #ifdef __cplusplus
 	ConfigFn();
