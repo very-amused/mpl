@@ -1,7 +1,7 @@
 #pragma once
+#include "config/function/dictionary.h"
 #include "error.h"
 #include "util/strtokn.h"
-#include "state.h"
 
 #include <stdbool.h>
 
@@ -15,14 +15,17 @@ typedef struct ConfigFn {
 	bool is_macro;
 
 	// The function itself
-	// *state is either fnState or macroState,
-	// depending on whether the function is a macro
-	void (*routine)(void *state, void *args);
+	void (*routine)(void *args);
 
 	// Argument parser for the function
 	enum ConfigFn_ERR (*parse_args)(void **args, StrtoknState *parse_state);
 	// Argument deleter (deinit + free) for the function
 	void (*free_args)(void *args);
+
+#ifdef __cplusplus
+	ConfigFn();
+	~ConfigFn();
+#endif
 } ConfigFn;
 
 typedef struct ConfigFnCall {
@@ -30,9 +33,22 @@ typedef struct ConfigFnCall {
 	void *args; // function args
 } ConfigFnCall;
 
+// Deinitialize a ConfigFn for freeing
+void ConfigFn_deinit(ConfigFn *fn);
+
+// Parse a single config function call
+enum ConfigFn_ERR ConfigFnCall_parse(ConfigFnCall *call, StrtoknState *parse_state, ConfigFnDict *fn_dict);
+// Deinitialize a config function call, freeing any memory allocated during parsing
+void ConfigFnCall_deinit(ConfigFnCall *call);
+
 // An array of one or more ConfigFn calls that can be
 // executed in a sequence.
 typedef struct ConfigFnCallArray {
 	size_t n;
 	ConfigFnCall **fn_calls;
-} ConfigFncallArray;
+} ConfigFnCallArray;
+
+// Parse a sequence of config function calls
+enum ConfigFn_ERR ConfigFnCallArray_parse(ConfigFnCallArray *arr, StrtoknState *parse_state, ConfigFnDict *fn_dict);
+// Deinitialize a sequence of config function calls
+void ConfigFnCallArray_deinit(ConfigFnCallArray *arr);

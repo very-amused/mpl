@@ -21,9 +21,7 @@ struct macroState {
 //
 // NOTE: configState holds non-owning references and is only used on the main thread,
 // so there is no configState_deinit()
-void fnState_init(struct fnState *state,
-		TrackQueue *track_queue, EventQueue *evt_queue);
+void ConfigFn_fnState_init(TrackQueue *track_queue, EventQueue *evt_queue);
 // Initialize configuration state to passed to macro functions defined in
 // config/functions.h
-void macroState_init(struct macroState *state,
-		Config *config);
+void ConfigFn_macroState_init(Config *config);
