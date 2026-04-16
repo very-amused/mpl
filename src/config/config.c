@@ -29,6 +29,8 @@ void Config_init(Config *conf) {
 }
 void Config_deinit(Config *conf) {
 	KeybindMap_free(conf->keybinds);
+	ConfigFnDict_free(conf->fn_dict);
+	conf->fn_dict = NULL;
 	// Free heap-allocations used for Settings_STR
 	Settings_deinit(&conf->settings);
 }
