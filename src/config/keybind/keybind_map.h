@@ -1,5 +1,6 @@
 #pragma once
 
+#include "config/function/dictionary.h"
 #include "error.h"
 #include <wchar.h>
 
@@ -14,7 +15,7 @@ void KeybindMap_free(KeybindMap *keybinds);
 // Parse a config line declaring a keybind.
 // These lines have the form `bind x = somefn(arg1, arg2)` 
 // Returns 0 on success
-enum Keybind_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *line);
+enum Keybind_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *line, ConfigFnDict *fn_dict);
 
 // Call the keybind mapped to {keycode} if it exists.
 // Returns 0 if a keybind exists and was called, 1 if the keybind doesn't exist 

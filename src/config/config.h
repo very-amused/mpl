@@ -1,6 +1,7 @@
 #pragma once
 #include <stdint.h>
 
+#include "config/function/dictionary.h"
 #include "settings.h"
 #include "keybind/keybind_map.h"
 
@@ -8,6 +9,7 @@ static const char CONFIG_COMMENT = '#';
 
 typedef struct Config {
 	Settings settings;
+	ConfigFnDict *fn_dict; // Dictionary of all defined config functions + macros
 	KeybindMap *keybinds;
 } Config;
 

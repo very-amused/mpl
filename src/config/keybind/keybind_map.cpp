@@ -4,7 +4,8 @@ extern "C" {
 #include "error.h"
 #include "util/log.h"
 #include "util/strtokn.h"
-#include "function.h"
+#include "config/function/function.h"
+#include "config/function/dictionary.h"
 
 #include <wctype.h>
 #include <locale.h>
@@ -17,17 +18,10 @@ extern "C" {
 #include <string>
 #include <memory>
 
-KeybindFnArray::KeybindFnArray() {
-	KeybindFnArray_init(this);
-}
-KeybindFnArray::~KeybindFnArray() {
-	KeybindFnArray_deinit(this);
-}
-
 extern "C" {
 
 struct KeybindMap {
-	std::unordered_map<wchar_t, std::unique_ptr<KeybindFnArray>> map;
+	std::unordered_map<wchar_t, std::unique_ptr<ConfigFnCallArray>> map;
 };
 
 KeybindMap *KeybindMap_new() {
@@ -39,7 +33,7 @@ void KeybindMap_free(KeybindMap *keybinds) {
 }
 
 
-enum Keybind_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *line) {
+enum Keybind_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *line, ConfigFnDict *fn_dict) {
 	// Ensure UTF-8 support
 	setlocale(LC_ALL, "");
 	// Split by whitespace
@@ -69,15 +63,14 @@ enum Keybind_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *line
 	// =
 	NEXT();
 
-	// Construct our function array for this keybind
-	std::unique_ptr<KeybindFnArray> fn_arr(new KeybindFnArray);
-	enum Keybind_ERR err = KeybindFnArray_parse(fn_arr.get(), &parse_state);
-	if (err != Keybind_OK) {
-		return err;
+	// Construct our function call array for this keybind
+	std::unique_ptr<ConfigFnCallArray> fn_call_arr(new ConfigFnCallArray);
+	enum ConfigFn_ERR err = ConfigFnCallArray_parse(fn_call_arr.get(), &parse_state, fn_dict);
+	if (err != ConfigFn_OK) {
 	}
 
 	// Add the routine to our keybind map
-	keybinds->map[keycode] = std::move(fn_arr);
+	keybinds->map[keycode] = std::move(fn_call_arr);
 
 	return Keybind_OK;
 }
@@ -88,9 +81,9 @@ enum Keybind_ERR KeybindMap_call_keybind(KeybindMap *keybinds, wchar_t keycode) 
 		return Keybind_NOT_FOUND;
 	}
 
-	KeybindFnArray *fn_arr = keybinds->map[keycode].get();
-	for (size_t i = 0; i < fn_arr->n; i++) {
-		KeybindFn_call(fn_arr->fns[i]);
+	ConfigFnCallArray *fn_call_arr = keybinds->map[keycode].get();
+	for (size_t i = 0; i < fn_call_arr->n; i++) {
+		ConfigFnCall_exec(fn_call_arr->fn_calls[i]);
 	}
 
 	return Keybind_OK;

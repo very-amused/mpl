@@ -1,7 +1,7 @@
 #include "parse.h"
 #include "config/config.h"
-#include "config/internal/state.h"
-#include "config/macro/macro.h"
+#include "config/function/dictionary.h"
+#include "config/function/function.h"
 #include "config/settings.h"
 #include "error.h"
 #include "util/log.h"
@@ -41,7 +41,7 @@ static int Config_parse_line(Config *conf, char *line,
 	static const char KEYBIND_PREFIX[] = "bind";
 	if ((flags & PARSE_KEYBINDS) == PARSE_KEYBINDS &&
 			strncmp(line, KEYBIND_PREFIX, sizeof(KEYBIND_PREFIX)-1) == 0) {
-		enum Keybind_ERR err = KeybindMap_parse_mapping(conf->keybinds, line);
+		enum Keybind_ERR err = KeybindMap_parse_mapping(conf->keybinds, line, conf->fn_dict);
 		if (err != Keybind_OK) {
 			strncpy(strerr, Keybind_ERR_name(err), strerr_len);
 			return 1;
@@ -61,8 +61,24 @@ static int Config_parse_line(Config *conf, char *line,
 	}
 
 	// Handle macro lines
-	if ((flags & PARSE_MACROS) == PARSE_MACROS &&
-			macro_eval(line) == 0) {
+	if ((flags & PARSE_MACROS) == PARSE_MACROS) {
+		StrtoknState parse_state;
+		strtokn_init(&parse_state, line, strlen(line));
+
+		ConfigFnCall fn_call;
+		enum ConfigFn_ERR err = ConfigFnCall_parse(&fn_call, &parse_state, conf->fn_dict);
+		if (err != ConfigFn_OK) {
+			strncpy(strerr, ConfigFn_ERR_name(err), strerr_len);
+			ConfigFnCall_deinit(&fn_call);
+			return 1;
+		} else if (!fn_call.fn->is_macro) {
+			strncpy(strerr, "non-macro function called outside a keybind", strerr_len);
+			ConfigFnCall_deinit(&fn_call);
+			return 1;
+		}
+
+		ConfigFnCall_exec(&fn_call);
+		ConfigFnCall_deinit(&fn_call);
 		return 0;
 	}
 

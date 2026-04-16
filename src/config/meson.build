@@ -12,7 +12,6 @@ endif
 
 subdir('internal')
 subdir('keybind')
-subdir('macro')
 if get_option('config_functions_next')
 	subdir('function')
 else

@@ -1,5 +1,5 @@
 #include "config/config.h"
-#include "config/internal/state.h"
+#include "config/function/state.h"
 #include "error.h"
 #include "track_queue/queue.h"
 #include "track.h"
@@ -72,8 +72,8 @@ int main(int argc, const char **argv) {
 		goto deinit_queue;
 	}
 
-	// Initialize configState so keybinds work
-	configState_init(&queue, ui->evt_queue);
+	// Make config functions control MPL
+	ConfigFn_fnState_init(&queue, ui->evt_queue);
 
 	ui_err = UserInterface_mainloop(ui, &queue, &config);
 	if (ui_err != UserInterface_OK) {

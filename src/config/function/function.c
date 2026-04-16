@@ -42,6 +42,10 @@ void ConfigFnCall_deinit(ConfigFnCall *fn_call) {
 	fn_call->args = NULL;
 }
 
+void ConfigFnCall_exec(ConfigFnCall *fn_call) {
+	fn_call->fn->routine(fn_call->args);
+}
+
 /* #endregion */
 
 /* #region ConfigFnCallArray */

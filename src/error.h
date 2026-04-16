@@ -171,6 +171,22 @@ static inline const char *Keybind_ERR_name(enum Keybind_ERR err) {
 	return DEFAULT_ERR_NAME;
 }
 
+static inline const enum Keybind_ERR Keybind_ERR_from_ConfigFn_ERR(enum ConfigFn_ERR cf_err) {
+	switch (cf_err) {
+	case ConfigFn_OK:
+		return Keybind_OK;
+	case ConfigFn_BAD_ALLOC:
+		return Keybind_BAD_ALLOC;
+	case ConfigFn_SYNTAX_ERR:
+		return Keybind_SYNTAX_ERR;
+	case ConfigFn_INVALID_FN:
+		return Keybind_INVALID_FN;
+	case ConfigFn_INVALID_ARG:
+		return Keybind_INVALID_ARG;
+	}
+	return (enum Keybind_ERR)-1;
+}
+
 #undef KEYBIND_ERR
 
 #define SETTINGS_ERR(VARIANT) \

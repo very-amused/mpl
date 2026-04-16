@@ -6,7 +6,6 @@ extern "C" {
 #include <stdlib.h>
 }
 
-
 void register_ConfigFn_functions(ConfigFnDict *dict) {
 	ConfigFnDict_define_fn(dict, "play_toggle",
 			play_toggle,

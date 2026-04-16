@@ -1,9 +1,11 @@
 #include "config.h"
-#include "config/internal/state.h"
+#include "config/function/dictionary.h"
+#include "config/function/state.h"
 #include "config/settings.h"
 #include "internal/parse.h"
 #include "keybind/keybind_map.h"
 #include "util/path.h"
+#include "function/register.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -16,6 +18,12 @@
 void Config_init(Config *conf) {
 	// Default settings
 	Settings_init(&conf->settings);
+	// Load registered config functions and macros
+	conf->fn_dict = ConfigFnDict_new();
+	register_ConfigFn_functions(conf->fn_dict);
+	register_ConfigFn_macros(conf->fn_dict);
+	// Expose the config itself to macros
+	ConfigFn_macroState_init(conf);
 	// Empty keybind map
 	conf->keybinds = KeybindMap_new();
 }
@@ -28,8 +36,6 @@ void Config_deinit(Config *conf) {
 int Config_parse(Config *conf, const char *path) {
 	// Initialize config state to its zero value
 	Config_init(conf);
-	// Initialize macro state so we can parse macros
-	macroState_init(conf);
 
 	return Config_parse_internal(conf, path, PARSE_ALL);
 }

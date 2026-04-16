@@ -27,7 +27,6 @@ typedef struct ConfigFn {
 	ConfigFn_argfree free_args;
 
 #ifdef __cplusplus
-	ConfigFn();
 	~ConfigFn();
 #endif
 } ConfigFn;
@@ -44,6 +43,9 @@ void ConfigFn_deinit(ConfigFn *fn);
 enum ConfigFn_ERR ConfigFnCall_parse(ConfigFnCall *fn_call, StrtoknState *parse_state, ConfigFnDict *fn_dict);
 // Deinitialize a config function call, freeing any memory allocated during parsing
 void ConfigFnCall_deinit(ConfigFnCall *fn_call);
+
+// Perform a config function call
+void ConfigFnCall_exec(ConfigFnCall *fn_call);
 
 // Delimiter between config function calls
 static const char ConfigFn_DELIM = ';';
