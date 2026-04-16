@@ -1,9 +1,9 @@
 #include "settings.h"
-#include "config/keybind/function.h"
 #include "error.h"
 #include "util/log.h"
 #include "util/strtokn.h"
 #include "util/compat/string_win32.h"
+#include "config/function/function.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -81,7 +81,7 @@ enum Settings_ERR Settings_parse_setting(Settings *opts, const char *line) {
 	// {val}
 	strtokn(&parse_state, WHITESPACE);
 	// discard semicolon terminator
-	if (parse_state.s[parse_state.offset + (parse_state.tok_len-1)] == Keybind_DELIM) {
+	if (parse_state.s[parse_state.offset + (parse_state.tok_len-1)] == ConfigFn_DELIM) {
 		parse_state.tok_len--;
 	}
 	if (!parse_state.tok_len) {

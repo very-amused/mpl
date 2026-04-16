@@ -1,4 +1,5 @@
-#include "function.h"
+#include "config/function/dictionary.h"
+#include "config/function/function.h"
 #include "keycode.h"
 #include "error.h"
 #include "keybind_map.h"
@@ -13,7 +14,7 @@
 #include <locale.h>
 
 struct KeybindMap {
-	KeybindFnArray *map[255];
+	ConfigFnCallArray *map[255];
 };
 
 KeybindMap *KeybindMap_new() {
@@ -27,14 +28,14 @@ void KeybindMap_free(KeybindMap *keybinds) {
 	static const size_t MAP_LEN = sizeof(keybinds->map) / sizeof(keybinds->map[0]);
 	for (size_t i = 0; i < MAP_LEN; i++) {
 		if (keybinds->map[i]) {
-			KeybindFnArray_deinit(keybinds->map[i]);
+			ConfigFnCallArray_deinit(keybinds->map[i]);
 		}
 		free(keybinds->map[i]);
 	}
 	free(keybinds);
 }
 
-enum Keybind_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *line) {
+enum Keybind_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *line, ConfigFnDict *fn_dict) {
 	// Ensure utf8 support
 	setlocale(LC_ALL, "");
 
@@ -74,16 +75,16 @@ enum Keybind_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *line
 #undef NEXT
 	
 	// {function}({args}...); {function2}({args2}...)
-	KeybindFnArray *fn_arr = malloc(sizeof(KeybindFnArray));
-	CHECK_ALLOC(fn_arr, Keybind_BAD_ALLOC);
-	enum Keybind_ERR status = KeybindFnArray_parse(fn_arr, &parse_state);
-	if (status != Keybind_OK) {
-		KeybindFnArray_deinit(fn_arr);
-		free(fn_arr);
-		return status;
+	ConfigFnCallArray *fn_call_arr = malloc((sizeof(ConfigFnCallArray)));
+	CHECK_ALLOC(fn_call_arr, Keybind_BAD_ALLOC);
+	enum ConfigFn_ERR err = ConfigFnCallArray_parse(fn_call_arr, &parse_state, fn_dict);
+	if (err != ConfigFn_OK) {
+		ConfigFnCallArray_deinit(fn_call_arr);
+		free(fn_call_arr);
+		return 1;
 	}
-	keybinds->map[keycode] = fn_arr;
 
+	keybinds->map[keycode] = fn_call_arr;
 	return Keybind_OK;
 }
 
@@ -93,16 +94,15 @@ enum Keybind_ERR KeybindMap_call_keybind(KeybindMap *keybinds, wchar_t keycode) 
 		return Keybind_NON_ASCII;
 	}
 
-	const KeybindFnArray *fn_arr = keybinds->map[keycode];
-	if (!fn_arr) {
+	const ConfigFnCallArray *fn_call_arr = keybinds->map[keycode];
+	if (!fn_call_arr) {
 		return Keybind_NOT_FOUND;
 	}
 
 	// Call keybind functions
-	for (size_t i = 0; i < fn_arr->n; i++) {
-		KeybindFn_call(fn_arr->fns[i]);
+	for (size_t i = 0; i < fn_call_arr->n; i++) {
+		ConfigFnCall_exec(fn_call_arr->fn_calls[i]);
 	}
-
 
 	return Keybind_OK;
 }

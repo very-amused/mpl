@@ -74,9 +74,6 @@ endif
 if get_option('ao_fast')
 	cflags += '-DAO_FAST'
 endif
-if get_option('config_functions_next')
-	cflags += '-DCONFIG_FUNCTIONS_NEXT'
-endif
 
 # Debug options
 if get_option('buildtype') == 'debug'

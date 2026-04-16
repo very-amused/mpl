@@ -12,10 +12,6 @@ endif
 
 subdir('internal')
 subdir('keybind')
-if get_option('config_functions_next')
-	subdir('function')
-else
-	src_config += files('function.sc')
-endif
+subdir('function')
 
 src += src_config
