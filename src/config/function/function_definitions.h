@@ -1,6 +1,5 @@
 #pragma once
 
-#include "config/function/dictionary.h"
 #include "util/strtokn.h"
 #include <stdint.h>
 
