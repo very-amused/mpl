@@ -92,6 +92,7 @@ enum ConfigFn_ERR ConfigFnCallArray_parse(ConfigFnCallArray *arr, StrtoknState *
 void ConfigFnCallArray_deinit(ConfigFnCallArray *arr) {
 	for (size_t i = 0; i < arr->n; i++) {
 		ConfigFnCall_deinit(arr->fn_calls[i]);
+		free(arr->fn_calls[i]);
 	}
 	free(arr->fn_calls);
 	arr->n = 0;
