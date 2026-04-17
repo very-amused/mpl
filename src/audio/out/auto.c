@@ -16,6 +16,15 @@ AudioBackend *AB_Configured(const Settings *settings) {
 	static const char ERR_UNSUPPORTED[] = "audio_backend '%s' is unsupported on this build, falling back to default (%s)\n";
 	(void)ERR_UNSUPPORTED; // Silence unused variable warning
 
+#if defined(AO_FAST)
+		return &AB_FAST;
+#else
+	if (strcmp(settings->audio_backend, "fast") == 0) {
+		LOG(Verbosity_NORMAL, ERR_UNSUPPORTED, "fast", def->name);
+		return def;
+	}
+#endif
+
 	if (strcmp(settings->audio_backend, "pulseaudio") == 0) {
 #if defined(AO_PULSEAUDIO)
 		return &AB_PulseAudio;
@@ -42,14 +51,6 @@ AudioBackend *AB_Configured(const Settings *settings) {
 #endif
 	}
 
-	if (strcmp(settings->audio_backend, "fast") == 0) {
-#if defined(AO_FAST)
-		return &AB_FAST;
-#else
-		LOG(Verbosity_NORMAL, ERR_UNSUPPORTED, "fast", def->name);
-		return def;
-#endif
-	}
 
 	LOG(Verbosity_NORMAL, "Unknown audio_backend '%s', falling back to default (%s)\n", settings->audio_backend, def->name);
 	return def;
