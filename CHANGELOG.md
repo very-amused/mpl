@@ -11,6 +11,10 @@ MPL is in AGGRESSIVE BUG HUNTING MODE for v0.4.5+ until we hit v0.5.0!
 ### v0.5.0
 The next major release in terms of new features will be v0.5.0.
 
+## [0.4.9]
+### Internal
+- Rewrote how config functions (previously called keybind functions) are defined and parsed. See [src/config/functions/README.md]
+
 ## [0.4.8]
 ### Added
 - show_metadata() keybind function

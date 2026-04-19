@@ -60,9 +60,6 @@ void TrackQueue_deinit(TrackQueue *q) {
 enum AudioBackend_ERR TrackQueue_connect_audio(TrackQueue *q, const Settings *settings, EventQueue *eq) {
 	// Set q->backend to a defined AudioBackend
 	q->backend = AB_Configured(settings);
-	if (q->backend == &AB_Pipewire) {
-		fprintf(stderr, "we're using pipewire\n");
-	}
 
 	// Initialize the backend
 	return AudioBackend_init(q->backend, eq, q->settings);
