@@ -40,6 +40,7 @@ int TrackQueue_init(TrackQueue *q, const Settings *settings, EventQueue *eq) {
 
 	// Initialize buffer thread
 	q->buffer_thread = BufferThread_new();
+	q->prebuffer_thread = BufferThread_new();
 
 	q->settings = settings;
 
@@ -51,6 +52,7 @@ void TrackQueue_deinit(TrackQueue *q) {
 	otherwise we have a deadlock b/c AudioTrack_buffer_packet() will hang forever
 	due to the AudioBuffer's read semaphore being dead after audio is disconnected */
 	BufferThread_free(q->buffer_thread);
+	BufferThread_free(q->prebuffer_thread);
 	if (q->backend) {
 		TrackQueue_disconnect_audio(q);
 	}

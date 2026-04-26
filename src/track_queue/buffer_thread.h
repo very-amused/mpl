@@ -19,11 +19,9 @@ int BufferThread_start(BufferThread *thr, AudioTrack *track);
 // Returns 0 on success, nonzero on error
 int BufferThread_start_prebuf(BufferThread *thr, AudioTrack *track, uint32_t prebuf_ms);
 
-/* Locking a BufferThread is very similar to pausing it,
-except the lock/unlock methods use a semaphore to enable recursive locking.
-This is necessary for things like the ability to seek (which locks and unlocks the BufferThread)
-while paused (which also locks and unlocks the BufferThread).
-Eventually, we might deprecate BufferThread_play() in favor of the lock/unlock methods.*/
+// Get the current track this BufferThread is buffering
+// NOTE: BufferThread must be locked when calling this
+const AudioTrack *BufferThread_cur_track(BufferThread *thr);
 
 // Lock a BufferThread, pausing its operation until unlocked using BufferThread_unlock().
 // Recursive locking is enabled through an internal semaphore.
