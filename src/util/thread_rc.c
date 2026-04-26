@@ -128,6 +128,14 @@ bool ThreadRC_recover(ThreadRC *rc) {
 	return had_selflock;
 }
 
+const bool ThreadRC_has_selflock(ThreadRC *rc) {
+	pthread_mutex_lock(&rc->sw.mutex);
+	const bool has_selflock = rc->sw.thread_selflock_;
+	pthread_mutex_unlock(&rc->sw.mutex);
+
+	return has_selflock;
+}
+
 /* Aux thread methods */
 
 bool ThreadRC_preloop(ThreadRC *rc) {

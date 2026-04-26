@@ -23,7 +23,12 @@ int BufferThread_start_prebuf(BufferThread *thr, AudioTrack *track, uint32_t pre
 int BufferThread_stop_prebuf(BufferThread *thr);
 
 // Get the current track this BufferThread is buffering. Automatically handles locking
-const AudioTrack *BufferThread_cur_track(BufferThread *thr);
+const AudioTrack *BufferThread_cur_track(const BufferThread *thr);
+
+// Return whether the thread is available to accept new work.
+// This is used to ensure the main BufferThread can't be taken away simply when it's paused.
+// It MUST encounter EOF/error and enter selflock before it can be used to buffer something new.
+const bool BufferThread_is_avail(const BufferThread *thr);
 
 // Lock a BufferThread, pausing its operation until unlocked using BufferThread_unlock().
 // Recursive locking is enabled through an internal semaphore.

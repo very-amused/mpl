@@ -6,6 +6,7 @@
 #include <pthread.h>
 
 #include "buffer_thread.h"
+#include "audio/pcm.h"
 #include "audio/track.h"
 #include "error.h"
 #include "util/log.h"
@@ -64,16 +65,21 @@ static void *BufferThread_routine(void *args) {
 			ThreadRC_selflock(thr->thread_rc, 0, "No track");
 			continue;
 		}
+
 		static const AudioTrack *tr_cached = NULL;
 		static size_t buf_ahead_max = 0;
+		static size_t prebuf_frames = 0;
+		const bool prebuf = thr->prebuf_ms > 0;
 		if (tr_cached != track) {
 			tr_cached = track;
 			buf_ahead_max = track->buffer->size/2;
+			prebuf_frames = prebuf ? thr->prebuf_ms : 0;
 		}
+
 		const int rd = atomic_load(&track->buffer->rd);
 		const int wr = atomic_load(&track->buffer->wr);
 		// Keep half the buffer full of past frames to enable bidirectional buffer seeks 
-		if (AudioBuffer_max_read(track->buffer, rd, wr, false) >= buf_ahead_max) {
+		if (!prebuf && AudioBuffer_max_read(track->buffer, rd, wr, false) >= buf_ahead_max) {
 			// We sleep here, so it's crucial to post this semaphore
 			// in the anti-deadlock for our ThreadRC.
 			sem_wait(&track->buffer->rd_sem);
@@ -81,35 +87,10 @@ static void *BufferThread_routine(void *args) {
 		}
 
 		enum AudioTrack_ERR at_err = AudioTrack_buffer_packet(track, NULL);
+		if (at_err == AudioTrack_OK && track->buffer->n_written >= prebuf_frames) {
+			at_err = AudioTrack_PREBUF_EOF;
+		}
 		if (at_err != AudioTrack_OK) {
-			// Enter self-lock fail state
-			ThreadRC_selflock(thr->thread_rc, at_err, AudioTrack_ERR_name(at_err));
-			thr->track = NULL;
-			continue;
-		}
-	}
-
-	pthread_exit(NULL);
-}
-
-static void *BufferThread_prebuffer_routine(void *args) {
-	BufferThread *thr = args;
-
-	while (ThreadRC_preloop(thr->thread_rc)) {
-		AudioTrack *track = thr->track; // TODO I don't think atomics are doing anything here since we need to lock when track swapping regardless
-		if (track == NULL) {
-			ThreadRC_selflock(thr->thread_rc, 0, "No track");
-			continue;
-		}
-		static const AudioTrack *tr_cached = NULL;
-		static size_t prebuf_frames = 0;
-		if (tr_cached != track) {
-			tr_cached = track;
-			prebuf_frames = AudioPCM_buffer_size(&track->buf_pcm, thr->prebuf_ms);
-		}
-
-		enum AudioTrack_ERR at_err = AudioTrack_buffer_packet(track, NULL);
-		if (at_err != AudioTrack_OK || track->buffer->n_written >= prebuf_frames) {
 			// Enter self-lock fail state
 			ThreadRC_selflock(thr->thread_rc, at_err, AudioTrack_ERR_name(at_err));
 			thr->track = NULL;
@@ -142,6 +123,7 @@ int BufferThread_start_prebuf(BufferThread *thr, AudioTrack *track, uint32_t pre
 	// Restart prebuf on new track
 	if (thr->thread) {
 		ThreadRC_lock(thr->thread_rc);
+		thr->prebuf_ms = prebuf_ms;
 		thr->track = track;
 		ThreadRC_unlock(thr->thread_rc);
 		ThreadRC_recover(thr->thread_rc);
@@ -149,11 +131,11 @@ int BufferThread_start_prebuf(BufferThread *thr, AudioTrack *track, uint32_t pre
 	}
 
 	// Start prebuf on new track (create thread)
-	thr->prebuf_ms = prebuf_ms;
 	thr->thread = malloc(sizeof(pthread_t));
 	CHECK_ALLOC(thr->thread, 1);
+	thr->prebuf_ms = prebuf_ms;
 	thr->track = track;
-	return pthread_create(thr->thread, NULL, BufferThread_prebuffer_routine, thr);
+	return pthread_create(thr->thread, NULL, BufferThread_routine, thr);
 }
 
 int BufferThread_stop_prebuf(BufferThread *thr) {
@@ -165,7 +147,7 @@ int BufferThread_stop_prebuf(BufferThread *thr) {
 	return BufferThread_start_prebuf(thr, NULL, -1);
 }
 
-const AudioTrack *BufferThread_cur_track(BufferThread *thr) {
+const AudioTrack *BufferThread_cur_track(const BufferThread *thr) {
 	AudioTrack *tr = NULL;
 	if (thr->thread) {
 		ThreadRC_lock(thr->thread_rc);
@@ -173,6 +155,10 @@ const AudioTrack *BufferThread_cur_track(BufferThread *thr) {
 		ThreadRC_unlock(thr->thread_rc);
 	}
 	return tr;
+}
+
+const bool BufferThread_is_avail(const BufferThread *thr) {
+	return !thr->thread || ThreadRC_has_selflock(thr->thread_rc);
 }
 
 void BufferThread_lock(BufferThread *thr) {

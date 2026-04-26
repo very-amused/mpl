@@ -36,6 +36,9 @@ void ThreadRC_shutdown(ThreadRC *rc);
 // Returns whether the ThreadRC was actually in a fail-state.
 bool ThreadRC_recover(ThreadRC *rc);
 
+// Returns whether a ThreadRC has a selflock, useful for determining if a thread is able to accept new work
+const bool ThreadRC_has_selflock(ThreadRC *rc);
+
 /* Aux thread methods */
 
 // Check and handle ThreadRC state before beginning a loop cycle on the aux thread
