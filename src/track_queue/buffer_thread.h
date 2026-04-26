@@ -18,9 +18,11 @@ int BufferThread_start(BufferThread *thr, AudioTrack *track);
 // Start a BufferThread to prebuffer up to prebuf_ms milliseconds of audio data in the background.
 // Returns 0 on success, nonzero on error
 int BufferThread_start_prebuf(BufferThread *thr, AudioTrack *track, uint32_t prebuf_ms);
+// Stop a prebuffering BufferThread
+// Returns 0 on success, nonzero on error
+int BufferThread_stop_prebuf(BufferThread *thr);
 
-// Get the current track this BufferThread is buffering
-// NOTE: BufferThread must be locked when calling this
+// Get the current track this BufferThread is buffering. Automatically handles locking
 const AudioTrack *BufferThread_cur_track(BufferThread *thr);
 
 // Lock a BufferThread, pausing its operation until unlocked using BufferThread_unlock().

@@ -175,7 +175,11 @@ int TrackQueue_select(TrackQueue *q, TrackQueueNode *node) {
 			return 1;
 		}
 	}
-	// TODO: stop prebuffering if that's happening
+	// CRIT: If prebuffering is happening on the prebuf thread, STOP IT BEFORE WE'RE ALLOWED TO TOUCH THE TRACK BUFFERS!
+	if (BufferThread_cur_track(q->prebuffer_thread) == &node->track->audio) {
+		BufferThread_stop_prebuf(q->prebuffer_thread);
+	}
+	// Start buffering
 	BufferThread_start(q->buffer_thread, &node->track->audio);
 
 	// Prepare track to start playback on a new audio stream
@@ -188,10 +192,9 @@ int TrackQueue_select(TrackQueue *q, TrackQueueNode *node) {
 }
 
 int TrackQueue_preselect(TrackQueue *q, TrackQueueNode *node) {
-	// Handle prebuffering on our end
-	
+	// TODO: Handle prebuffering on our end
 
-	// Handle prebuffering on the AudioBackend's end (create a stream)
+	// TODO: Handle prebuffering on the AudioBackend's end (create a stream)
 
 	return 1;
 }

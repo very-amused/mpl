@@ -156,8 +156,23 @@ int BufferThread_start_prebuf(BufferThread *thr, AudioTrack *track, uint32_t pre
 	return pthread_create(thr->thread, NULL, BufferThread_prebuffer_routine, thr);
 }
 
+int BufferThread_stop_prebuf(BufferThread *thr) {
+	if (!thr->thread) {
+		fprintf(stderr, "we've lost the plot\n");
+		return 1;
+	}
+
+	return BufferThread_start_prebuf(thr, NULL, -1);
+}
+
 const AudioTrack *BufferThread_cur_track(BufferThread *thr) {
-	return thr->track;
+	AudioTrack *tr = NULL;
+	if (thr->thread) {
+		ThreadRC_lock(thr->thread_rc);
+		tr = thr->track;
+		ThreadRC_unlock(thr->thread_rc);
+	}
+	return tr;
 }
 
 void BufferThread_lock(BufferThread *thr) {
