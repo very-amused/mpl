@@ -14,10 +14,11 @@ typedef struct Track {
 	TrackMeta meta;
 
 	// Audio info
-	AudioTrack *audio;
+	AudioTrack audio;
 } Track;
 
-// Does not allocate t->audio
-Track *Track_new(const char *url, const size_t url_len);
+// As of v0.4.10, this DOES initialize track audio and metadata.
+// This does NOT initialize track audio BUFFERING. The TrackQueue is in charge of managing that in a memory-efficient manner.
+Track *Track_new(const char *url, const size_t url_len, AudioBackend *ab);
 
 void Track_free(Track *t);

@@ -50,20 +50,25 @@ typedef struct AudioTrack {
 	// NOTE: all units of sample frames are post-resample frames
 	EventBody_Timecode duration_timecode; // Duration in sample frames
 	size_t start_padding, end_padding; // The number of sample frames at the start and end of the track used for padding. These must be discarded for gapless playback.
-
-	// User settings
-	const Settings *settings;
 } AudioTrack;
 
 
 // Initialize an AudioTrack for playback with an AudioBackend
-enum AudioTrack_ERR AudioTrack_init(AudioTrack *at, const char *url, AudioBackend *ab, const Settings *settings);
+enum AudioTrack_ERR AudioTrack_init(AudioTrack *at, const char *url, AudioBackend *ab);
 void AudioTrack_deinit(AudioTrack *at);
+
+// Initialize an AudioTrack's buffers, making it ready for buffering
+// WARN: calling any AudioTrack_buffer_* methods before calling AudioTrack_init_buffers is UB
+enum AudioTrack_ERR AudioTrack_init_buffers(AudioTrack *at, const Settings *settings);
+// Deinitialize and free an AudioTrack's buffers
+void AudioTrack_deinit_buffers(AudioTrack *at);
 
 // Retrieve metadata from an AudioTrack's decoding context, storing the result in *meta
 enum AudioTrack_ERR AudioTrack_get_metadata(AudioTrack *at, TrackMeta *meta);
 
 // Buffer one packet worth of frames and set n_bytes (if not NULL) to the number of bytes buffered in doing so.
+// WARN: calling any AudioTrack_buffer_* methods before calling AudioTrack_init_buffers is UB
 enum AudioTrack_ERR AudioTrack_buffer_packet(AudioTrack *at, size_t *n_bytes);
 // Buffer track data. AudioSeek_Relative will buffer onto the end of the Track's current AudioBuffer.
+// WARN: calling any AudioTrack_buffer_* methods before calling AudioTrack_init_buffers is UB
 enum AudioTrack_ERR AudioTrack_buffer_ms(AudioTrack *at, enum AudioSeek dir, const uint32_t ms);

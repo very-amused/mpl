@@ -66,7 +66,7 @@ int main(int argc, const char **argv) {
 		ret = 1;
 		goto deinit_queue;
 	}
-	queue_err = TrackQueue_prepend(&queue, Track_new(url, url_len));
+	queue_err = TrackQueue_prepend(&queue, Track_new(url, url_len, queue.backend));
 	if (queue_err != 0) {
 		ret = 1;
 		goto deinit_queue;

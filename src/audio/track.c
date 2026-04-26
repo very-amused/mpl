@@ -39,12 +39,11 @@
 #include "util/compat/string_win32.h"
 
 
-enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url, AudioBackend *ab, const Settings *settings) {
+enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url, AudioBackend *ab) {
 	char av_err[AV_ERROR_MAX_STRING_SIZE]; // libav* library error message buffer
 
 	// Zero pointers to ensure AudioTrack_deinit is safe
 	memset(t, 0, sizeof(AudioTrack));
-	t->settings = settings;
 
 	// Create av format demuxing context
 	int status = avformat_open_input(&t->avf_ctx, url, NULL, NULL);
@@ -103,12 +102,6 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url, AudioBackend
 	t->start_padding = codec_params->initial_padding;
 	t->end_padding = codec_params->trailing_padding;
 
-	// Allocate playback buffer
-	t->buffer = malloc(sizeof(AudioBuffer));
-	CHECK_ALLOC(t->buffer, AudioTrack_BAD_ALLOC);
-	if (AudioBuffer_init(t->buffer, &t->buf_pcm, t->settings) != 0) {
-		return AudioTrack_BUFFER_ERR;
-	}
 
 	// Initialize decoding context
 	t->avc_ctx = avcodec_alloc_context3(t->codec);
@@ -125,13 +118,6 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url, AudioBackend
 	if (status < 0) {
 		av_perror(status, av_err);
 		return AudioTrack_CODEC_ERR;
-	}
-
-	// Allocate packet + frame memory
-	t->av_packet = av_packet_alloc();
-	t->av_frame = av_frame_alloc();
-	if (t->av_packet == NULL || t->av_frame == NULL) {
-		return AudioTrack_BAD_ALLOC;
 	}
 
 	// Initialize resampling if needed
@@ -151,6 +137,41 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url, AudioBackend
 			av_perror(status, av_err);
 			return AudioTrack_RESAMPLE_ERR;
 		}
+	}
+#endif
+
+	return AudioTrack_OK;
+}
+
+
+void AudioTrack_deinit(AudioTrack *t) {
+	AudioTrack_deinit_buffers(t);
+
+	avcodec_free_context(&t->avc_ctx);
+#ifdef MPL_RESAMPLE
+	if (t->resample) {
+		swr_free(&t->swr_ctx);
+	}
+#endif
+	avformat_close_input(&t->avf_ctx);
+}
+
+enum AudioTrack_ERR AudioTrack_init_buffers(AudioTrack *t, const Settings *settings) {
+	// Allocate playback buffer
+	t->buffer = malloc(sizeof(AudioBuffer));
+	CHECK_ALLOC(t->buffer, AudioTrack_BAD_ALLOC);
+	if (AudioBuffer_init(t->buffer, &t->buf_pcm, settings) != 0) {
+		return AudioTrack_BUFFER_ERR;
+	}
+
+	// Allocate packet + frame memory
+	t->av_packet = av_packet_alloc();
+	t->av_frame = av_frame_alloc();
+	if (t->av_packet == NULL || t->av_frame == NULL) {
+		return AudioTrack_BAD_ALLOC;
+	}
+#ifdef MPL_RESAMPLE
+	if (t->resample) {
 		// Initialize SWR input frame struct
 		t->av_frame_swr = av_frame_alloc();
 		if (t->av_frame_swr == NULL) {
@@ -162,23 +183,22 @@ enum AudioTrack_ERR AudioTrack_init(AudioTrack *t, const char *url, AudioBackend
 	return AudioTrack_OK;
 }
 
-void AudioTrack_deinit(AudioTrack *t) {
+void AudioTrack_deinit_buffers(AudioTrack *t) {
+	// Free packet + frame memory
 	av_packet_free(&t->av_packet);
 	av_frame_free(&t->av_frame);
 #ifdef MPL_RESAMPLE
 	if (t->resample) {
-		swr_free(&t->swr_ctx);
 		av_frame_free(&t->av_frame_swr);
 	}
 #endif
 
-	avcodec_free_context(&t->avc_ctx);
-
-	AudioBuffer_deinit(t->buffer);
-	free(t->buffer);
-	t->buffer = NULL;
-
-	avformat_close_input(&t->avf_ctx);
+	// Free playback buffer
+	if (t->buffer) {
+		AudioBuffer_deinit(t->buffer);
+		free(t->buffer);
+		t->buffer = NULL;
+	}
 }
 
 enum AudioTrack_ERR AudioTrack_get_metadata(AudioTrack *at, TrackMeta *meta) {

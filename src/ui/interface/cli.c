@@ -92,7 +92,7 @@ static enum UserInterface_ERR mainloop(void * _,
 
 		case mpl_TIMECODE:
 		{
-			refresh_timecode(evt.body_inline, TrackQueue_cur_track(track_queue)->audio, &config->settings);
+			refresh_timecode(evt.body_inline, &TrackQueue_cur_track(track_queue)->audio, &config->settings);
 			break;
 		}
 	

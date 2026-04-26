@@ -61,6 +61,9 @@ int TrackQueue_insert(TrackQueue *q, Track *t, bool before);
 
 // Select a track to be q->cur. Handles playback
 int TrackQueue_select(TrackQueue *q, TrackQueueNode *node);
+// Select a track that we think is soon to become q->cur. Handles prebuffering
+int TrackQueue_preselect(TrackQueue *q, TrackQueueNode *node);
+
 // Play or pause the currently selected track.
 int	TrackQueue_play(TrackQueue *q, bool pause);
 // Seek within the currently playing track.

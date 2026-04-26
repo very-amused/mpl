@@ -157,42 +157,37 @@ int TrackQueue_clear(TrackQueue *q) {
 }
 
 int TrackQueue_select(TrackQueue *q, TrackQueueNode *node) {
+	// Set the current track in the queue
+	TrackQueueNode *old = q->cur;
 	q->cur = node;
-	// FIXME: if the queue is playing we want to enqueue and then skip with the backend. otherwise we do what's below
-
-	// Initialize track audio if needed
-	if (!node->track->audio) {
-		node->track->audio = malloc(sizeof(AudioTrack));
-		CHECK_ALLOC(node->track->audio, 1);
-		enum AudioTrack_ERR at_err = AudioTrack_init(node->track->audio, node->track->url, q->backend, q->settings);
-		if (at_err != AudioTrack_OK) {
-			fprintf(stderr, "Failed to initialize AudioTrack for track %s: %s\n", node->track->url, AudioTrack_ERR_name(at_err));
-			free(node->track->audio);
-			node->track->audio = NULL;
-			return 1;
-		}
-		// Load track metadata
-		at_err = AudioTrack_get_metadata(node->track->audio, &node->track->meta);
-		if (at_err != AudioTrack_OK) {
-			fprintf(stderr, "Failed to read metadata for track %s: %s\n", node->track->url, AudioTrack_ERR_name(at_err));
-		}
-		// Buffer 3 seconds of audio data
-		at_err = AudioTrack_buffer_ms(node->track->audio, AudioSeek_Relative, 3000);
-		if (at_err != AudioTrack_OK) {
-			fprintf(stderr, "Failed to initialize AudioTrack for track %s: %s\n", node->track->url, AudioTrack_ERR_name(at_err));
-			AudioTrack_deinit(node->track->audio);
-			free(node->track->audio);
-			node->track->audio = NULL;
+	if (old != q->head) {
+		// Free buffers associated with the old track
+		AudioTrack_deinit_buffers(&old->track->audio);
+	}
+	
+	// Buffer track audio on the main BufferThread
+	if (!node->track->audio.buffer) {
+		enum AudioTrack_ERR err = AudioTrack_init_buffers(&node->track->audio, q->settings);
+		if (err != AudioTrack_OK) {
+			LOG(Verbosity_NORMAL, "Failed to initialize AudioTrack buffers for track %s: %s\n", node->track->url, AudioTrack_ERR_name(err));
 			return 1;
 		}
 	}
+	// TODO: stop prebuffering if that's happening
+	BufferThread_start(q->buffer_thread, &node->track->audio);
+
 	// Prepare track to start playback on a new audio stream
-	int status = AudioBackend_prepare(q->backend, node->track->audio);
+	int status = AudioBackend_prepare(q->backend, &node->track->audio);
 	if (status != 0) {
 		return status;
 	}
 
 	return 0;
+}
+
+int TrackQueue_preselect(TrackQueue *q, TrackQueueNode *node) {
+	// TODO
+	return 1;
 }
 
 // FIXME: we can do a much better job of synchonizing state between the AudioBackend and BufferThread
@@ -217,7 +212,7 @@ int TrackQueue_play(TrackQueue *q, bool pause) {
 	q->playback_state = pause ? Queue_PAUSED : Queue_PLAYING;
 
 	// Start a nonblocking buffer loop
-	AudioTrack *cur_audio = q->cur != q->head ? q->cur->track->audio : NULL;
+	AudioTrack *cur_audio = q->cur != q->head ? &q->cur->track->audio : NULL;
 	if (!cur_audio) {
 		// TODO: implement error code
 		// FIXME: holy hell we never got around to this. Queue_ERR needed!
@@ -260,7 +255,7 @@ static int Queue_seek_inner(TrackQueue *q, int32_t offset, enum AudioSeek from, 
 }
 
 int TrackQueue_seek(TrackQueue *q, int32_t offset_ms, enum AudioSeek from) {
-	AudioTrack *cur_audio = q->cur != q->head ? q->cur->track->audio : NULL;
+	AudioTrack *cur_audio = q->cur != q->head ? &q->cur->track->audio : NULL;
 	if (!cur_audio) {
 		// TODO: err code
 		return 1;
@@ -287,7 +282,7 @@ int TrackQueue_seek(TrackQueue *q, int32_t offset_ms, enum AudioSeek from) {
 // WIP
 int TrackQueue_seek_snap(TrackQueue *q, int32_t offset_ms) {
 	
-	AudioTrack *cur_audio = q->cur != q->head ? q->cur->track->audio : NULL;
+	AudioTrack *cur_audio = q->cur != q->head ? &q->cur->track->audio : NULL;
 	if (!cur_audio) {
 		return 1;
 	}
