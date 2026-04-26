@@ -200,19 +200,33 @@ int TrackQueue_preselect(TrackQueue *q, TrackQueueNode *node) {
 	q->prebuf = node;
 	if (old != q->head && old != q->cur) {
 		// stop prebuffering this old track and free its buffers
-		// TODO: FUCK we need to also get the main BufferThread's mode (prebuf/normal)
+		if (BufferThread_is_prebuf(q->buffer_thread) && BufferThread_cur_track(q->buffer_thread) == &old->track->audio) {
+			BufferThread_stop_prebuf(q->buffer_thread);
+		}
 		if (BufferThread_cur_track(q->prebuffer_thread) == &old->track->audio) {
 			BufferThread_stop_prebuf(q->prebuffer_thread);
 		}
 		AudioTrack_deinit_buffers(&old->track->audio);
 	}
 
-	// Create buffers for the preselected track
+	// Initialize track buffers
+	Track *tr = node->track;
+	if (!tr->audio.buffer) {
+		enum AudioTrack_ERR err = AudioTrack_init_buffers(&tr->audio, q->settings);
+		if (err != AudioTrack_OK) {
+			LOG(Verbosity_NORMAL, "Failed to initialize AudioTrack buffers for track %s: %s\n", node->track->url, AudioTrack_ERR_name(err));
+			return 1;
+		}
+	}
 
-
-	// If the current track has finished buffering, we can use the main BufferThread to prebuffer
-	BufferThread *prebuf_thread = BufferThread_is_avail(q->buffer_thread) ? q->buffer_thread : q->prebuffer_thread;
-
+	// Start prebuffering
+	BufferThread *prebuf_thread = BufferThread_is_avail(q->buffer_thread) ? q->buffer_thread : q->prebuffer_thread; // If the current (playing) track has finished buffering, we can use the main BufferThread to prebuffer
+	const uint32_t prebuf_ms = (q->settings->at_buffer_ahead * 1000) / 10; // FIXME implement an at_prebuffer setting
+	int status = BufferThread_start_prebuf(prebuf_thread, &tr->audio, prebuf_ms);
+	if (status != 0) {
+		LOG(Verbosity_VERBOSE, "Failed to start prebuffering for track %s\n", node->track->url);
+		return status;
+	}
 
 
 	// TODO: Handle prebuffering on the AudioBackend's end (create a stream)

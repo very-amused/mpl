@@ -87,8 +87,10 @@ static void *BufferThread_routine(void *args) {
 		}
 
 		enum AudioTrack_ERR at_err = AudioTrack_buffer_packet(track, NULL);
-		if (at_err == AudioTrack_OK && track->buffer->n_written >= prebuf_frames) {
-			at_err = AudioTrack_PREBUF_EOF;
+		if (prebuf) {
+			if (at_err == AudioTrack_OK && track->buffer->n_written >= prebuf_frames) {
+				at_err = AudioTrack_PREBUF_EOF;
+			}
 		}
 		if (at_err != AudioTrack_OK) {
 			// Enter self-lock fail state
@@ -105,6 +107,7 @@ int BufferThread_start(BufferThread *thr, AudioTrack *track) {
 	// Restart buffering on new track
 	if (thr->thread) {
 		ThreadRC_lock(thr->thread_rc);
+		thr->prebuf_ms = 0;
 		thr->track = track;
 		ThreadRC_unlock(thr->thread_rc);
 		ThreadRC_recover(thr->thread_rc);
@@ -114,6 +117,7 @@ int BufferThread_start(BufferThread *thr, AudioTrack *track) {
 	// Start buffering on new track (create thread)
 	thr->thread = malloc(sizeof(pthread_t));
 	CHECK_ALLOC(thr->thread, 1);
+	thr->prebuf_ms = 0;
 	thr->track = track;
 	return pthread_create(thr->thread, NULL, BufferThread_routine, thr);
 }
@@ -159,6 +163,17 @@ const AudioTrack *BufferThread_cur_track(const BufferThread *thr) {
 
 const bool BufferThread_is_avail(const BufferThread *thr) {
 	return !thr->thread || ThreadRC_has_selflock(thr->thread_rc);
+}
+const bool BufferThread_is_prebuf(const BufferThread *thr) {
+	if (!thr->thread || BufferThread_is_avail(thr)) {
+		return false;
+	}
+
+	ThreadRC_lock(thr->thread_rc);
+	const bool is_prebuf = thr->track != NULL && thr->prebuf_ms > 0;
+	ThreadRC_unlock(thr->thread_rc);
+
+	return is_prebuf;
 }
 
 void BufferThread_lock(BufferThread *thr) {

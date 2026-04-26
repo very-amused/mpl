@@ -29,6 +29,8 @@ const AudioTrack *BufferThread_cur_track(const BufferThread *thr);
 // This is used to ensure the main BufferThread can't be taken away simply when it's paused.
 // It MUST encounter EOF/error and enter selflock before it can be used to buffer something new.
 const bool BufferThread_is_avail(const BufferThread *thr);
+// Returns whether the BufferThread is in prebuffering mode.
+const bool BufferThread_is_prebuf(const BufferThread *thr);
 
 // Lock a BufferThread, pausing its operation until unlocked using BufferThread_unlock().
 // Recursive locking is enabled through an internal semaphore.
