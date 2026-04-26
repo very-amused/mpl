@@ -19,8 +19,10 @@ typedef struct TrackQueue {
 	TrackQueueNode *head; // Top of the queue (sentinel node). head->next is the first actual track (iff head->next != head)
 	TrackQueueNode *tail; // Bottom of the queue (last playable track). tail->next == head
 
-	AudioBackend *backend;
 	BufferThread *buffer_thread;
+	BufferThread *prebuffer_thread;
+
+	AudioBackend *backend;
 	EventSubQueue *evt_sq;
 
 	// TODO: remove

@@ -1,6 +1,7 @@
 #include <stdatomic.h>
 #include <stddef.h>
 #include <stdlib.h>
+#include <sys/types.h>
 #include <time.h>
 #include <errno.h>
 #include <pthread.h>
@@ -17,6 +18,7 @@ struct BufferThread {
 	pthread_t *thread;
 	ThreadRC *thread_rc;
 	_Atomic (AudioTrack *) track;
+	ssize_t prebuf_ms; // # of milliseconds to buffer before stopping. Used in BufferThread_prebuffer_routine
 };
 
 static void BufferThread_wake(void *ud) {
@@ -83,7 +85,30 @@ static void *BufferThread_routine(void *args) {
 			ThreadRC_selflock(thr->thread_rc, at_err, AudioTrack_ERR_name(at_err));
 			continue;
 		}
-	};
+	}
+
+	pthread_exit(NULL);
+}
+
+static void *BufferThread_prebuffer_routine(void *args) {
+	BufferThread *thr = args;
+
+	while (ThreadRC_preloop(thr->thread_rc)) {
+		AudioTrack *track = atomic_load(&thr->track); // TODO I don't think atomics are doing anything here since we need to lock when track swapping regardless
+		static const AudioTrack *tr_cached = NULL;
+		static size_t prebuf_frames = 0;
+		if (tr_cached != track) {
+			tr_cached = track;
+			prebuf_frames = AudioPCM_buffer_size(&track->buf_pcm, thr->prebuf_ms);
+		}
+
+		enum AudioTrack_ERR at_err = AudioTrack_buffer_packet(track, NULL);
+		if (at_err != AudioTrack_OK || track->buffer->n_written >= prebuf_frames) {
+			// Enter self-lock fail state
+			ThreadRC_selflock(thr->thread_rc, at_err, AudioTrack_ERR_name(at_err));
+			continue;
+		}
+	}
 
 	pthread_exit(NULL);
 }
@@ -102,6 +127,23 @@ int BufferThread_start(BufferThread *thr, AudioTrack *track) {
 	thr->thread = malloc(sizeof(pthread_t));
 	CHECK_ALLOC(thr->thread, 1);
 	return pthread_create(thr->thread, NULL, BufferThread_routine, thr);
+}
+
+int BufferThread_start_prebuf(BufferThread *thr, AudioTrack *track, uint32_t prebuf_ms) {
+	// Load track
+	atomic_store(&thr->track, track);
+
+	// Restart buffering on new track
+	if (thr->thread) {
+		ThreadRC_recover(thr->thread_rc);
+		return 0;
+	}
+
+	// Start prebufferintg
+	thr->prebuf_ms = prebuf_ms;
+	thr->thread = malloc(sizeof(pthread_t));
+	CHECK_ALLOC(thr->thread, 1);
+	return pthread_create(thr->thread, NULL, BufferThread_prebuffer_routine, thr);
 }
 
 void BufferThread_lock(BufferThread *thr) {

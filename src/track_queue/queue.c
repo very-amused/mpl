@@ -186,7 +186,11 @@ int TrackQueue_select(TrackQueue *q, TrackQueueNode *node) {
 }
 
 int TrackQueue_preselect(TrackQueue *q, TrackQueueNode *node) {
-	// TODO
+	// Handle prebuffering on our end
+	
+
+	// Handle prebuffering on the AudioBackend's end (create a stream)
+
 	return 1;
 }
 

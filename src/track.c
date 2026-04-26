@@ -20,7 +20,6 @@ Track *Track_new(const char *url, const size_t url_len, AudioBackend *ab) {
 		LOG(Verbosity_NORMAL, "Failed to initialize AudioTrack %s: %s\n", t->url, AudioTrack_ERR_name(at_err));
 	}
 
-	// FIXME: we can make this one call
 	TrackMeta_init(&t->meta);
 	at_err = AudioTrack_get_metadata(&t->audio, &t->meta);
 	if (at_err != AudioTrack_OK) {
