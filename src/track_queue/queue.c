@@ -192,7 +192,19 @@ int TrackQueue_select(TrackQueue *q, TrackQueueNode *node) {
 }
 
 int TrackQueue_preselect(TrackQueue *q, TrackQueueNode *node) {
-	// TODO: Handle prebuffering on our end
+	TrackQueueNode *old = q->prebuf;
+	if (old == node) {
+		// we're already prebuffering this track
+		return 0;
+	}
+	q->prebuf = node;
+	if (old != q->head && old != q->cur) {
+		// not prebuffering this track anymore, free its buffers
+		AudioTrack_deinit_buffers(&old->track->audio);
+	}
+
+	// FIXME: we've hit a problem: we need to be able to 'shift' between playback buffering and prebuffering
+	// so we can use the main BufferThread to prebuffer whenever possible.
 
 	// TODO: Handle prebuffering on the AudioBackend's end (create a stream)
 

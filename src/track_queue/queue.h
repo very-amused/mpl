@@ -15,9 +15,10 @@ typedef struct TrackQueueNode TrackQueueNode;
 
 // A queue performing non-blocking track management
 typedef struct TrackQueue {
-	TrackQueueNode *cur; // Currently playing track
 	TrackQueueNode *head; // Top of the queue (sentinel node). head->next is the first actual track (iff head->next != head)
 	TrackQueueNode *tail; // Bottom of the queue (last playable track). tail->next == head
+	TrackQueueNode *cur; // Currently playing track
+	TrackQueueNode *prebuf; // Currently prebuffering/prebuffered track
 
 	BufferThread *buffer_thread;
 	BufferThread *prebuffer_thread;
@@ -25,7 +26,6 @@ typedef struct TrackQueue {
 	AudioBackend *backend;
 	EventSubQueue *evt_sq;
 
-	// TODO: remove
 	enum Queue_PLAYBACK_STATE playback_state;
 
 	// User settings
@@ -63,7 +63,7 @@ int TrackQueue_insert(TrackQueue *q, Track *t, bool before);
 
 // Select a track to be q->cur. Handles playback
 int TrackQueue_select(TrackQueue *q, TrackQueueNode *node);
-// Select a track that we think is soon to become q->cur. Handles prebuffering
+// Prepare a track that we think is soon to become q->cur. Handles prebuffering
 int TrackQueue_preselect(TrackQueue *q, TrackQueueNode *node);
 
 // Play or pause the currently selected track.
