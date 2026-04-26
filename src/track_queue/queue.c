@@ -162,7 +162,7 @@ int TrackQueue_select(TrackQueue *q, TrackQueueNode *node) {
 	// Set the current track in the queue
 	TrackQueueNode *old = q->cur;
 	q->cur = node;
-	if (old != q->head) {
+	if (old->track && old->track != q->prebuf->track && old->track != q->cur->track) {
 		// Free buffers associated with the old track
 		AudioTrack_deinit_buffers(&old->track->audio);
 	}
@@ -198,7 +198,7 @@ int TrackQueue_preselect(TrackQueue *q, TrackQueueNode *node) {
 		return 0;
 	}
 	q->prebuf = node;
-	if (old != q->head && old != q->cur) {
+	if (old->track && old->track != q->cur->track) {
 		// stop prebuffering this old track and free its buffers
 		if (BufferThread_is_prebuf(q->buffer_thread) && BufferThread_cur_track(q->buffer_thread) == &old->track->audio) {
 			BufferThread_stop_prebuf(q->buffer_thread);
