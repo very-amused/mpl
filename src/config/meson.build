@@ -13,5 +13,8 @@ endif
 subdir('internal')
 subdir('keybind')
 subdir('function')
+if get_option('parsing_v2')
+	subdir('parse_v2')
+endif
 
 src += src_config
