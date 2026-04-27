@@ -41,7 +41,7 @@ static inline const char *LexerToken_t_name(enum LexerToken_t tok) {
 typedef struct LexerToken {
 	enum LexerToken_t type;
 	union {
-		uint32_t u32_lit;
+		int32_t i32_lit;
 		char *str_lit;
 		bool bool_lit;
 

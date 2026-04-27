@@ -4,6 +4,8 @@
 #include "util/strtokn.h"
 
 #include <locale.h>
+#include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -113,6 +115,24 @@ int Lexer_tokenize(Lexer *l, const char *chunk) {
 				TYPE(Tok_Lparen);
 			case ')':
 				TYPE(Tok_Rparen);
+			case '-':
+			case '0':
+			case '1':
+			case '2':
+			case '3':
+			case '4':
+			case '5':
+			case '6':
+			case '7':
+			case '8':
+			case '9':
+			{
+				tok->type = Tok_I32Lit;
+				sscanf(c, "%d", &tok->i32_lit);
+				const size_t tok_strlen = (*c == '-' ? 1 : 0) + floorl(log10(abs(tok->i32_lit)))+1;
+				c += tok_strlen-1;
+			}
+
 
 			/* Keywords */
 			case 'b':
@@ -136,7 +156,6 @@ int Lexer_tokenize(Lexer *l, const char *chunk) {
 			{
 				const size_t kw_len = strlen(KEYWORD_FALSE);
 				if (strncmp(c, KEYWORD_FALSE, kw_len) == 0) {
-					// We handle bool literals immediately since they're simple
 					tok->type = Tok_BoolLit;
 					tok->bool_lit = false;
 					c += kw_len-1;
