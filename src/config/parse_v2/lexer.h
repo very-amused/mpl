@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <wchar.h>
 
 #define TOKEN_ENUM(VARIANT) \
 	/* Symbols */ \
@@ -48,10 +49,13 @@ typedef struct LexerToken {
 
 		// Identifier for something
 		char *ident;
+
+		// name of a keyboard key
+		wchar_t keyname;
 	};
 } LexerToken;
 
-// Free a lexer token
+// Deinitialize and free a LexerToken
 void LexerToken_free(LexerToken *tok);
 
 typedef struct Lexer Lexer;
