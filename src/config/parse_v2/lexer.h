@@ -10,14 +10,12 @@
 	VARIANT(Tok_EOF) /* End of file */ \
 	VARIANT(Tok_Semi) /* ; */ \
 	VARIANT(Tok_LF)  /* \n */ \
-	VARIANT(Tok_SingleQuote) /* ' */\
-	VARIANT(Tok_DoubleQuote) /* " */ \
 	VARIANT(Tok_EQ) /* = */ \
 	VARIANT(Tok_Lparen) /* ( */ \
 	VARIANT(Tok_Rparen) /* ) */ \
 	VARIANT(Tok_Bind) /* bind (used in keybind definitions) */ \
 	/* Literals */ \
-	VARIANT(Tok_U32Lit) \
+	VARIANT(Tok_I32Lit) \
 	VARIANT(Tok_StrLit) \
 	VARIANT(Tok_BoolLit) \
 	/* Identifiers */ \
@@ -50,8 +48,8 @@ typedef struct LexerToken {
 		// Identifier for something
 		char *ident;
 
-		// name of a keyboard key
-		wchar_t keyname;
+		// keycode identifying a keyboard key
+		wchar_t keycode;
 	};
 } LexerToken;
 
