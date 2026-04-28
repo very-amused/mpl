@@ -92,15 +92,13 @@ int Lexer_tokenize(Lexer *l, const char *chunk) {
 		switch (*c) {
 			case ' ':
 			case '\t':
-			case '\r':
-			case '\n':
 				c++;
-				continue; // advance past whitespace
+				continue; // advance past non-breaking whitespace
 			case '#':
 			{
 				do {
 					c++;
-				} while (!(*c == '\0' || *c == '\n'));
+				} while (!(*c == '\0' || *(c-1) == '\n'));
 				continue;
 			}
 		}
@@ -109,6 +107,11 @@ int Lexer_tokenize(Lexer *l, const char *chunk) {
 		tok->type = -1;
 		switch (*c) {
 			/* Symbols */
+			case '\r':
+			case '\n':
+				tok->type = Tok_LF;
+				c++;
+				break;
 			case ';':
 				tok->type = Tok_Semi;
 				c++;
