@@ -3,6 +3,7 @@
 #include "error.h"
 #include "util/strtokn.h"
 
+#include <ctype.h>
 #include <locale.h>
 #include <math.h>
 #include <stdio.h>
@@ -14,8 +15,7 @@ void LexerToken_free(LexerToken *tok) {
 	case Tok_StrLit:
 		free(tok->str_lit);
 		break;
-	case Tok_SettingIdent:
-	case Tok_FnIdent:
+	case Tok_Ident:
 		free(tok->ident);
 		break;
 	default:
@@ -62,7 +62,7 @@ void Lexer_free(Lexer *l) {
 }
 
 // Append a lexer token to the end of lexer state
-static void Lexer_append_(Lexer *l, LexerToken *tok) {
+static void Lexer_append(Lexer *l, LexerToken *tok) {
 	LexerTokenNode *node = malloc(sizeof(LexerTokenNode));
 	node->prev = l->head->prev;
 	node->next = l->head;
@@ -116,6 +116,8 @@ int Lexer_tokenize(Lexer *l, const char *chunk) {
 				TYPE(Tok_Lparen);
 			case ')':
 				TYPE(Tok_Rparen);
+			case ',':
+				TYPE(Tok_Comma);
 			case '-':
 			case '0':
 			case '1':
@@ -140,10 +142,13 @@ int Lexer_tokenize(Lexer *l, const char *chunk) {
 			{
 				const size_t kw_len = strlen("bind");
 				if (strncmp(c, KEYWORD_BIND, kw_len) == 0) {
-					// Parse keyname
+					// Append bind token
 					tok->type = Tok_Bind;
-					Lexer_append_(l, tok);
+					Lexer_append(l, tok);
 
+					// Parse keyname token
+					tok = malloc(sizeof(LexerToken));
+					tok->type = Tok_Keysym;
 					c += kw_len;
 					StrtoknState state;
 					strtokn_init(&state, c, strlen(c));
@@ -180,15 +185,18 @@ int Lexer_tokenize(Lexer *l, const char *chunk) {
 		}
 #undef TYPE
 
-		if (tok->type != -1) {
-			// We've got our token, append it
-			Lexer_append_(l, tok);
-			continue;
+		if (tok->type == -1) {
+			// If nothing else has matched, read ident
+			const char *start = c;
+			while (isalpha(*c) || (*c >= '0' && *c <= '9') || *c == '_') {
+				c++;
+			}
+			tok->type = Tok_Ident;
+			tok->ident = strndup(start, c - start);
 		}
 
-
-		// Match identifier
-		// TODO
+		// Append the token to our list
+		Lexer_append(l, tok);
 	}
 
 	return 0;

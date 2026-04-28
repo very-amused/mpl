@@ -13,16 +13,16 @@
 	VARIANT(Tok_EQ) /* = */ \
 	VARIANT(Tok_Lparen) /* ( */ \
 	VARIANT(Tok_Rparen) /* ) */ \
+	VARIANT(Tok_Comma) /* , */ \
 	VARIANT(Tok_Bind) /* bind (used in keybind definitions) */ \
 	/* Literals */ \
 	VARIANT(Tok_I32Lit) \
 	VARIANT(Tok_StrLit) \
 	VARIANT(Tok_BoolLit) \
 	/* Identifiers */ \
-	VARIANT(Tok_SettingIdent) /* Name of a MPL setting */ \
-	VARIANT(Tok_FnIdent) /* Name of an MPL function */ \
+	VARIANT(Tok_Ident) /* Name of a MPL setting/function/something */ \
 	/* Key names */ \
-	VARIANT(Tok_Keyname) /* Name of a key to be used in a keybind */
+	VARIANT(Tok_Keysym) /* Keyboard symbol to be used in a keybind */
 
 enum LexerToken_t {
 	TOKEN_ENUM(ENUM_VAL)
