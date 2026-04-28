@@ -1,6 +1,31 @@
 #pragma once
-
+#include "error.h"
 #include "config/parse_v2/lexer.h"
+
+#define PARSE_NODE_ID_ENUM(VARIANT) \
+	VARIANT(ParseNodeID_Root) \
+	VARIANT(ParseNodeID_SettingStmt) \
+	VARIANT(ParseNodeID_ShellStmt) \
+	VARIANT(ParseNodeID_KeybindStmt) \
+	VARIANT(ParseNodeID_FnCallExpr) \
+	VARIANT(ParseNodeID_ArgList) \
+	VARIANT(ParseNodeID_ArgExpr)
+
+enum ParseNodeID {
+	PARSE_NODE_ID_ENUM(ENUM_VAL)
+};
+
+static inline const char *ParseNodeID_name(enum ParseNodeID id) {
+	switch (id) {
+		PARSE_NODE_ID_ENUM(ENUM_KEY)
+	}
+	return DEFAULT_ERR_NAME;
+}
+
+#undef PARSE_NODE_ID_ENUM
+
+
+// A MPL config/shell parser
 typedef struct Parser Parser;
 
 // Create a new config parser that parses from lexer *l
