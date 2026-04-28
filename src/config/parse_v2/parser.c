@@ -78,6 +78,17 @@ void Parser_free(Parser *p) {
 // Config => ;
 // Config => EOF
 int Parser_parse_Config(Parser *p, ParseNode_Root *node) {
+	for (const LexerToken *tok = Lexer_peek(p->lex); tok != NULL; tok = Lexer_peek(p->lex)) {
+		// We're either setting something or calling something. Both have an ident, so we look for that
+		while (tok->type != Tok_Ident) {
+			Lexer_advance(p->lex);
+			tok = Lexer_peek(p->lex);
+		}
+
+		// Now, we need to figure out if this is a SettingStmt or ShellStmt,
+		// we can do that by checking if the ident is the name of a setting or not
+		// FIXME: fuck how do we do this
+	}
 }
 
 int Parser_parse_SettingStmt(Parser *p, ParseNode_SettingStmt *node);
