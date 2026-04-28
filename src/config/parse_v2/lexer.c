@@ -83,27 +83,26 @@ int Lexer_tokenize(Lexer *l, const char *chunk) {
 
 	const char *c = chunk;
 	while (*c != '\0') {	
-		LexerToken *tok = malloc(sizeof(LexerToken));
-		tok->type = -1;
-
+		// Eat whitespace and comments
 		switch (*c) {
-			/* Whitespace and comments */
 			case ' ':
 			case '\t':
 			case '\r':
 			case '\n':
 				c++;
-				free(tok);
 				continue; // advance past whitespace
 			case '#':
 			{
 				do {
 					c++;
 				} while (!(*c == '\0' || *c == '\n'));
-				free(tok);
 				continue;
 			}
+		}
 
+		LexerToken *tok = malloc(sizeof(LexerToken));
+		tok->type = -1;
+		switch (*c) {
 			/* Symbols */
 			case ';':
 				tok->type = Tok_Semi;

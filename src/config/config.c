@@ -49,10 +49,11 @@ int Config_parse(Config *conf, const char *path) {
 	FILE *fp = fopen(path, "r");
 	char *line = NULL;
 	size_t line_len;
-	while (getline(&line, &line_len, fp)) {
+	while (getline(&line, &line_len, fp) != EOF) {
 		int status = Lexer_tokenize(lex, line);
 		assert(status == 0);
 	}
+	fclose(fp);
 	Lexer_free(lex);
 #endif
 
