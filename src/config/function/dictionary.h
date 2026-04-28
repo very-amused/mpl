@@ -24,3 +24,5 @@ typedef struct ConfigFn ConfigFn;
 enum ConfigFn_ERR ConfigFnDict_lookup(ConfigFnDict *dict, const ConfigFn **dst,
 		const char *ident);
 
+// Check if a function identifier is defined in a ConfigFnDict
+const bool ConfigFnDict_has(ConfigFnDict *dict, const char *ident);

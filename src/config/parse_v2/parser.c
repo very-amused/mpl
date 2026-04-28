@@ -1,19 +1,21 @@
 #include "parser.h"
+#include "config/function/dictionary.h"
 #include "config/parse_v2/lexer.h"
 #include "error.h"
 #include <stdlib.h>
 
 struct ParseNode_Root_Child {
+	struct ParseNode_Root_Child *next; // Set to NULL for the last child
 	enum ParseNodeID type; // SettingStmt | ShellStmt
 	union {
-		ParseNode_SettingStmt *setting;
-		ParseNode_ShellStmt *shell;
+		ParseNode_SettingStmt *setting_stmt;
+		ParseNode_ShellStmt *shell_stmt;
 	};
 };
 
 struct ParseNode_Root {
 	// SettingStmt | ShellStmt
-	struct ParseNode_Root_Child *children;	
+	struct ParseNode_Root_Child *children;
 };
 
 struct ParseNode_SettingStmt {
@@ -77,18 +79,62 @@ void Parser_free(Parser *p) {
 // Config => \n
 // Config => ;
 // Config => EOF
-int Parser_parse_Config(Parser *p, ParseNode_Root *node) {
+int Parser_parse_Config(Parser *p, ParseNode_Root *node, ConfigFnDict *fn_dict) {
+	struct ParseNode_Root_Child *last_child = NULL; // used to append to SLL node->children
+
 	for (const LexerToken *tok = Lexer_peek(p->lex); tok != NULL; tok = Lexer_peek(p->lex)) {
-		// We're either setting something or calling something. Both have an ident, so we look for that
-		while (tok->type != Tok_Ident) {
-			Lexer_advance(p->lex);
-			tok = Lexer_peek(p->lex);
+		// Figure out the type of our next child to parse
+		struct ParseNode_Root_Child child;
+		memset(&child, 0, sizeof(struct ParseNode_Root_Child));
+		switch (tok->type) {
+			case Tok_Bind:
+				child.type = ParseNodeID_ShellStmt;
+				break;
+			case Tok_Ident:
+				// If this ident belongs to a function, our child is a ShellStmt.
+				// Otherwise, our child must be a SettingStmt.
+				child.type = ConfigFnDict_has(fn_dict, tok->ident) ? ParseNodeID_ShellStmt : ParseNodeID_SettingStmt;
+				break;
+			case Tok_LF:
+			case Tok_Semi:
+				continue;
+			default:
+				// syntax error
+				return 1;
+				break;
 		}
 
-		// Now, we need to figure out if this is a SettingStmt or ShellStmt,
-		// we can do that by checking if the ident is the name of a setting or not
-		// FIXME: fuck how do we do this
+		int result;
+		switch (child.type) {
+			case ParseNodeID_SettingStmt:
+				child.setting_stmt = malloc(sizeof(ParseNode_SettingStmt));
+				result = Parser_parse_SettingStmt(p, child.setting_stmt);
+				break;
+			case ParseNodeID_ShellStmt:
+				child.shell_stmt = malloc(sizeof(ParseNode_ShellStmt));
+				result = Parser_parse_ShellStmt(p, child.shell_stmt);
+				break;
+			default:
+				// Invalid node type
+				return 1;
+		}
+		if (result != 0) {
+			// Syntax error
+			// FIXME: ERROR TYPE!!!
+			return result;
+		}
+
+		struct ParseNode_Root_Child *heap_child = malloc(sizeof(struct ParseNode_Root_Child)); // I love this variable name
+		*heap_child = child;
+		if (last_child) {
+			last_child->next = heap_child;
+		} else {
+			node->children = heap_child;
+		}
+		last_child = heap_child;
 	}
+
+	return 0;
 }
 
 int Parser_parse_SettingStmt(Parser *p, ParseNode_SettingStmt *node);

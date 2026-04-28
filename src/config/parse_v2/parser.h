@@ -1,4 +1,5 @@
 #pragma once
+#include "config/function/dictionary.h"
 #include "error.h"
 #include "config/parse_v2/lexer.h"
 
@@ -49,7 +50,7 @@ void Parser_free(Parser *p);
 
 // these function names aren't gonna make much sense without reading MPL's grammar spec
 
-int Parser_parse_Config(Parser *p, ParseNode_Root *node);
+int Parser_parse_Config(Parser *p, ParseNode_Root *node, ConfigFnDict *fn_dict);
 
 int Parser_parse_SettingStmt(Parser *p, ParseNode_SettingStmt *node);
 int Parser_parse_ShellStmt(Parser *p, ParseNode_ShellStmt *node);

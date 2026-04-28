@@ -42,6 +42,10 @@ enum ConfigFn_ERR ConfigFnDict_lookup(ConfigFnDict *dict, const ConfigFn **dst,
 	return ConfigFn_OK;
 }
 
+const bool ConfigFnDict_has(ConfigFnDict *dict, const char *ident) {
+	return dict->map.find(ident) != dict->map.end();
+}
+
 }
 
 
@@ -72,3 +76,4 @@ void ConfigFnDict_define_macro(ConfigFnDict *dict, const char *ident,
 
 	dict->map[std::string(macro->ident)] = std::move(macro);
 }
+
