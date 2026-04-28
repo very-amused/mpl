@@ -133,8 +133,20 @@ enum Parser_ERR Parser_parse_Config(Parser *p, ParseNode_Root *node, ConfigFnDic
 	return Parser_OK;
 }
 
-enum Parser_ERR Parser_parse_SettingStmt(Parser *p, ParseNode_SettingStmt *node);
-enum Parser_ERR Parser_parse_ShellStmt(Parser *p, ParseNode_ShellStmt *node);
+enum Parser_ERR Parser_parse_SettingStmt(Parser *p, ParseNode_SettingStmt *node) {
+	const LexerToken *tok = Lexer_peek(p->lex);
+	if (tok->type != Tok_Ident) {
+		return Parser_INVALID_TOKEN;
+	}
+
+	// Lookup setting by ident
+	// TODO: we need a SettingsDict
+	return -1;
+}
+enum Parser_ERR Parser_parse_ShellStmt(Parser *p, ParseNode_ShellStmt *node) {
+	// TODO
+	return -1;
+}
 
 enum Parser_ERR Parser_parse_KeybindStmt(Parser *p, ParseNode_KeybindStmt *node);
 enum Parser_ERR Parser_parse_FnCallExpr(Parser *p, ParseNode_FnCallExpr *node);
