@@ -50,13 +50,13 @@ void Parser_free(Parser *p);
 
 // these function names aren't gonna make much sense without reading MPL's grammar spec
 
-int Parser_parse_Config(Parser *p, ParseNode_Root *node, ConfigFnDict *fn_dict);
+enum Parser_ERR Parser_parse_Config(Parser *p, ParseNode_Root *node, ConfigFnDict *fn_dict);
 
-int Parser_parse_SettingStmt(Parser *p, ParseNode_SettingStmt *node);
-int Parser_parse_ShellStmt(Parser *p, ParseNode_ShellStmt *node);
+enum Parser_ERR Parser_parse_SettingStmt(Parser *p, ParseNode_SettingStmt *node);
+enum Parser_ERR Parser_parse_ShellStmt(Parser *p, ParseNode_ShellStmt *node);
 
-int Parser_parse_KeybindStmt(Parser *p, ParseNode_KeybindStmt *node);
-int Parser_parse_FnCallExpr(Parser *p, ParseNode_FnCallExpr *node);
+enum Parser_ERR Parser_parse_KeybindStmt(Parser *p, ParseNode_KeybindStmt *node);
+enum Parser_ERR Parser_parse_FnCallExpr(Parser *p, ParseNode_FnCallExpr *node);
 
-int Parser_parse_ArgList(Parser *p, ParseNode_ArgList *node);
-int Parser_parse_ArgExpr(Parser *p, ParseNode_ArgExpr *node);
+enum Parser_ERR Parser_parse_ArgList(Parser *p, ParseNode_ArgList *node);
+enum Parser_ERR Parser_parse_ArgExpr(Parser *p, ParseNode_ArgExpr *node);

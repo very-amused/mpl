@@ -3,6 +3,7 @@
 #include "config/parse_v2/lexer.h"
 #include "error.h"
 #include <stdlib.h>
+#include <string.h>
 
 struct ParseNode_Root_Child {
 	struct ParseNode_Root_Child *next; // Set to NULL for the last child
@@ -79,7 +80,7 @@ void Parser_free(Parser *p) {
 // Config => \n
 // Config => ;
 // Config => EOF
-int Parser_parse_Config(Parser *p, ParseNode_Root *node, ConfigFnDict *fn_dict) {
+enum Parser_ERR Parser_parse_Config(Parser *p, ParseNode_Root *node, ConfigFnDict *fn_dict) {
 	struct ParseNode_Root_Child *last_child = NULL; // used to append to SLL node->children
 
 	for (const LexerToken *tok = Lexer_peek(p->lex); tok != NULL; tok = Lexer_peek(p->lex)) {
@@ -99,12 +100,10 @@ int Parser_parse_Config(Parser *p, ParseNode_Root *node, ConfigFnDict *fn_dict) 
 			case Tok_Semi:
 				continue;
 			default:
-				// syntax error
-				return 1;
-				break;
+				return Parser_INVALID_TOKEN;
 		}
 
-		int result;
+		enum Parser_ERR result;
 		switch (child.type) {
 			case ParseNodeID_SettingStmt:
 				child.setting_stmt = malloc(sizeof(ParseNode_SettingStmt));
@@ -115,12 +114,9 @@ int Parser_parse_Config(Parser *p, ParseNode_Root *node, ConfigFnDict *fn_dict) 
 				result = Parser_parse_ShellStmt(p, child.shell_stmt);
 				break;
 			default:
-				// Invalid node type
-				return 1;
+				return Parser_INVALID_NODE; // should never happen
 		}
-		if (result != 0) {
-			// Syntax error
-			// FIXME: ERROR TYPE!!!
+		if (result != Parser_OK) {
 			return result;
 		}
 
@@ -134,14 +130,14 @@ int Parser_parse_Config(Parser *p, ParseNode_Root *node, ConfigFnDict *fn_dict) 
 		last_child = heap_child;
 	}
 
-	return 0;
+	return Parser_OK;
 }
 
-int Parser_parse_SettingStmt(Parser *p, ParseNode_SettingStmt *node);
-int Parser_parse_ShellStmt(Parser *p, ParseNode_ShellStmt *node);
+enum Parser_ERR Parser_parse_SettingStmt(Parser *p, ParseNode_SettingStmt *node);
+enum Parser_ERR Parser_parse_ShellStmt(Parser *p, ParseNode_ShellStmt *node);
 
-int Parser_parse_KeybindStmt(Parser *p, ParseNode_KeybindStmt *node);
-int Parser_parse_FnCallExpr(Parser *p, ParseNode_FnCallExpr *node);
+enum Parser_ERR Parser_parse_KeybindStmt(Parser *p, ParseNode_KeybindStmt *node);
+enum Parser_ERR Parser_parse_FnCallExpr(Parser *p, ParseNode_FnCallExpr *node);
 
-int Parser_parse_ArgList(Parser *p, ParseNode_ArgList *node);
-int Parser_parse_ArgExpr(Parser *p, ParseNode_ArgExpr *node);
+enum Parser_ERR Parser_parse_ArgList(Parser *p, ParseNode_ArgList *node);
+enum Parser_ERR Parser_parse_ArgExpr(Parser *p, ParseNode_ArgExpr *node);

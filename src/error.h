@@ -230,4 +230,23 @@ static inline const char *UserInterface_ERR_name(enum UserInterface_ERR err) {
 
 #undef USERINTERFACE_ERR
 
+#define PARSER_ERR(VARIANT) \
+	VARIANT(Parser_OK) \
+	VARIANT(Parser_INVALID_TOKEN) \
+	VARIANT(Parser_INVALID_NODE) \
+	VARIANT(Parser_SYNTAX_ERR)
+
+enum Parser_ERR {
+	PARSER_ERR(ENUM_VAL)
+};
+
+static inline const char *Parser_ERR_name(enum Parser_ERR err) {
+	switch (err) {
+		PARSER_ERR(ENUM_KEY)
+	}
+	return DEFAULT_ERR_NAME;
+}
+
+#undef PARSER_ERR
+
 #define CHECK_ALLOC(var, err) if (!var) return err
