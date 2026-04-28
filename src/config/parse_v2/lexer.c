@@ -86,6 +86,7 @@ int Lexer_tokenize(Lexer *l, const char *chunk) {
 #define TYPE(t) /* Set token type */ \
 		tok->type = t; break
 		
+		tok->type = -1;
 		switch (*c) {
 			/* Symbols */
 			case -1:
@@ -136,22 +137,26 @@ int Lexer_tokenize(Lexer *l, const char *chunk) {
 
 			/* Keywords */
 			case 'b':
-				if (strncmp(c, KEYWORD_BIND, strlen(KEYWORD_BIND)) == 0) {
+			{
+				const size_t kw_len = strlen("bind");
+				if (strncmp(c, KEYWORD_BIND, kw_len) == 0) {
 					// Parse keyname
 					tok->type = Tok_Bind;
-					c += strlen("bind");
+					Lexer_append_(l, tok);
+
+					c += kw_len;
 					StrtoknState state;
-					strtokn_init(&state, c + strlen("bind"), strlen(c));
-					strtokn(&state, WHITESPACE);
+					strtokn_init(&state, c, strlen(c));
+					strtokn_consume(&state, WHITESPACE); // eat whitespace after bind
+					strtokn(&state, WHITESPACE); // read keyname
 					// Get keycode from keyname
 					char *keyname = strndup(&state.s[state.offset], state.s_len);
 					tok->keycode = parse_keycode(keyname);
 					free(keyname);
 					c += state.s_len-1;
-					} else {
-						return 1;
-					}
+				}
 				break;
+			}
 			case 'f':
 			{
 				const size_t kw_len = strlen(KEYWORD_FALSE);
@@ -159,8 +164,6 @@ int Lexer_tokenize(Lexer *l, const char *chunk) {
 					tok->type = Tok_BoolLit;
 					tok->bool_lit = false;
 					c += kw_len-1;
-				} else {
-					return 1;
 				}
 				break;
 			}
@@ -171,12 +174,21 @@ int Lexer_tokenize(Lexer *l, const char *chunk) {
 					tok->type = Tok_BoolLit;
 					tok->bool_lit = true;
 					c += kw_len-1;
-				} else {
-					return 1;
 				}
 				break;
 			}
 		}
+#undef TYPE
+
+		if (tok->type != -1) {
+			// We've got our token, append it
+			Lexer_append_(l, tok);
+			continue;
+		}
+
+
+		// Match identifier
+		// TODO
 	}
 
 	return 0;
