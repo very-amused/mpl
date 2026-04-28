@@ -24,6 +24,20 @@ static inline const char *ParseNodeID_name(enum ParseNodeID id) {
 
 #undef PARSE_NODE_ID_ENUM
 
+// Root parse node
+typedef struct ParseNode_Root ParseNode_Root;
+// A setting definition
+typedef struct ParseNode_SettingStmt ParseNode_SettingStmt;
+// A line of valid MPL shell. Can create a keybind or call any function/macro
+typedef struct ParseNode_ShellStmt ParseNode_ShellStmt;
+// A keybind definition
+typedef struct ParseNode_KeybindStmt ParseNode_KeybindStmt;
+// A call to one or more functions/macros
+typedef struct ParseNode_FnCallExpr ParseNode_FnCallExpr;
+// A list of function arguments
+typedef struct ParseNode_ArgList ParseNode_ArgList;
+// A single function argument
+typedef struct ParseNode_ArgExpr ParseNode_ArgExpr;
 
 // A MPL config/shell parser
 typedef struct Parser Parser;
