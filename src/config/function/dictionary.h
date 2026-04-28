@@ -5,18 +5,11 @@
 // A dictionary of all defined (parseable) ConfigFn's
 typedef struct ConfigFnDict ConfigFnDict;
 
-// Create an empty config function dictionary, initialized with state
+// Create an empty config function dictionary
 // Returns NULL on error
 ConfigFnDict *ConfigFnDict_new();
 // Deinitialize and free a config function dictionary
 void ConfigFnDict_free(ConfigFnDict *dict);
-
-// Define a config function and add it to the dictionary
-// TODO: remove
-void ConfigFnDict_define_old(ConfigFnDict *dict, const char *ident, const bool is_macro,
-		void (*routine)(void *args),
-		enum ConfigFn_ERR (*parse_args)(void **args, StrtoknState *parse_state),
-		void (*free_args)(void *args));
 
 // Lookup a config function in the dictionary
 // NOTE: see register.h for how to define config functions so they can be loaded

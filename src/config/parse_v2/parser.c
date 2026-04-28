@@ -120,7 +120,8 @@ enum Parser_ERR Parser_parse_Config(Parser *p, ParseNode_Root *node, ConfigFnDic
 			return result;
 		}
 
-		struct ParseNode_Root_Child *heap_child = malloc(sizeof(struct ParseNode_Root_Child)); // I love this variable name
+		// I love this variable name
+		struct ParseNode_Root_Child *heap_child = malloc(sizeof(struct ParseNode_Root_Child));
 		*heap_child = child;
 		if (last_child) {
 			last_child->next = heap_child;
