@@ -242,7 +242,7 @@ int Lexer_tokenize(Lexer *l, const char *chunk) {
 				LOG(Verbosity_DEBUG, "tok->str_lit = %s\n", tok->str_lit);
 				break;
 			case Tok_BoolLit:
-				LOG(Verbosity_DEBUG, "tok->bool_lit = %b\n", tok->bool_lit);
+				LOG(Verbosity_DEBUG, "tok->bool_lit = %s\n", tok->bool_lit ? "true" : "false");
 				break;
 			default:
 				break;
