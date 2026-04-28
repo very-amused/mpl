@@ -35,8 +35,7 @@ struct LexerTokenNode {
 };
 
 struct Lexer {
-	LexerTokenNode *head; // Sentinel node that holds no tokern		
-	LexerTokenNode *cur; // Current logical token used for Lexer_peek
+	LexerTokenNode *head; // Sentinel node that holds no token. head->next is the token used for peek		
 };
 
 Lexer *Lexer_new() {
@@ -48,18 +47,23 @@ Lexer *Lexer_new() {
 	lex->head = malloc(sizeof(LexerTokenNode));
 	lex->head->token = NULL;
 	lex->head->prev = lex->head->next = lex->head;
-	lex->cur = lex->head;
 
 	return lex;
 }
 // Deinitialize and free a config lexer.
 void Lexer_free(Lexer *l) {
-	while (l->cur != l->head) {
-		LexerTokenNode *next = l->cur->next;
-		LexerToken_free(l->cur->token);
-		free(l->cur);
-		l->cur = next;
+	// Free all tokens
+	LexerTokenNode *tok = l->head->next;
+	while (tok != l->head) {
+		LexerTokenNode *next = tok->next;
+		LexerToken_free(tok->token);
+		free(tok);
+		tok = next;
 	}
+	free(l->head);
+
+	// Free the lexer itself
+	free(l);
 }
 
 // Append a lexer token to the end of lexer state
@@ -70,6 +74,7 @@ static void Lexer_append(Lexer *l, LexerToken *tok) {
 	node->token = tok;
 
 	l->head->prev->next = node;
+	l->head->prev = node;
 }
 
 // Tokenize a chunk of MPL config. This is where the lexing magic happens.
@@ -248,18 +253,19 @@ int Lexer_tokenize(Lexer *l, const char *chunk) {
 
 // Peek the next logical token
 const LexerToken *Lexer_peek(const Lexer *l) {
-	return l->cur->token;
+	LexerTokenNode *cur = l->head->next;
+	return cur->token;
 }
 // Consume the current logical token, causing the lexer to advance to the next token
 void Lexer_advance(Lexer *l) {
-	if (l->cur == l->head) {
+	LexerTokenNode *cur = l->head->next;
+	if (cur == l->head) {
 		return;
 	}
 
-	LexerTokenNode *old = l->cur;
+	LexerTokenNode *old = cur;
 	old->prev->next = old->next;
 	old->next->prev = old->prev;
-	l->cur = old->next;
 	LexerToken_free(old->token);
 	free(old);
 }

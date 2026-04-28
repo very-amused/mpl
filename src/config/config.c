@@ -55,6 +55,7 @@ int Config_parse(Config *conf, const char *path) {
 	}
 	fclose(fp);
 	Lexer_free(lex);
+	free(line);
 #endif
 
 	return Config_parse_internal(conf, path, PARSE_ALL);
