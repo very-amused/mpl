@@ -28,7 +28,7 @@ int TrackQueue_init(TrackQueue *q, const Settings *settings, EventQueue *eq) {
 	q->head = malloc(sizeof(TrackQueueNode));
 	CHECK_ALLOC(q->head, 1);
 	q->head->prev = q->head->next = q->head;
-	q->cur = q->tail = q->head;
+	q->cur = q->prebuf = q->tail = q->head;
 
 	// Don't automatically connect to any backend, in case the user wants to choose a specific backend
 	q->backend = NULL;

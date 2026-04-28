@@ -7,9 +7,7 @@
 
 #define TOKEN_ENUM(VARIANT) \
 	/* Symbols */ \
-	VARIANT(Tok_EOF) /* End of file */ \
 	VARIANT(Tok_Semi) /* ; */ \
-	VARIANT(Tok_LF)  /* \n */ \
 	VARIANT(Tok_EQ) /* = */ \
 	VARIANT(Tok_Lparen) /* ( */ \
 	VARIANT(Tok_Rparen) /* ) */ \

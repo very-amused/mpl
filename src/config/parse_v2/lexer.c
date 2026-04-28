@@ -1,6 +1,7 @@
 #include "lexer.h"
 #include "config/keybind/keycode.h"
 #include "error.h"
+#include "util/log.h"
 #include "util/strtokn.h"
 
 #include <ctype.h>
@@ -80,44 +81,66 @@ int Lexer_tokenize(Lexer *l, const char *chunk) {
 	static const char KEYWORD_TRUE[] = "true";
 	static const char KEYWORD_FALSE[] = "false";
 
-
-	for (const char *c = chunk; c != NULL; c++) {
+	const char *c = chunk;
+	while (*c != '\0') {	
 		LexerToken *tok = malloc(sizeof(LexerToken));
-#define TYPE(t) /* Set token type */ \
-		tok->type = t; break
-		
 		tok->type = -1;
+
 		switch (*c) {
-			/* Symbols */
-			case -1:
-				TYPE(Tok_EOF);
-			case ';':
-				TYPE(Tok_Semi);
+			/* Whitespace and comments */
+			case ' ':
+			case '\t':
+			case '\r':
 			case '\n':
-				TYPE(Tok_LF);
+				c++;
+				free(tok);
+				continue; // advance past whitespace
+			case '#':
+			{
+				do {
+					c++;
+				} while (!(*c == '\0' || *c == '\n'));
+				free(tok);
+				continue;
+			}
+
+			/* Symbols */
+			case ';':
+				tok->type = Tok_Semi;
+				c++;
+				break;
 			case '\'':
 			case '"':
 			{
+				// string literal
 				tok->type = Tok_StrLit;
 				const char quote = *c;
-				c++; // advance past quote
-				char *end = strchr(c, quote);
+				c++; // advance past opening quote
+				const char *end = strchr(c, quote);
 				if (!end) {
 					// Unterminated string
 					return 1;
 				}
 				tok->str_lit = strndup(c, end - c);
-				c = end;
+				c = end+1; // advance past closing quote
 				break;
 			}
 			case '=':
-				TYPE(Tok_EQ);
+				tok->type = Tok_EQ;
+				c++;
+				break;
 			case '(':
-				TYPE(Tok_Lparen);
+				tok->type = Tok_Lparen;
+				c++;
+				break;
 			case ')':
-				TYPE(Tok_Rparen);
+				tok->type = Tok_Rparen;
+				c++;
+				break;
 			case ',':
-				TYPE(Tok_Comma);
+				tok->type = Tok_Comma;
+				c++;
+				break;
 			case '-':
 			case '0':
 			case '1':
@@ -133,33 +156,36 @@ int Lexer_tokenize(Lexer *l, const char *chunk) {
 				tok->type = Tok_I32Lit;
 				sscanf(c, "%d", &tok->i32_lit);
 				const size_t tok_strlen = (*c == '-' ? 1 : 0) + floorl(log10(abs(tok->i32_lit)))+1;
-				c += tok_strlen-1;
+				c += tok_strlen;
 			}
 
 
 			/* Keywords */
 			case 'b':
 			{
-				const size_t kw_len = strlen("bind");
+				const size_t kw_len = strlen(KEYWORD_BIND);
 				if (strncmp(c, KEYWORD_BIND, kw_len) == 0) {
 					// Append bind token
 					tok->type = Tok_Bind;
 					Lexer_append(l, tok);
+					c += kw_len;
 
 					// Parse keyname token
 					tok = malloc(sizeof(LexerToken));
 					tok->type = Tok_Keysym;
-					c += kw_len;
-					StrtoknState state;
-					strtokn_init(&state, c, strlen(c));
-					strtokn_consume(&state, WHITESPACE); // eat whitespace after bind
-					strtokn(&state, WHITESPACE); // read keyname
+					while (*c == ' ' || *c == '\t') {
+						c++;
+					}
+					const char *end = c;
+					while (!(*end == ' ' || *end == '\t')) {
+						end++;
+					}
 					// Get keycode from keyname
-					char *keyname = strndup(&state.s[state.offset], state.s_len);
+					char *keyname = strndup(c, end - c);
 					tok->keycode = parse_keycode(keyname);
 					free(keyname);
-					c += state.s_len-1;
-				}
+					c = end;
+				} 
 				break;
 			}
 			case 'f':
@@ -168,7 +194,7 @@ int Lexer_tokenize(Lexer *l, const char *chunk) {
 				if (strncmp(c, KEYWORD_FALSE, kw_len) == 0) {
 					tok->type = Tok_BoolLit;
 					tok->bool_lit = false;
-					c += kw_len-1;
+					c += kw_len;
 				}
 				break;
 			}
@@ -178,24 +204,43 @@ int Lexer_tokenize(Lexer *l, const char *chunk) {
 				if (strncmp(c, KEYWORD_TRUE, kw_len) == 0) {
 					tok->type = Tok_BoolLit;
 					tok->bool_lit = true;
-					c += kw_len-1;
+					c += kw_len;
 				}
 				break;
 			}
 		}
-#undef TYPE
 
 		if (tok->type == -1) {
-			// If nothing else has matched, read ident
-			const char *start = c;
-			while (isalpha(*c) || (*c >= '0' && *c <= '9') || *c == '_') {
-				c++;
-			}
+			// If nothing else has matched, try to read ident
+			const char *end = c;
+			do {
+				end++;
+			} while (isalpha(*end) || (*end >= '0' && *end <= '9') || *end == '_');
 			tok->type = Tok_Ident;
-			tok->ident = strndup(start, c - start);
+			tok->ident = strndup(c, end - c);
+			c = end;
 		}
 
 		// Append the token to our list
+		LOG(Verbosity_DEBUG, "tok->type = %s\n", LexerToken_t_name(tok->type));
+		if (cli_args.verbosity >= Verbosity_DEBUG) {
+			switch (tok->type) {
+			case Tok_Ident:
+				LOG(Verbosity_DEBUG, "tok->ident = %s\n", tok->ident);
+				break;
+			case Tok_I32Lit:
+				LOG(Verbosity_DEBUG, "tok->i32_lit = %d\n", tok->i32_lit);
+				break;
+			case Tok_StrLit:
+				LOG(Verbosity_DEBUG, "tok->str_lit = %s\n", tok->str_lit);
+				break;
+			case Tok_BoolLit:
+				LOG(Verbosity_DEBUG, "tok->bool_lit = %b\n", tok->bool_lit);
+				break;
+			default:
+				break;
+			}
+		}
 		Lexer_append(l, tok);
 	}
 

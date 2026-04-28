@@ -14,6 +14,11 @@
 #include <string.h>
 #include <stddef.h>
 #include <fcntl.h>
+#ifdef MPL_PARSING_V2
+#include "config/parse_v2/lexer.h"
+
+#include <assert.h>
+#endif
 
 void Config_init(Config *conf) {
 	// Default settings
@@ -39,6 +44,18 @@ int Config_parse(Config *conf, const char *path) {
 	// Initialize config state to its zero value
 	Config_init(conf);
 
+#ifdef MPL_PARSING_V2
+	Lexer *lex = Lexer_new();
+	FILE *fp = fopen(path, "r");
+	char *line = NULL;
+	size_t line_len;
+	while (getline(&line, &line_len, fp)) {
+		int status = Lexer_tokenize(lex, line);
+		assert(status == 0);
+	}
+	Lexer_free(lex);
+#endif
+
 	return Config_parse_internal(conf, path, PARSE_ALL);
 }
 
@@ -57,7 +74,7 @@ static bool is_readable(const char *path) {
 
 char *Config_find_path() {
 #ifdef MPL_TEST_CONFIG
-	static const char testpath[] = "../test/mpl.conf";
+	static const char testpath[] = "../src/config/mpl-example.conf";
 	return strndup(testpath, sizeof(testpath)-1);
 #else
 	// temp path buffers we use to check file existence before setting *path and *path_len
