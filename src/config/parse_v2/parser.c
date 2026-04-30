@@ -1,4 +1,5 @@
 #include "parser.h"
+#include "config/function/function.h"
 #include "config/function/dictionary.h"
 #include "config/parse_v2/lexer.h"
 #include "config/parse_v2/types.h"
@@ -64,7 +65,7 @@ typedef struct ParseNode_FnCallExpr ParseNode_FnCallExpr;
 // A list of function arguments
 // siblings: none
 // children: ArgExpr
-typedef struct ParseNode ParseNode_ArgList;
+typedef struct ParseNode_ArgList ParseNode_ArgList;
 // A single function argument
 // siblings: other ArgExpr's in the ArgList
 // child: ValueLit | FnCallExpr
@@ -94,6 +95,11 @@ struct ParseNode_KeybindStmt {
 struct ParseNode_FnCallExpr {
 	ParseNode node;
 	const ConfigFn *fn;
+};
+
+struct ParseNode_ArgList {
+	ParseNode node;
+	const ConfigFn *fn; // used to check argument count and types
 };
 
 ParseNode *ParseNode_new(enum ParseNodeID type_id) {
@@ -277,6 +283,7 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 					return Parser_INVALID_TOKEN;
 			}
 		}
+		break;
 	
 	case ParseNodeID_SettingStmt:
 		{
@@ -298,6 +305,7 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 			node->child = ParseNode_new(ParseNodeID_ValueLit);
 			return Parser_parse_node(p, node->child);
 		}
+		break;
 
 	case ParseNodeID_ShellStmt:
 		{
@@ -322,6 +330,7 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 				return Parser_INVALID_TOKEN;
 			}
 		}
+		break;
 
 	case ParseNodeID_KeybindStmt:
 		{
@@ -350,6 +359,7 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 			node->child = ParseNode_new(ParseNodeID_FnCallList);
 			return Parser_parse_node(p, node->child);
 		}
+		break;
 
 	case ParseNodeID_FnCallList:
 		{
@@ -368,7 +378,7 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 
 				// Append the fn call to the list
 				if (tail) {
-					tail->node.sibling = (ParseNode *)fn_call;
+					tail->node.sibling = fn_call;
 				} else {
 					node->child = fn_call;
 				}
@@ -381,6 +391,7 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 				tok = Lexer_peek(p->lex);
 			}
 		}
+		break;
 	
 	case ParseNodeID_FnCallExpr:
 		{
@@ -402,15 +413,87 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 			}
 			Lexer_consume(p->lex);
 
-			// ) or ArgsList
+			// ArgList
+			if (expr->fn->argc > 0) {
+				expr->node.child = ParseNode_new(ParseNodeID_ArgList);
+				ParseNode_ArgList *arg_list = (ParseNode_ArgList *)expr->node.child;
+				arg_list->fn = expr->fn;
+				enum Parser_ERR err = Parser_parse_node(p, expr->node.child);
+				if (err != Parser_OK) {
+					return err;
+				}
+			}
+
+			// )
 			tok = Lexer_peek(p->lex);
-			if (tok->type == Tok_Rparen) {
-				// FIXME: we need to register the numer of args a function takes in the dictionary
+			if (tok->type != Tok_Rparen) {
+				return Parser_INVALID_TOKEN;
+			}
+			Lexer_consume(p->lex);
+		}
+		break;
+
+	case ParseNodeID_ArgList:
+		{
+			ParseNode_ArgList *arg_list = (ParseNode_ArgList *)node;
+
+			size_t n_parsed = 0; // # of arguments parsed
+			ParseNode_ArgExpr *tail = NULL;
+			while (Lexer_peek(p->lex)->type != Tok_Rparen) {
+				// Parse ArgExpr
+				ParseNode *arg = ParseNode_new(ParseNodeID_ArgExpr);
+				enum Parser_ERR err = Parser_parse_node(p, arg);
+				if (err != Parser_OK) {
+					return err;
+				}
+
+				// Append the arg to the list
+				if (tail) {
+					tail->sibling = arg;
+				} else {
+					node->child = arg;
+				}
+				tail = (ParseNode_ArgExpr *)arg;
+
+				// Consume delim
+				if (++n_parsed < arg_list->fn->argc) {
+					tok = Lexer_peek(p->lex);
+					if (tok->type != Tok_Comma) {
+						return Parser_INVALID_TOKEN;
+					}
+					Lexer_consume(p->lex);
+				}
+			}
+		}
+		break;
+
+	case ParseNodeID_ArgExpr:
+		{
+			// FIXME: we have no type checking of function args right now!
+			switch (tok->type) {
+			case Tok_I32Lit:
+			case Tok_BoolLit:
+			case Tok_StrLit:
+				{
+					node->child = ParseNode_new(ParseNodeID_ValueLit);
+					return Parser_parse_node(p, node->child);
+				}
+				break;
+
+			case Tok_Ident:
+				{
+					node->child = ParseNode_new(ParseNodeID_FnCallExpr);
+					return Parser_parse_node(p, node->child);
+				}
+				break;
+
+			default:
+				return Parser_INVALID_TOKEN;
 			}
 		}
 	}
 
-	return -1;
+	return Parser_OK;
 }
 
 /* #endregion */
