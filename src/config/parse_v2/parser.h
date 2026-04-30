@@ -23,6 +23,7 @@ typedef struct ParseLineError_Vec {
 void ParseLineError_Vec_deinit(ParseLineError_Vec *vec);
 
 #define PARSE_NODE_ID_ENUM(VARIANT) \
+	VARIANT(ParseNodeID_ValueLit) \
 	VARIANT(ParseNodeID_Root) \
 	VARIANT(ParseNodeID_SettingStmt) \
 	VARIANT(ParseNodeID_ShellStmt) \
@@ -53,7 +54,7 @@ typedef struct ParseNode {
 } ParseNode;
 
 // Allocate and initialize a ParseNode with no child or sibling links
-ParseNode *ParseNode_new(ParseNode *node, enum ParseNodeID type_id);
+	ParseNode *ParseNode_new(enum ParseNodeID type_id);
 // Deinitialize and free a ParseNode and its children
 //
 // NOTE: This handles all node-specific data that needs to be freed,
@@ -77,6 +78,4 @@ void Parser_free(Parser *p);
 // so every error and its line number can be reported.
 //
 // Use [ParseNode_rfree] to free the parse tree.
-ParseNode *Parser_parse(Parser *p,
-		ConfigFnDict *fn_dict, ConfigSettingDict *setting_dict,
-		ParseLineError_Vec **errors);
+ParseNode *Parser_parse(Parser *p, ParseLineError_Vec **errors);
