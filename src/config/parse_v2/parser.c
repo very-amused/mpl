@@ -350,6 +350,64 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 			node->child = ParseNode_new(ParseNodeID_FnCallList);
 			return Parser_parse_node(p, node->child);
 		}
+
+	case ParseNodeID_FnCallList:
+		{
+			if (tok->type != Tok_Ident) {
+				return Parser_INVALID_TOKEN;
+			}
+
+			ParseNode_FnCallExpr *tail = NULL;
+			while (tok->type == Tok_Ident) {
+				// Parse FnCallExpr
+				ParseNode *fn_call = ParseNode_new(ParseNodeID_FnCallExpr);
+				enum Parser_ERR err = Parser_parse_node(p, fn_call);
+				if (err != Parser_OK) {
+					return err;
+				}
+
+				// Append the fn call to the list
+				if (tail) {
+					tail->node.sibling = (ParseNode *)fn_call;
+				} else {
+					node->child = fn_call;
+				}
+				tail = (ParseNode_FnCallExpr *)fn_call;
+
+				// Consume delim
+				while (Lexer_peek(p->lex)->type == Tok_Semi) {
+					Lexer_consume(p->lex);
+				}
+				tok = Lexer_peek(p->lex);
+			}
+		}
+	
+	case ParseNodeID_FnCallExpr:
+		{
+			ParseNode_FnCallExpr *expr = (ParseNode_FnCallExpr *)node;
+			// {ident}
+			if (tok->type != Tok_Ident) {
+				return Parser_INVALID_TOKEN;
+			}
+			ConfigFnDict_lookup(p->fn_dict, &expr->fn, tok->ident);
+			Lexer_consume(p->lex);
+			if (!expr->fn) {
+				return Parser_INVALID_FUNCTION;
+			}
+
+			// (
+			tok = Lexer_peek(p->lex);
+			if (tok->type != Tok_Lparen) {
+				return Parser_INVALID_TOKEN;
+			}
+			Lexer_consume(p->lex);
+
+			// ) or ArgsList
+			tok = Lexer_peek(p->lex);
+			if (tok->type == Tok_Rparen) {
+				// FIXME: we need to register the numer of args a function takes in the dictionary
+			}
+		}
 	}
 
 	return -1;
