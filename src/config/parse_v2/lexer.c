@@ -254,7 +254,7 @@ int Lexer_tokenize(Lexer *l, const char *chunk) {
 	return 0;
 }
 
-const LexerToken *Lexer_peek(const Lexer *l) {
+LexerToken *Lexer_peek(const Lexer *l) {
 	LexerTokenNode *cur = l->head->next;
 	return cur->token;
 }

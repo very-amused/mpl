@@ -212,14 +212,14 @@ ParseNode *Parser_parse(Parser *p, ParseLineError_Vec **errors) {
 				break;
 
 			case Tok_Bind:
-				child = ParseNode_new(ParseNodeID_KeybindStmt);
+				child = ParseNode_new(ParseNodeID_ShellStmt);
 				break;
 
 			case Tok_Ident:
 				if (ConfigFnDict_has(p->fn_dict, tok->ident)) {
 					child = ParseNode_new(ParseNodeID_ShellStmt);
 				} else if (ConfigSettingDict_has(p->setting_dict, tok->ident)) {
-					child = ParseNode_new(ParseNodeID_ShellStmt);
+					child = ParseNode_new(ParseNodeID_SettingStmt);
 				} else {
 					ParseLineError_Vec_push(*errors, Parser_INVALID_IDENT, lineno);
 				}
@@ -253,7 +253,104 @@ ParseNode *Parser_parse(Parser *p, ParseLineError_Vec **errors) {
 }
 
 static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
-	// TODO
+	LexerToken *tok = Lexer_peek(p->lex);
+
+	switch (node->type) {
+	case ParseNodeID_ValueLit:
+		{
+			ParseNode_ValueLit *lit = (ParseNode_ValueLit *)node;
+			switch (tok->type) {
+				case Tok_I32Lit:
+					lit->type = Config_I32;
+					lit->val_i32 = tok->i32_lit;
+					break;
+				case Tok_StrLit:
+					lit->type = Config_STR;
+					lit->val_str = tok->str_lit;
+					tok->str_lit = NULL;
+					break;
+				case Tok_BoolLit:
+					lit->type = Config_BOOL;
+					lit->val_bool = tok->bool_lit;
+					break;
+				default:
+					return Parser_INVALID_TOKEN;
+			}
+		}
+	
+	case ParseNodeID_SettingStmt:
+		{
+			// {ident}
+			ParseNode_SettingStmt *stmt = (ParseNode_SettingStmt *)node;
+			ConfigSettingDict_lookup(p->setting_dict, &stmt->setting, tok->ident);
+			Lexer_consume(p->lex);
+			if (!stmt->setting) {
+				return Parser_INVALID_SETTING;
+			}
+
+			// =
+			if (Lexer_peek(p->lex)->type != Tok_EQ){
+				return Parser_INVALID_TOKEN;
+			}
+			Lexer_consume(p->lex);
+
+			// {val}
+			node->child = ParseNode_new(ParseNodeID_ValueLit);
+			return Parser_parse_node(p, node->child);
+		}
+
+	case ParseNodeID_ShellStmt:
+		{
+			switch (tok->type) {
+			case Tok_Bind:
+				{
+					node->child = ParseNode_new(ParseNodeID_KeybindStmt);
+					Lexer_consume(p->lex);
+					return Parser_parse_node(p, node->child);
+				}
+			case Tok_Ident:
+				{
+					if (ConfigFnDict_has(p->fn_dict, tok->ident)) {
+						node->child = ParseNode_new(ParseNodeID_FnCallList);
+						Lexer_consume(p->lex);
+						return Parser_parse_node(p, node->child);
+					} else {
+						return Parser_INVALID_FUNCTION;
+					}
+				}
+			default:
+				return Parser_INVALID_TOKEN;
+			}
+		}
+
+	case ParseNodeID_KeybindStmt:
+		{
+			ParseNode_KeybindStmt *stmt = (ParseNode_KeybindStmt *)node;
+			// bind
+			if (tok->type != Tok_Bind) {
+				return Parser_INVALID_TOKEN;
+			}
+			Lexer_consume(p->lex);
+
+			// {keysym}
+			tok = Lexer_peek(p->lex);
+			if (tok->type != Tok_Keysym) {
+				return Parser_INVALID_TOKEN;
+			}
+			stmt->keycode = tok->keycode;
+			Lexer_consume(p->lex);
+
+			// =
+			if (Lexer_peek(p->lex)->type != Tok_EQ) {
+				return Parser_INVALID_TOKEN;
+			}
+			Lexer_consume(p->lex);
+
+			// {FnCallList}
+			node->child = ParseNode_new(ParseNodeID_FnCallList);
+			return Parser_parse_node(p, node->child);
+		}
+	}
 
 	return -1;
 }
