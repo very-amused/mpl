@@ -43,6 +43,7 @@ endif
 
 # Preprocessor defines and compiler overrides
 cflags = []
+cppflags = ['-Werror=maybe-uninitialized']
 cflags += '-DMPL_VERSION="@0@"'.format(meson.project_version())
 override_options = []
 # if we don't have .incbin, we need #embed
@@ -96,5 +97,6 @@ subdir('src')
 executable('mpl', src,
 	include_directories : include,
 	dependencies : deps,
-	c_args : cflags, link_args : cflags, override_options : override_options,
+	c_args : cflags, cpp_args : cppflags, link_args : cflags,
+	override_options : override_options,
 	install  : true)

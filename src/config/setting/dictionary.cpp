@@ -4,7 +4,8 @@ extern "C" {
 #include <string.h>
 }
 
-#include "dictionary.h"
+#include "dictionary.hpp"
+
 #include <unordered_map>
 #include <string>
 #include <memory>

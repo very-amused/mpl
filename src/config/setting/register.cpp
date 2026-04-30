@@ -1,6 +1,9 @@
+extern "C" {
 #include "config/settings.h"
-#include "dictionary.h"
 #include "register.h"
+}
+
+#include "dictionary.hpp"
 
 extern "C" {
 

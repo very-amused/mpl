@@ -52,6 +52,9 @@ typedef struct ParseNode {
 	enum ParseNodeID type;
 	ParseNode *child;
 	ParseNode *sibling;
+#ifdef __cplusplus
+	~ParseNode();
+#endif
 } ParseNode;
 
 // Allocate and initialize a ParseNode with no child or sibling links
