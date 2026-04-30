@@ -188,6 +188,28 @@ ParseNode *ParseNode_rcopy(ParseNode *node) {
 	return node;
 }
 
+void *ParseNode_eval(ParseNode_Callable *node) {
+	// Handle FnCallList's as a sequence
+	if (node->type == ParseNodeID_FnCallList) {
+		for (ParseNode *child = node->child; child != NULL; child = child->child) {
+			ParseNode_eval(child);
+		}
+		return NULL;
+	}
+
+	// Otherwise, make sure we're working with a FnCallExpr
+	if (node->type != ParseNodeID_FnCallExpr) {
+		LOG(Verbosity_NORMAL, "Error: ParseNode_eval called with invalid node type %s\n", ParseNodeID_name(node->type));
+		return NULL;
+	}
+
+	// Form arguments for the function
+	// FIXME: this is where we have to overhaul the way ConfigFn's accept args.
+
+	// TODO
+	return NULL;
+}
+
 /* #endregion */
 
 /* #region Parsing */

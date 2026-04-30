@@ -2,7 +2,7 @@
 
 #include "config/function/dictionary.h"
 #include "error.h"
-typedef struct ParseNode ParseNode;
+#include "config/parse_v2/parser.h"
 
 #include <wchar.h>
 
@@ -20,7 +20,7 @@ void KeybindMap_free(KeybindMap *keybinds);
 int KeybindMap_define_keybind(KeybindMap *keybinds, wchar_t keycode, const ParseNode *fn_call);
 
 // Parse a config line declaring a keybind.
-// These lines have the form `bind x = somefn(arg1, arg2)` 
+// These lines have the form `bind x = somefn(arg1, arg2)`
 // Returns 0 on success
 // TODO: REMOVE! DEPRECATED
 enum Keybind_ERR KeybindMap_parse_mapping_legacy(KeybindMap *keybinds, const char *line, ConfigFnDict *fn_dict);
