@@ -2,14 +2,16 @@
 #include <stdint.h>
 
 #include "config/function/dictionary.h"
+#include "config/setting/dictionary.h"
 #include "settings.h"
 #include "keybind/keybind_map.h"
 
 static const char CONFIG_COMMENT = '#';
 
 typedef struct Config {
-	Settings settings;
 	ConfigFnDict *fn_dict; // Dictionary of all defined config functions + macros
+	ConfigSettingDict *setting_dict; // Dictionary of all defined config settings
+	Settings settings;
 	KeybindMap *keybinds;
 } Config;
 

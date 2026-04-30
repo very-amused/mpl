@@ -2,6 +2,7 @@
 #include "config/function/dictionary.h"
 #include "config/function/state.h"
 #include "config/settings.h"
+#include "config/setting/register.h"
 #include "internal/parse.h"
 #include "keybind/keybind_map.h"
 #include "util/path.h"
@@ -27,6 +28,9 @@ void Config_init(Config *conf) {
 	conf->fn_dict = ConfigFnDict_new();
 	register_ConfigFn_functions(conf->fn_dict);
 	register_ConfigFn_macros(conf->fn_dict);
+	// Load registered config settings
+	conf->setting_dict = ConfigSettingDict_new();
+	register_ConfigSetting_settings(conf->setting_dict);
 	// Expose the config itself to macros
 	ConfigFn_macroState_init(conf);
 	// Empty keybind map
@@ -35,6 +39,7 @@ void Config_init(Config *conf) {
 void Config_deinit(Config *conf) {
 	KeybindMap_free(conf->keybinds);
 	ConfigFnDict_free(conf->fn_dict);
+	ConfigSettingDict_free(conf->setting_dict);
 	conf->fn_dict = NULL;
 	// Free heap-allocations used for Settings_STR
 	Settings_deinit(&conf->settings);
