@@ -3,8 +3,10 @@
 #include "config/function/state.h"
 #include "config/settings.h"
 #include "config/setting/register.h"
+#include "error.h"
 #include "internal/parse.h"
 #include "keybind/keybind_map.h"
+#include "util/log.h"
 #include "util/path.h"
 #include "function/register.h"
 
@@ -17,6 +19,7 @@
 #include <fcntl.h>
 #ifdef MPL_PARSING_V2
 #include "config/parse_v2/lexer.h"
+#include "config/parse_v2/parser.h"
 
 #include <assert.h>
 #endif
@@ -59,6 +62,16 @@ int Config_parse(Config *conf, const char *path) {
 		assert(status == 0);
 	}
 	fclose(fp);
+
+	Parser *parser = Parser_new(lex, conf->fn_dict, conf->setting_dict);
+	ParseLineError_Vec *parse_errs;
+	ParseNode *tree = Parser_parse(parser, &parse_errs);
+	for (size_t i = 0; i < parse_errs->len; i++) {
+		ParseLineError *err = &parse_errs->data[i];
+		LOG(Verbosity_DEBUG, "parse_v2: %s on line %zu\n", Parser_ERR_name(err->type), err->line);
+	}
+
+	Parser_free(parser);
 	Lexer_free(lex);
 	free(line);
 #endif

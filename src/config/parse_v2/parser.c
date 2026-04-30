@@ -5,6 +5,7 @@
 #include "config/parse_v2/types.h"
 #include "config/setting/dictionary.h"
 #include "error.h"
+#include "util/log.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -140,14 +141,19 @@ ParseNode *ParseNode_new(enum ParseNodeID type_id) {
 }
 
 void ParseNode_rfree(ParseNode *node) {
+	LOG(Verbosity_DEBUG, "ParseNode_rfree called\n");
 	// NOTE: this is a DFS lol
 	// Free all children
-	for (ParseNode *child = node->child; child != NULL; child = child->sibling) {
+	for (ParseNode *child = node->child; child != NULL;) {
+		ParseNode *next = child->sibling;
 		ParseNode_rfree(child);
+		child = next;
 	}
 	// Free all siblings
-	for (ParseNode *sib = node->sibling; sib != NULL; sib = sib->sibling) {
+	for (ParseNode *sib = node->sibling; sib != NULL;) {
+		ParseNode *next = sib->sibling;
 		ParseNode_rfree(sib);
+		sib = next;
 	}
 
 	// Free any extra data the node holds
@@ -260,6 +266,8 @@ ParseNode *Parser_parse(Parser *p, ParseLineError_Vec **errors) {
 
 static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 	LexerToken *tok = Lexer_peek(p->lex);
+
+	LOG(Verbosity_DEBUG, "Parsing node: %s\n", ParseNodeID_name(node->type));
 
 	switch (node->type) {
 	case ParseNodeID_ValueLit:
