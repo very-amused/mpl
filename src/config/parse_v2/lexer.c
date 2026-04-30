@@ -254,21 +254,20 @@ int Lexer_tokenize(Lexer *l, const char *chunk) {
 	return 0;
 }
 
-// Peek the next logical token
 const LexerToken *Lexer_peek(const Lexer *l) {
 	LexerTokenNode *cur = l->head->next;
 	return cur->token;
 }
-// Consume the current logical token, causing the lexer to advance to the next token
-void Lexer_advance(Lexer *l) {
+void Lexer_consume(Lexer *l) {
 	LexerTokenNode *cur = l->head->next;
 	if (cur == l->head) {
 		return;
 	}
 
-	LexerTokenNode *old = cur;
-	old->prev->next = old->next;
-	old->next->prev = old->prev;
-	LexerToken_free(old->token);
-	free(old);
+	// Cut node out of list
+	l->head->next = cur->next;
+	cur->next->prev = l->head;
+	// Free the node
+	LexerToken_free(cur->token);
+	free(cur);
 }

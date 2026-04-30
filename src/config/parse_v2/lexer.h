@@ -69,5 +69,5 @@ int Lexer_tokenize(Lexer *l, const char *chunk);
 
 // Peek the next logical token
 const LexerToken *Lexer_peek(const Lexer *l);
-// Consume the current logical token, causing the lexer to advance to the next token
-void Lexer_advance(Lexer *l);
+// Consume the current logical token, advancing the lexer to the next token
+void Lexer_consume(Lexer *l);

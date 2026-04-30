@@ -1,5 +1,6 @@
 #pragma once
 #include "config/function/dictionary.h"
+#include "config/setting/dictionary.h"
 #include "error.h"
 #include "config/parse_v2/lexer.h"
 
@@ -50,9 +51,33 @@ void Parser_free(Parser *p);
 
 // these function names aren't gonna make much sense without reading MPL's grammar spec
 
-enum Parser_ERR Parser_parse_Config(Parser *p, ParseNode_Root *node, ConfigFnDict *fn_dict);
+typedef struct ParseLineError {
+	enum Parser_ERR type;
+	size_t line;
+} ParseLineError;
 
-enum Parser_ERR Parser_parse_SettingStmt(Parser *p, ParseNode_SettingStmt *node);
+// A vector of parse errors.
+// Using this prevents any single error from halting the main parse routine
+typedef struct ParseLineError_Vec {
+	size_t cap;
+	size_t len;
+	ParseLineError *data;
+} ParseLineError_Vec;
+
+// Deinitialize a ParseLineError_Vec for freeing
+void ParseLineError_Vec_deinit(ParseLineError_Vec *vec);
+
+// Parse a MPL config syntax tree.
+// Since multiple errors can occur, the *errors vector is provided
+// so every error and its line number can be reported.
+//
+// Use [ParseLineError_Vec_deinit] to deinitialize the error vector for freeing
+void Parser_parse_Config(Parser *p, ParseNode_Root *node,
+		ConfigFnDict *fn_dict, ConfigSettingDict *setting_dict,
+		ParseLineError_Vec **errors);
+
+enum Parser_ERR Parser_parse_SettingStmt(Parser *p, ParseNode_SettingStmt *node,
+		ConfigSettingDict *dict);
 enum Parser_ERR Parser_parse_ShellStmt(Parser *p, ParseNode_ShellStmt *node);
 
 enum Parser_ERR Parser_parse_KeybindStmt(Parser *p, ParseNode_KeybindStmt *node);

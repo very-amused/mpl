@@ -234,7 +234,11 @@ static inline const char *UserInterface_ERR_name(enum UserInterface_ERR err) {
 	VARIANT(Parser_OK) \
 	VARIANT(Parser_INVALID_TOKEN) \
 	VARIANT(Parser_INVALID_NODE) \
-	VARIANT(Parser_SYNTAX_ERR)
+	VARIANT(Parser_INVALID_IDENT) \
+	VARIANT(Parser_INVALID_SETTING) \
+	VARIANT(Parser_INVALID_FUNCTION) \
+	VARIANT(Parser_SYNTAX_ERR) \
+	VARIANT(Parser_TYPE_ERR)
 
 enum Parser_ERR {
 	PARSER_ERR(ENUM_VAL)
