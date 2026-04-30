@@ -188,6 +188,9 @@ ParseNode *ParseNode_rcopy(ParseNode *node) {
 	return node;
 }
 
+// Encode arguments for a callable parse tree
+static enum Parser_ERR ParseNode_eval_encode_args(ParseNode_Callable *node, void **args_buf);
+
 void *ParseNode_eval(ParseNode_Callable *node) {
 	// Handle FnCallList's as a sequence
 	if (node->type == ParseNodeID_FnCallList) {
@@ -203,11 +206,74 @@ void *ParseNode_eval(ParseNode_Callable *node) {
 		return NULL;
 	}
 
-	// Form arguments for the function
-	// FIXME: this is where we have to overhaul the way ConfigFn's accept args.
+	// Encode argument struct for the function
+	ParseNode_FnCallExpr *fn_expr = (ParseNode_FnCallExpr *)node;
+	void *args = NULL;
+	if (fn_expr->fn->argc > 0) {
+		enum Parser_ERR err = ParseNode_eval_encode_args(node, &args);
+		if (err != Parser_OK) {
+			return NULL;
+		}
+	}
 
-	// TODO
+	// Get the function pointer and call it
+	// FIXME: support function return values
+	fn_expr->fn->routine(args);
 	return NULL;
+}
+
+static enum Parser_ERR ParseNode_eval_encode_args(ParseNode_Callable *node, void **args_buf) {
+	ParseNode_FnCallExpr *fn_expr = (ParseNode_FnCallExpr *)node;
+	const ConfigFn *fn = fn_expr->fn;
+	if (fn->argc == 0) {
+		return Parser_OK;
+	}
+
+	// Compute total size of function arguments
+	size_t args_size = 0;
+	for (size_t i = 0; i < fn->argc; i++) {
+		args_size += ConfigType_size(fn->arg_types[i]);
+	}
+	*args_buf = malloc(args_size);
+	size_t offset = 0; // byte offset in args_buf
+
+	if (!(node->child && node->child->type == ParseNodeID_ArgList)) {
+		return Parser_INVALID_ARG_COUNT;
+	}
+
+	ParseNode *arg_node = node->child->child;
+	size_t i = 0;
+	for (; arg_node != NULL; arg_node = arg_node->child, i++) {
+		if (!arg_node->child) {
+			return Parser_SYNTAX_ERR;
+		}
+
+		// Handle value literal arguments
+		if (arg_node->child->type == ParseNodeID_ValueLit) {
+			ParseNode_ValueLit *arg_val = (ParseNode_ValueLit *)arg_node->child;
+			// unions let us skip a switch here
+			memcpy(&(*args_buf)[offset], &arg_val->val_i32, ConfigType_size(arg_val->type));
+			offset += ConfigType_size(arg_val->type);
+			continue;
+		}
+
+		// Handle arguments that result from a function call
+		if (arg_node->child->type != ParseNodeID_FnCallExpr) {
+			return Parser_INVALID_NODE;
+		}
+		ParseNode_FnCallExpr *arg_fn = (ParseNode_FnCallExpr *)arg_node->child;
+		if (fn->ret_type != fn->arg_types[i]) {
+			return Parser_INVALID_ARG_TYPE;
+		}
+		void *result = ParseNode_eval((ParseNode_Callable *)arg_fn);
+		if (!result) {
+			// this is bad
+			// we're missing so many errors
+			return NULL;
+		}
+		memcpy(&(*args_buf)[offset], result, ConfigType_size(fn->ret_type));
+		offset += ConfigType_size(fn->ret_type);
+	}
 }
 
 /* #endregion */
