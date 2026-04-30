@@ -2,6 +2,7 @@
 #include "config/function/dictionary.h"
 #include "error.h"
 #include "util/strtokn.h"
+#include "config/parse_v2/types.h"
 
 #include <stdbool.h>
 
@@ -17,6 +18,13 @@ typedef struct ConfigFn {
 	char *ident;
 	// Whether the function is a macro
 	bool is_macro;
+
+	// Number of arguments the function accepts
+	size_t argc;
+	// Type signatures for the function's arguments.
+	enum ConfigType *arg_types;
+	// The functions's return type or -1 if the function is a void
+	enum ConfigType ret_type;
 
 	// The function itself
 	ConfigFn_routine routine;
