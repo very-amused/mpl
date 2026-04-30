@@ -267,9 +267,7 @@ static enum Parser_ERR ParseNode_eval_encode_args(ParseNode_Callable *node, void
 		}
 		void *result = ParseNode_eval((ParseNode_Callable *)arg_fn);
 		if (!result) {
-			// this is bad
-			// we're missing so many errors
-			return NULL;
+			return Parser_TYPE_ERR;
 		}
 		memcpy(&(*args_buf)[offset], result, ConfigType_size(fn->ret_type));
 		offset += ConfigType_size(fn->ret_type);

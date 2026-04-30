@@ -170,7 +170,7 @@ int Lexer_tokenize(Lexer *l, const char *chunk) {
 			/* Keywords */
 			case 'b':
 			{
-				const size_t kw_len = strlen(KEYWORD_BIND);
+				const size_t kw_len = sizeof(KEYWORD_BIND)-1;
 				if (strncmp(c, KEYWORD_BIND, kw_len) == 0) {
 					// Append bind token
 					tok->type = Tok_Bind;
@@ -192,12 +192,12 @@ int Lexer_tokenize(Lexer *l, const char *chunk) {
 					tok->keycode = parse_keycode(keyname);
 					free(keyname);
 					c = end;
-				} 
+				}
 				break;
 			}
 			case 'f':
 			{
-				const size_t kw_len = strlen(KEYWORD_FALSE);
+				const size_t kw_len = sizeof(KEYWORD_FALSE)-1;
 				if (strncmp(c, KEYWORD_FALSE, kw_len) == 0) {
 					tok->type = Tok_BoolLit;
 					tok->bool_lit = false;
@@ -207,7 +207,7 @@ int Lexer_tokenize(Lexer *l, const char *chunk) {
 			}
 			case 't':
 			{
-				const size_t kw_len = strlen(KEYWORD_TRUE);
+				const size_t kw_len = sizeof(KEYWORD_TRUE)-1;
 				if (strncmp(c, KEYWORD_TRUE, kw_len) == 0) {
 					tok->type = Tok_BoolLit;
 					tok->bool_lit = true;
