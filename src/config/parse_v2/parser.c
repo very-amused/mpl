@@ -290,6 +290,7 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 				default:
 					return Parser_INVALID_TOKEN;
 			}
+			Lexer_consume(p->lex);
 		}
 		break;
 	
@@ -321,14 +322,12 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 			case Tok_Bind:
 				{
 					node->child = ParseNode_new(ParseNodeID_KeybindStmt);
-					Lexer_consume(p->lex);
 					return Parser_parse_node(p, node->child);
 				}
 			case Tok_Ident:
 				{
 					if (ConfigFnDict_has(p->fn_dict, tok->ident)) {
 						node->child = ParseNode_new(ParseNodeID_FnCallList);
-						Lexer_consume(p->lex);
 						return Parser_parse_node(p, node->child);
 					} else {
 						return Parser_INVALID_FUNCTION;
@@ -372,6 +371,7 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 	case ParseNodeID_FnCallList:
 		{
 			if (tok->type != Tok_Ident) {
+				LOG(Verbosity_DEBUG, "in FnCallList: tok->type = %s\n", LexerToken_t_name(tok->type));
 				return Parser_INVALID_TOKEN;
 			}
 
