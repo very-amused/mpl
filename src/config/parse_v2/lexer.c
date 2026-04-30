@@ -98,7 +98,7 @@ int Lexer_tokenize(Lexer *l, const char *chunk) {
 			{
 				do {
 					c++;
-				} while (!(*c == '\0' || *(c-1) == '\n'));
+				} while (!(*c == '\0' || *(c) == '\n'));
 				continue;
 			}
 		}
