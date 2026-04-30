@@ -7,75 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct ParseNode_Root_Child {
-	struct ParseNode_Root_Child *next; // Set to NULL for the last child
-	enum ParseNodeID type; // SettingStmt | ShellStmt
-	union {
-		ParseNode_SettingStmt *setting_stmt;
-		ParseNode_ShellStmt *shell_stmt;
-	};
-};
-
-struct ParseNode_Root {
-	// SettingStmt | ShellStmt
-	struct ParseNode_Root_Child *children;
-};
-
-struct ParseNode_SettingStmt {
-	const ConfigSetting *setting;
-	void *value_literal;
-};
-
-struct ParseNode_ShellStmt {
-	enum ParseNodeID type; // KeybindStmt | FnCallExpr
-	union {
-		ParseNode_KeybindStmt *keybind;
-		ParseNode_FnCallExpr *fn_call;
-	};
-};
-
-struct ParseNode_KeybindStmt {
-	wchar_t keycode;
-	ParseNode_FnCallExpr *fn_call;
-};
-
-struct ParseNode_FnCallExpr {
-	bool is_sequence; // This is a sequence of function calls. Check *next for the next call
-	ParseNode_FnCallExpr *next; // used when [is_sequence == true]. NULL at the end of the sequence
-
-	char *fn_ident;
-	ParseNode_ArgList *args;
-};
-
-struct ParseNode_ArgList {
-	ParseNode_ArgList *next; // set to NULL for the last argument
-	ParseNode_ArgExpr *arg;
-};
-
-struct ParseNode_ArgExpr {
-	bool is_fn_call; // this argument the result of a/an function call(s)
-	union {
-		ParseNode_FnCallExpr *fn_call;
-		void *value_literal;
-	};
-};
-
-struct Parser {
-	Lexer *lex;
-};
-
-
-Parser *Parser_new(Lexer *l) {
-	Parser *p = malloc(sizeof(Parser));
-	CHECK_ALLOC(p, NULL);
-	p->lex = l;
-
-	return p;
-}
-// Deinitialize and free a config parser
-void Parser_free(Parser *p) {
-	free(p);
-}
+/* #region ParserLineError */
 
 static void ParseLineError_Vec_init(ParseLineError_Vec *v) {
 	v->cap = 8;
@@ -97,6 +29,115 @@ static void ParseLineError_Vec_push(ParseLineError_Vec *v, enum Parser_ERR err, 
 	dst->line = lineno;
 	v->len++;
 }
+
+/* #endregion */
+
+/* #region ParseNode types */
+
+// Root parse node
+// siblings: none
+// children: SettingStmt | ShellStmt
+typedef struct ParseNode ParseNode_Root;
+// A setting definition
+// siblings: other ParseNode_Root children (SettingStmt | ShellStmt)
+// children: none
+typedef struct ParseNode_SettingStmt ParseNode_SettingStmt;
+// A line of valid MPL shell. Can create a keybind or call any function/macro
+// siblings: other ParseNode_Root children (SettingStmt | ShellStmt)
+// child: KeybindStmt | FnCallExpr
+typedef struct ParseNode_ShellStmt ParseNode_ShellStmt;
+// A keybind definition
+// siblings: none
+// child: FnCallList (rhs)
+typedef struct ParseNode_KeybindStmt ParseNode_KeybindStmt;
+// Calls to one or more function/macro(s) to be made in sequence
+// siblings: none
+// children: FnCallExpr
+typedef struct ParseNode_FnCallList ParseNode_FnCallList;
+// A call to one function/macro
+// siblings: other FnCallExpr's if in a FnCallList
+// child: ArgList
+typedef struct ParseNode_FnCallExpr ParseNode_FnCallExpr; 
+// A list of function arguments
+// siblings: none
+// children: ArgExpr
+typedef struct ParseNode_ArgList ParseNode_ArgList;
+// A single function argument
+// siblings: other ArgExpr's in the ArgList
+// child: FnCallExpr if the argument is the result of a function call
+// TODO: we can use this to implement pipes
+typedef struct ParseNode_ArgExpr ParseNode_ArgExpr;
+
+struct ParseNode_SettingStmt {
+	ParseNode node;
+	const ConfigSetting *setting;
+	void *value_lit; // type determined by the setting
+};
+static void ParseNode_SettingStmt_free(ParseNode_SettingStmt *stmt) {
+	free(stmt->value_lit);
+}
+
+struct ParseNode_ShellStmt {
+	ParseNode node;
+};
+
+struct ParseNode_KeybindStmt {
+	ParseNode node;
+	wchar_t keycode; // (lhs)
+};
+
+struct ParseNode_FnCallList {
+	ParseNode node;
+};
+
+struct ParseNode_FnCallExpr {
+	ParseNode node;
+	const ConfigFn *fn;
+};
+
+struct ParseNode_ArgList {
+	ParseNode node;
+};
+
+struct ParseNode_ArgExpr {
+	ParseNode node;
+	enum ConfigType value_type;
+	void *value_lit;
+};
+
+/* #endregion */
+
+/* #region Parsing */
+
+struct Parser {
+	Lexer *lex;
+	ConfigFnDict *fn_dict;
+	ConfigSettingDict *setting_dict;
+};
+
+
+Parser *Parser_new(Lexer *l, ConfigFnDict *fn_dict, ConfigSettingDict *setting_dict) {
+	Parser *p = malloc(sizeof(Parser));
+	CHECK_ALLOC(p, NULL);
+	p->lex = l;
+	p->fn_dict = fn_dict;
+	p->setting_dict = setting_dict;
+
+	return p;
+}
+// Deinitialize and free a config parser
+void Parser_free(Parser *p) {
+	free(p);
+}
+
+
+ParseNode *Parser_parse(Parser *p,
+		ConfigFnDict *fn_dict, ConfigSettingDict *setting_dict,
+		ParseLineError_Vec **errors) {
+	// TODO
+}
+
+#if 0
 
 // Config => SettingStmt \n Config
 // Config => ShellStmt \n Config
@@ -227,13 +268,7 @@ enum Parser_ERR Parser_parse_SettingStmt(Parser *p, ParseNode_SettingStmt *node,
 
 	return Parser_OK;
 }
-enum Parser_ERR Parser_parse_ShellStmt(Parser *p, ParseNode_ShellStmt *node) {
-	// TODO
-	return -1;
-}
 
-enum Parser_ERR Parser_parse_KeybindStmt(Parser *p, ParseNode_KeybindStmt *node);
-enum Parser_ERR Parser_parse_FnCallExpr(Parser *p, ParseNode_FnCallExpr *node);
+#endif
 
-enum Parser_ERR Parser_parse_ArgList(Parser *p, ParseNode_ArgList *node);
-enum Parser_ERR Parser_parse_ArgExpr(Parser *p, ParseNode_ArgExpr *node);
+/* #endregion */
