@@ -41,7 +41,7 @@ static int Config_parse_line(Config *conf, char *line,
 	static const char KEYBIND_PREFIX[] = "bind";
 	if ((flags & PARSE_KEYBINDS) == PARSE_KEYBINDS &&
 			strncmp(line, KEYBIND_PREFIX, sizeof(KEYBIND_PREFIX)-1) == 0) {
-		enum Keybind_ERR err = KeybindMap_parse_mapping(conf->keybinds, line, conf->fn_dict);
+		enum Keybind_ERR err = KeybindMap_parse_mapping_legacy(conf->keybinds, line, conf->fn_dict);
 		if (err != Keybind_OK) {
 			strncpy(strerr, Keybind_ERR_name(err), strerr_len);
 			return 1;

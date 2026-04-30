@@ -20,8 +20,11 @@ extern "C" {
 
 extern "C" {
 
+// Better to be specific about the type of parse node we're calling
+typedef ParseNode ParseNode_FnCallList;
+
 struct KeybindMap {
-	std::unordered_map<wchar_t, std::unique_ptr<ConfigFnCallArray>> map;
+	std::unordered_map<wchar_t, std::unique_ptr<ConfigFnCallArray>> legacy_map;
 };
 
 KeybindMap *KeybindMap_new() {
@@ -33,7 +36,7 @@ void KeybindMap_free(KeybindMap *keybinds) {
 }
 
 
-enum Keybind_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *line, ConfigFnDict *fn_dict) {
+enum Keybind_ERR KeybindMap_parse_mapping_legacy(KeybindMap *keybinds, const char *line, ConfigFnDict *fn_dict) {
 	// Ensure UTF-8 support
 	setlocale(LC_ALL, "");
 	// Split by whitespace
@@ -70,18 +73,18 @@ enum Keybind_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *line
 	}
 
 	// Add the routine to our keybind map
-	keybinds->map[keycode] = std::move(fn_call_arr);
+	keybinds->legacy_map[keycode] = std::move(fn_call_arr);
 
 	return Keybind_OK;
 }
 
 enum Keybind_ERR KeybindMap_call_keybind(KeybindMap *keybinds, wchar_t keycode) {
-	const bool exists = keybinds->map.find(keycode) != keybinds->map.end();
+	const bool exists = keybinds->legacy_map.find(keycode) != keybinds->legacy_map.end();
 	if (!exists) {
 		return Keybind_NOT_FOUND;
 	}
 
-	ConfigFnCallArray *fn_call_arr = keybinds->map[keycode].get();
+	ConfigFnCallArray *fn_call_arr = keybinds->legacy_map[keycode].get();
 	for (size_t i = 0; i < fn_call_arr->n; i++) {
 		ConfigFnCall_exec(fn_call_arr->fn_calls[i]);
 	}

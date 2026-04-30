@@ -1,4 +1,5 @@
 #include "parser.h"
+#include "config/config.h"
 #include "config/function/function.h"
 #include "config/function/dictionary.h"
 #include "config/parse_v2/lexer.h"
@@ -104,44 +105,34 @@ struct ParseNode_ArgList {
 	const ConfigFn *fn; // used to check argument count and types
 };
 
-ParseNode *ParseNode_new(enum ParseNodeID type_id) {
-	ParseNode *node;
-
-#define ALLOC_NODE(t) node = malloc(sizeof(t)); \
-	memset(node, 0, sizeof(t))
-
+// Get the true (full) size of a ParseNode using its type ID
+static const size_t ParseNode_size(enum ParseNodeID type_id) {
 	switch (type_id) {
 	case ParseNodeID_ValueLit:
-		ALLOC_NODE(ParseNode_ValueLit);
-		break;
+		return sizeof(ParseNode_ValueLit);
 	case ParseNodeID_Root:
-		ALLOC_NODE(ParseNode_Root);
-		break;
+		return sizeof(ParseNode_Root);
 	case ParseNodeID_SettingStmt:
-		ALLOC_NODE(ParseNode_SettingStmt);
-		break;
+		return sizeof(ParseNode_SettingStmt);
 	case ParseNodeID_ShellStmt:
-		ALLOC_NODE(ParseNode_SettingStmt);
-		break;
+		return sizeof(ParseNode_ShellStmt);
 	case ParseNodeID_KeybindStmt:
-		ALLOC_NODE(ParseNode_KeybindStmt);
-		break;
+		return sizeof(ParseNode_KeybindStmt);
 	case ParseNodeID_FnCallList:
-		ALLOC_NODE(ParseNode_FnCallList);
-		break;
+		return sizeof(ParseNode_FnCallList);
 	case ParseNodeID_FnCallExpr:
-		ALLOC_NODE(ParseNode_FnCallExpr);
-		break;
+		return sizeof(ParseNode_FnCallExpr);
 	case ParseNodeID_ArgList:
-		ALLOC_NODE(ParseNode_ArgList);
-		break;
+		return sizeof(ParseNode_ArgList);
 	case ParseNodeID_ArgExpr:
-		ALLOC_NODE(ParseNode_ArgExpr);
-		break;
+		return sizeof(ParseNode_ArgExpr);
 	}
+}
 
-#undef ALLOC_NODE
-
+ParseNode *ParseNode_new(enum ParseNodeID type_id) {
+	const size_t true_size = ParseNode_size(type_id);
+	ParseNode *node = malloc(true_size);
+	memset(node, 0, true_size);
 	node->type = type_id;
 	return node;
 }
@@ -177,6 +168,24 @@ void ParseNode_rfree(ParseNode *node) {
 
 	// Free the node itself
 	free(node);
+}
+
+ParseNode *ParseNode_rcopy(ParseNode *node) {
+	// Copy the node itself
+	ParseNode *dst = ParseNode_new(node->type);
+	memcpy(node, dst, ParseNode_size(node->type));
+
+	// NOTE: this is still a DFS lol
+	// Copy children
+	if (node->child) {
+		dst->child = ParseNode_rcopy(node->child);
+	}
+	// Copy siblings
+	if (node->sibling) {
+		dst->sibling = ParseNode_rcopy(node->sibling);
+	}
+
+	return node;
 }
 
 /* #endregion */
@@ -275,6 +284,13 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 	LOG(Verbosity_DEBUG, "Parsing node: %s\n", ParseNodeID_name(node->type));
 
 	switch (node->type) {
+	case ParseNodeID_Root:
+		{
+			// Use parser_parse instead
+			return Parser_INVALID_NODE;
+		}
+		break;
+
 	case ParseNodeID_ValueLit:
 		{
 			ParseNode_ValueLit *lit = (ParseNode_ValueLit *)node;
@@ -510,3 +526,76 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 }
 
 /* #endregion */
+
+/* #region Parse tree traversal */
+
+
+enum Parser_ERR Parser_walk(Parser *p, Config *config, ParserWalkFlags flags, ParseNode *tree) {
+	switch (tree->type)	{
+	case ParseNodeID_Root:
+		{
+			for (ParseNode *child = tree->child; child != NULL; child = child->sibling) {
+				enum Parser_ERR err = Parser_walk(p, config, flags, child);
+				if (err != Parser_OK) {
+					return err;
+				}
+			}
+		}
+		break;
+
+	case ParseNodeID_SettingStmt:
+		{
+			if (!(flags & Parser_WALK_SETTINGS)) {
+				return Parser_OK;
+			}
+
+			ParseNode_SettingStmt *stmt = (ParseNode_SettingStmt *)tree;
+			ParseNode_ValueLit *val = (ParseNode_ValueLit *)stmt->node.child;
+			// Validate we have a value for the setting and its type is correct
+			if (!val || val->node.type != ParseNodeID_ValueLit) {
+				return Parser_SYNTAX_ERR;
+			}
+			if (val->type != stmt->setting->type) {
+				// type mismatch
+				return Parser_TYPE_ERR;
+			}
+
+			void *dst = (unsigned char *)(&config->settings) + stmt->setting->struct_offset;
+			switch (val->type) {
+			case Config_I32:
+				*(int32_t *)dst = val->val_i32;
+				break;
+
+			case Config_STR:
+				*(char **)dst = strdup(val->val_str);
+				break;
+
+			case Config_BOOL:
+				*(bool *)dst = val->val_bool;
+				break;
+			}
+		}
+		break;
+
+	case ParseNodeID_ShellStmt:
+		{
+			return Parser_walk(p, config, flags, tree->child);
+		}
+		break;
+
+	case ParseNodeID_KeybindStmt:
+		{
+			if (!(flags & Parser_WALK_KEYBINDS)) {
+				return Parser_OK;
+			}
+
+			ParseNode_KeybindStmt *stmt = (ParseNode_KeybindStmt *)tree;
+			// FIXME: we need a ParseNode_rcopy
+		}
+		break;
+	}
+
+
+	//TODO
+	return Parser_OK;
+}

@@ -2,6 +2,8 @@
 
 #include "config/function/dictionary.h"
 #include "error.h"
+typedef struct ParseNode ParseNode;
+
 #include <wchar.h>
 
 // Keybind map for MPL, implemented in both C (unsigned ascii support) and C++ (full UTF-8 support)
@@ -12,10 +14,16 @@ KeybindMap *KeybindMap_new();
 // Deinitialize and free a KeybindMap
 void KeybindMap_free(KeybindMap *keybinds);
 
+// Define a keybind mapping {keycode} to a parsed FnCallList
+// NOTE: this creates a copy of the parse tree at *fn_call, allowing the original parse tree
+// to be deleted
+int KeybindMap_define_keybind(KeybindMap *keybinds, wchar_t keycode, const ParseNode *fn_call);
+
 // Parse a config line declaring a keybind.
 // These lines have the form `bind x = somefn(arg1, arg2)` 
 // Returns 0 on success
-enum Keybind_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *line, ConfigFnDict *fn_dict);
+// TODO: REMOVE! DEPRECATED
+enum Keybind_ERR KeybindMap_parse_mapping_legacy(KeybindMap *keybinds, const char *line, ConfigFnDict *fn_dict);
 
 // Call the keybind mapped to {keycode} if it exists.
 // Returns 0 if a keybind exists and was called, 1 if the keybind doesn't exist 

@@ -3,6 +3,7 @@
 #include "config/setting/dictionary.h"
 #include "error.h"
 #include "config/parse_v2/lexer.h"
+typedef struct Config Config;
 
 // An error encountered while parsing mpl.conf
 // line number included so we can build helpful error messages
@@ -54,13 +55,15 @@ typedef struct ParseNode {
 } ParseNode;
 
 // Allocate and initialize a ParseNode with no child or sibling links
-	ParseNode *ParseNode_new(enum ParseNodeID type_id);
+ParseNode *ParseNode_new(enum ParseNodeID type_id);
 // Deinitialize and free a ParseNode and its children
 //
 // NOTE: This handles all node-specific data that needs to be freed,
 // so calling ParseNode_rfree on a root node is sufficient to cleanup the entire parse tree.
 void ParseNode_rfree(ParseNode *node);
 
+// Create a deep copy of the parse tree starting at *node
+ParseNode *ParseNode_rcopy(ParseNode *node);
 
 // A MPL config/shell parser
 typedef struct Parser Parser;
@@ -79,3 +82,15 @@ void Parser_free(Parser *p);
 //
 // Use [ParseNode_rfree] to free the parse tree.
 ParseNode *Parser_parse(Parser *p, ParseLineError_Vec **errors);
+
+// Flags that control what information is processed when walking a parse tree
+typedef int ParserWalkFlags;
+static const ParserWalkFlags
+	Parser_WALK_SETTINGS = 1 << 0,
+	Parser_WALK_KEYBINDS = 1 << 1,
+	Parser_WALK_FUNCTIONS = 1 << 2,
+	Parser_WALK_MACROS = 1 << 3,
+	Parser_WALK_ALL = ~0;
+
+// Walk and evaluate a parse tree
+enum Parser_ERR Parser_walk(Parser *p, Config *config, ParserWalkFlags flags, ParseNode *tree);

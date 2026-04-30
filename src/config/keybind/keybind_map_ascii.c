@@ -14,28 +14,28 @@
 #include <locale.h>
 
 struct KeybindMap {
-	ConfigFnCallArray *map[255];
+	ConfigFnCallArray *legacy_map[255];
 };
 
 KeybindMap *KeybindMap_new() {
 	KeybindMap *keybinds = malloc(sizeof(KeybindMap));
 	CHECK_ALLOC(keybinds, NULL);
-	memset(keybinds->map, 0, sizeof(KeybindMap));
+	memset(keybinds->legacy_map, 0, sizeof(KeybindMap));
 	return keybinds;
 }
 
 void KeybindMap_free(KeybindMap *keybinds) {
-	static const size_t MAP_LEN = sizeof(keybinds->map) / sizeof(keybinds->map[0]);
+	static const size_t MAP_LEN = sizeof(keybinds->legacy_map) / sizeof(keybinds->legacy_map[0]);
 	for (size_t i = 0; i < MAP_LEN; i++) {
-		if (keybinds->map[i]) {
-			ConfigFnCallArray_deinit(keybinds->map[i]);
+		if (keybinds->legacy_map[i]) {
+			ConfigFnCallArray_deinit(keybinds->legacy_map[i]);
 		}
-		free(keybinds->map[i]);
+		free(keybinds->legacy_map[i]);
 	}
 	free(keybinds);
 }
 
-enum Keybind_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *line, ConfigFnDict *fn_dict) {
+enum Keybind_ERR KeybindMap_parse_mapping_legacy(KeybindMap *keybinds, const char *line, ConfigFnDict *fn_dict) {
 	// Ensure utf8 support
 	setlocale(LC_ALL, "");
 
@@ -84,7 +84,7 @@ enum Keybind_ERR KeybindMap_parse_mapping(KeybindMap *keybinds, const char *line
 		return 1;
 	}
 
-	keybinds->map[keycode] = fn_call_arr;
+	keybinds->legacy_map[keycode] = fn_call_arr;
 	return Keybind_OK;
 }
 
@@ -94,7 +94,7 @@ enum Keybind_ERR KeybindMap_call_keybind(KeybindMap *keybinds, wchar_t keycode) 
 		return Keybind_NON_ASCII;
 	}
 
-	const ConfigFnCallArray *fn_call_arr = keybinds->map[keycode];
+	const ConfigFnCallArray *fn_call_arr = keybinds->legacy_map[keycode];
 	if (!fn_call_arr) {
 		return Keybind_NOT_FOUND;
 	}
