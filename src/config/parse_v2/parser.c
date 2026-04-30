@@ -6,6 +6,7 @@
 #include "config/setting/dictionary.h"
 #include "error.h"
 #include "util/log.h"
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -74,7 +75,7 @@ typedef struct ParseNode_ArgList ParseNode_ArgList;
 typedef struct ParseNode ParseNode_ArgExpr;
 
 struct ParseNode_ValueLit {
-	ParseNode *node;
+	ParseNode node;
 	enum ConfigType type;
 	union {
 		int32_t val_i32;
@@ -105,55 +106,59 @@ struct ParseNode_ArgList {
 
 ParseNode *ParseNode_new(enum ParseNodeID type_id) {
 	ParseNode *node;
+
+#define ALLOC_NODE(t) node = malloc(sizeof(t)); \
+	memset(node, 0, sizeof(t))
+
 	switch (type_id) {
 	case ParseNodeID_ValueLit:
-		node = malloc(sizeof(ParseNode_ValueLit));
+		ALLOC_NODE(ParseNode_ValueLit);
 		break;
 	case ParseNodeID_Root:
-		node = malloc(sizeof(ParseNode_Root));
+		ALLOC_NODE(ParseNode_Root);
 		break;
 	case ParseNodeID_SettingStmt:
-		node = malloc(sizeof(ParseNode_SettingStmt));
+		ALLOC_NODE(ParseNode_SettingStmt);
 		break;
 	case ParseNodeID_ShellStmt:
-		node = malloc(sizeof(ParseNode_ShellStmt));
+		ALLOC_NODE(ParseNode_SettingStmt);
 		break;
 	case ParseNodeID_KeybindStmt:
-		node = malloc(sizeof(ParseNode_KeybindStmt));
+		ALLOC_NODE(ParseNode_KeybindStmt);
 		break;
 	case ParseNodeID_FnCallList:
-		node = malloc(sizeof(ParseNode_FnCallList));
+		ALLOC_NODE(ParseNode_FnCallList);
 		break;
 	case ParseNodeID_FnCallExpr:
-		node = malloc(sizeof(ParseNode_FnCallExpr));
+		ALLOC_NODE(ParseNode_FnCallExpr);
 		break;
 	case ParseNodeID_ArgList:
-		node = malloc(sizeof(ParseNode_ArgList));
+		ALLOC_NODE(ParseNode_ArgList);
 		break;
 	case ParseNodeID_ArgExpr:
-		node = malloc(sizeof(ParseNode_ArgExpr));
+		ALLOC_NODE(ParseNode_ArgExpr);
 		break;
 	}
 
-	memset(node, 0, sizeof(ParseNode));
+#undef ALLOC_NODE
+
 	node->type = type_id;
 	return node;
 }
 
 void ParseNode_rfree(ParseNode *node) {
-	LOG(Verbosity_DEBUG, "ParseNode_rfree called\n");
+	static int depth = 0;
+	LOG(Verbosity_DEBUG, "ParseNode_rfree called on a %s (depth = %d)\n", ParseNodeID_name(node->type), depth);
 	// NOTE: this is a DFS lol
-	// Free all children
-	for (ParseNode *child = node->child; child != NULL;) {
-		ParseNode *next = child->sibling;
-		ParseNode_rfree(child);
-		child = next;
+	// Free children
+	if (node->child != NULL) {
+		depth++;
+		ParseNode_rfree(node->child);
+		depth--;
 	}
-	// Free all siblings
-	for (ParseNode *sib = node->sibling; sib != NULL;) {
-		ParseNode *next = sib->sibling;
-		ParseNode_rfree(sib);
-		sib = next;
+	// Free siblings
+	if (node->sibling != NULL) {
+		ParseNode_rfree(node->sibling);
 	}
 
 	// Free any extra data the node holds
@@ -253,10 +258,10 @@ ParseNode *Parser_parse(Parser *p, ParseLineError_Vec **errors) {
 			continue;
 		}
 
-		if (tail == NULL) {
-			root->child = child;
-		} else {
+		if (tail) {
 			tail->sibling = child;
+		} else {
+			root->child = child;
 		}
 		tail = child;
 	}

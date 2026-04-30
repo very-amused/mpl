@@ -71,6 +71,7 @@ int Config_parse(Config *conf, const char *path) {
 		LOG(Verbosity_DEBUG, "parse_v2: %s on line %zu\n", Parser_ERR_name(err->type), err->line);
 	}
 
+	ParseNode_rfree(tree);
 	Parser_free(parser);
 	Lexer_free(lex);
 	free(line);
