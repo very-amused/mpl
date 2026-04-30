@@ -70,6 +70,8 @@ int Config_parse(Config *conf, const char *path) {
 		ParseLineError *err = &parse_errs->data[i];
 		LOG(Verbosity_DEBUG, "parse_v2: %s on line %zu\n", Parser_ERR_name(err->type), err->line);
 	}
+	ParseLineError_Vec_deinit(parse_errs);
+	free(parse_errs);
 
 	ParseNode_rfree(tree);
 	Parser_free(parser);
