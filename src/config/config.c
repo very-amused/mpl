@@ -74,6 +74,9 @@ int Config_parse(Config *conf, const char *path) {
 	Config_init(conf);
 
 	FILE *fp = fopen(path, "r");
+	if (!fp) {
+		return 1;
+	}
 	char *line = NULL;
 	size_t line_len;
 	size_t lineno = 1;
