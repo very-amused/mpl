@@ -19,9 +19,8 @@ template <typename T>
 void ConfigSettingDict_define(ConfigSettingDict *dict, const char *ident,
 		const Settings *struct_base, T *struct_val) {
 	// Get our ConfigType with C++ typeid magic
-	// NOTE: we need C++23 for these comparisons to be constexpr and thus evaluated at compile-time
 	enum ConfigType type_id;
-	if (typeid(T) == typeid(const int32_t) || typeid(T) == typeid(uint32_t)) {
+	if (typeid(T) == typeid(int32_t) || typeid(T) == typeid(uint32_t)) {
 		type_id = Config_I32;
 	} else if (typeid(T) == typeid(bool)) {
 		type_id = Config_BOOL;
