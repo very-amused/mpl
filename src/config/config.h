@@ -2,6 +2,7 @@
 #include <stdint.h>
 
 #include "config/function/dictionary.h"
+#include "config/parse_v2/lexer.h"
 #include "config/setting/dictionary.h"
 #include "settings.h"
 #include "keybind/keybind_map.h"
@@ -9,10 +10,16 @@
 static const char CONFIG_COMMENT = '#';
 
 typedef struct Config {
-	ConfigFnDict *fn_dict; // Dictionary of all defined config functions + macros
-	ConfigSettingDict *setting_dict; // Dictionary of all defined config settings
 	Settings settings;
 	KeybindMap *keybinds;
+
+	// Parsing
+	ConfigFnDict *fn_dict; // Dictionary of all defined config functions + macros
+	ConfigSettingDict *setting_dict; // Dictionary of all defined config settings
+	Lexer *lexer;
+	Parser *parser;
+	ParseNode *defaults; // Macros can walk this to apply various defaults
+
 } Config;
 
 // Find a valid path to parse mpl.conf from. Allocates *path using malloc, returns NULL if no config was found.

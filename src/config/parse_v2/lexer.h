@@ -65,7 +65,7 @@ void Lexer_free(Lexer *l);
 
 // Tokenize a chunk of MPL config.
 // Returns 0 on success, nonzero on error
-int Lexer_tokenize(Lexer *l, const char *chunk);
+enum Parser_ERR Lexer_tokenize(Lexer *l, const char *chunk);
 
 // Peek the next logical token
 LexerToken *Lexer_peek(const Lexer *l);

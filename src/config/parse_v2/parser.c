@@ -307,6 +307,7 @@ Parser *Parser_new(Lexer *l, ConfigFnDict *fn_dict, ConfigSettingDict *setting_d
 }
 // Deinitialize and free a config parser
 void Parser_free(Parser *p) {
+	free(p->eval_ret);
 	free(p);
 }
 

@@ -82,8 +82,6 @@ Parser *Parser_new(Lexer *l, ConfigFnDict *fn_dict, ConfigSettingDict *setting_d
 // Deinitialize and free a config parser
 void Parser_free(Parser *p);
 
-// these function names aren't gonna make much sense without reading MPL's grammar spec
-
 
 // Build a MPL config syntax tree from a stream of lexer tokens.
 // Since multiple errors can occur, the *errors vector is provided

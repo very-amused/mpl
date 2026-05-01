@@ -239,6 +239,7 @@ static inline const char *UserInterface_ERR_name(enum UserInterface_ERR err) {
 	VARIANT(Parser_INVALID_FUNCTION) \
 	VARIANT(Parser_INVALID_ARG_COUNT) \
 	VARIANT(Parser_INVALID_ARG_TYPE) \
+	VARIANT(Parser_UNTERMINATED_STR) \
 	VARIANT(Parser_SYNTAX_ERR) \
 	VARIANT(Parser_TYPE_ERR) \
 	VARIANT(Parser_KEYBIND_ERR)

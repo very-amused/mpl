@@ -79,7 +79,7 @@ static void Lexer_append(Lexer *l, LexerToken *tok) {
 
 // Tokenize a chunk of MPL config. This is where the lexing magic happens.
 // Returns 0 on success, nonzero on error
-int Lexer_tokenize(Lexer *l, const char *chunk) {
+enum Parser_ERR Lexer_tokenize(Lexer *l, const char *chunk) {
 	setlocale(LC_ALL, "");
 
 	static const char KEYWORD_BIND[] = "bind";
@@ -125,8 +125,7 @@ int Lexer_tokenize(Lexer *l, const char *chunk) {
 				c++; // advance past opening quote
 				const char *end = strchr(c, quote);
 				if (!end) {
-					// Unterminated string
-					return 1;
+					return Parser_UNTERMINATED_STR;
 				}
 				tok->str_lit = strndup(c, end - c);
 				c = end+1; // advance past closing quote
@@ -251,7 +250,7 @@ int Lexer_tokenize(Lexer *l, const char *chunk) {
 		Lexer_append(l, tok);
 	}
 
-	return 0;
+	return Parser_OK;
 }
 
 LexerToken *Lexer_peek(const Lexer *l) {
@@ -271,3 +270,16 @@ void Lexer_consume(Lexer *l) {
 	LexerToken_free(cur->token);
 	free(cur);
 }
+
+size_t Lexer_count(Lexer *l, enum LexerToken_t type_id) {
+	// Count the number of tokens that match type_id
+	size_t count = 0;
+	for (LexerTokenNode *node = l->head->next; node != l->head; node = node->next) {
+		if (node->token->type == type_id) {
+			count++;
+		}
+	}
+
+	return count;
+}
+

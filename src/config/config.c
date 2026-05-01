@@ -25,8 +25,10 @@
 #endif
 
 void Config_init(Config *conf) {
-	// Default settings
+	// Load default settings
 	Settings_init(&conf->settings);
+
+
 	// Load registered config functions and macros
 	conf->fn_dict = ConfigFnDict_new();
 	register_ConfigFn_functions(conf->fn_dict);
@@ -36,15 +38,24 @@ void Config_init(Config *conf) {
 	register_ConfigSetting_settings(conf->setting_dict);
 	// Expose the config itself to macros
 	ConfigFn_macroState_init(conf);
+
+	// TODO: Parse default config
+	// We save this tree so macros can walk it later if they want to apply various defaults
+	conf->lexer = Lexer_new();
+	conf->parser = Parser_new(conf->lexer, conf->fn_dict, conf->setting_dict);
+
 	// Empty keybind map
 	conf->keybinds = KeybindMap_new();
 }
 void Config_deinit(Config *conf) {
 	KeybindMap_free(conf->keybinds);
+
+	Parser_free(conf->parser);
+	Lexer_free(conf->lexer);
 	ConfigFnDict_free(conf->fn_dict);
 	ConfigSettingDict_free(conf->setting_dict);
-	conf->fn_dict = NULL;
-	// Free heap-allocations used for Settings_STR
+
+	// Free heap-allocations used for Config_STR
 	Settings_deinit(&conf->settings);
 }
 
@@ -53,19 +64,18 @@ int Config_parse(Config *conf, const char *path) {
 	Config_init(conf);
 
 #ifdef MPL_PARSING_V2
-	Lexer *lex = Lexer_new();
 	FILE *fp = fopen(path, "r");
 	char *line = NULL;
 	size_t line_len;
 	while (getline(&line, &line_len, fp) != EOF) {
-		int status = Lexer_tokenize(lex, line);
-		assert(status == 0);
+		enum Parser_ERR err = Lexer_tokenize(conf->lexer, line);
+		assert(err == Parser_OK);
 	}
+	free(line);
 	fclose(fp);
 
-	Parser *parser = Parser_new(lex, conf->fn_dict, conf->setting_dict);
 	ParseLineError_Vec *parse_errs;
-	ParseNode *tree = Parser_parse(parser, &parse_errs);
+	ParseNode *tree = Parser_parse(conf->parser, &parse_errs);
 	for (size_t i = 0; i < parse_errs->len; i++) {
 		ParseLineError *err = &parse_errs->data[i];
 		LOG(Verbosity_DEBUG, "parse_v2: %s on line %zu\n", Parser_ERR_name(err->type), err->line);
@@ -74,19 +84,14 @@ int Config_parse(Config *conf, const char *path) {
 	free(parse_errs);
 
 	// Walk the parse tree to apply config
-	enum Parser_ERR err = Parser_walk(parser, conf, Parser_WALK_ALL, tree);
+	enum Parser_ERR err = Parser_walk(conf->parser, conf, Parser_WALK_ALL, tree);
 	if (err != Parser_OK) {
 		LOG(Verbosity_VERBOSE, "Failed to walk config tree while parsing: %s\n", Parser_ERR_name(err));
 	}
-
 	ParseNode_rfree(tree);
-	Parser_free(parser);
-	Lexer_free(lex);
-	free(line);
 #endif
 
-	// TODO: We're gonna gradually turn off the old parsing as we incorporate the new system
-	return Config_parse_internal(conf, path, (PARSE_ALL & ~PARSE_KEYBINDS));
+	return 0;
 }
 
 // Try to open *path as readable and immediately close it, returns whether we succeeded
