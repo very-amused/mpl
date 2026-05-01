@@ -99,6 +99,9 @@ int TrackQueue_append(TrackQueue *q, Track *t) {
 	return 0;
 }
 int TrackQueue_prepend(TrackQueue *q, Track *t) {
+	if (!t) {
+		return 1;
+	}
 	TrackQueueNode *node = malloc(sizeof(TrackQueueNode));
 	CHECK_ALLOC(node, 1);
 	node->track = t;

@@ -1,6 +1,6 @@
 #include "config/function/dictionary.h"
 #include "config/function/function.h"
-#include "keycode.h"
+#include "config/parse_v2/keycode.h"
 #include "error.h"
 #include "keybind_map.h"
 #include "util/log.h"

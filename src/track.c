@@ -17,7 +17,10 @@ Track *Track_new(const char *url, const size_t url_len, AudioBackend *ab) {
 	// Initialize track audio (which also decodes streams needed for metadata)
 	enum AudioTrack_ERR at_err = AudioTrack_init(&t->audio, t->url, ab);
 	if (at_err != AudioTrack_OK) {
-		LOG(Verbosity_NORMAL, "Failed to initialize AudioTrack %s: %s\n", t->url, AudioTrack_ERR_name(at_err));
+		LOG(Verbosity_NORMAL, "Failed to initialize AudioTrack %s - %s\n", t->url, AudioTrack_ERR_name(at_err));
+		free(t->url);
+		free(t);
+		return NULL;
 	}
 
 	TrackMeta_init(&t->meta);

@@ -1,8 +1,7 @@
 #include "lexer.h"
-#include "config/keybind/keycode.h"
 #include "error.h"
+#include "keycode.h"
 #include "util/log.h"
-#include "util/strtokn.h"
 
 #include <ctype.h>
 #include <locale.h>

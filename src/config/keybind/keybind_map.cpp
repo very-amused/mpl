@@ -1,12 +1,12 @@
 #include "config/parse_v2/parser.h"
 extern "C" {
 #include "keybind_map.h"
-#include "keycode.h"
 #include "error.h"
 #include "util/log.h"
 #include "util/strtokn.h"
 #include "config/function/function.h"
 #include "config/function/dictionary.h"
+#include "config/parse_v2/keycode.h"
 
 #include <wctype.h>
 #include <locale.h>

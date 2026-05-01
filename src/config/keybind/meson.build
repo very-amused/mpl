@@ -1,4 +1,4 @@
-src_keybind = files('keycode.c')
+src_keybind = []
 
 if get_option('ascii_keybinds')
 	# ASCII-only keybinds done in C; more simple
