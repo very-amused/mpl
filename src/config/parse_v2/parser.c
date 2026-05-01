@@ -230,6 +230,7 @@ static enum Parser_ERR ParseNode_FnCallExpr_encode_args(ParseNode_FnCallExpr *fn
 	for (size_t i = 0; i < fn->argc; i++) {
 		args_size += ConfigType_size(fn->arg_types[i]);
 	}
+	LOG(Verbosity_DEBUG, "args_size = %zu\n", args_size);
 	*args_buf = malloc(args_size);
 	size_t offset = 0; // byte offset in args_buf
 
@@ -239,7 +240,7 @@ static enum Parser_ERR ParseNode_FnCallExpr_encode_args(ParseNode_FnCallExpr *fn
 
 	ParseNode *arg_node = fn_expr->node.child->child;
 	size_t i = 0;
-	for (; arg_node != NULL; arg_node = arg_node->child, i++) {
+	for (; arg_node != NULL; arg_node = arg_node->sibling, i++) {
 		if (!arg_node->child) {
 			return Parser_SYNTAX_ERR;
 		}

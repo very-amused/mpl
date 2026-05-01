@@ -31,6 +31,9 @@ void KeybindMap_free(KeybindMap *keybinds) {
 		if (keybinds->legacy_map[i]) {
 			ConfigFnCallArray_deinit(keybinds->legacy_map[i]);
 		}
+		if (keybinds->map[i]) {
+			ParseNode_rfree(keybinds->map[i]);
+		}
 		free(keybinds->legacy_map[i]);
 	}
 	free(keybinds);

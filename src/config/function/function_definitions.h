@@ -10,7 +10,7 @@
 
 enum ConfigFn_ERR argparse_noArgs(void ** args, StrtoknState *parse_state);
 
-struct seekArgs { size_t fuckyou; int32_t ms; }; // Args passed to a seek function
+struct seekArgs { int32_t ms; }; // Args passed to a seek function
 enum ConfigFn_ERR argparse_seekArgs(struct seekArgs **args, StrtoknState *parse_state);
 
 // Turn struct packing off

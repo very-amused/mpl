@@ -39,10 +39,23 @@ void Config_init(Config *conf) {
 	// Expose the config itself to macros
 	ConfigFn_macroState_init(conf);
 
-	// TODO: Parse default config
-	// We save this tree so macros can walk it later if they want to apply various defaults
+	// Set up config/shell parsing
 	conf->lexer = Lexer_new();
 	conf->parser = Parser_new(conf->lexer, conf->fn_dict, conf->setting_dict);
+	// TODO: Parse default config
+	// We save this tree so macros can walk it later if they want to apply various defaults
+	enum Parser_ERR err = Lexer_tokenize(conf->lexer, mpl_default_config);
+	if (err != Parser_OK) {
+		LOG(Verbosity_NORMAL, "Failed to tokenize default config: %s\n", Parser_ERR_name(err));
+	}
+	ParseLineError_Vec *errors; // default config parse errors
+	conf->defaults = Parser_parse(conf->parser, &errors);
+	for (size_t i = 0; i < errors->len; i++) {
+		LOG(Verbosity_NORMAL, "Failed to parse default config: %s (line %zu)\n",
+				Parser_ERR_name(err), errors->data[i].line);
+	}
+	ParseLineError_Vec_deinit(errors);
+	free(errors);
 
 	// Empty keybind map
 	conf->keybinds = KeybindMap_new();
@@ -50,6 +63,7 @@ void Config_init(Config *conf) {
 void Config_deinit(Config *conf) {
 	KeybindMap_free(conf->keybinds);
 
+	ParseNode_rfree(conf->defaults);
 	Parser_free(conf->parser);
 	Lexer_free(conf->lexer);
 	ConfigFnDict_free(conf->fn_dict);
