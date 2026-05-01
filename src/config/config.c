@@ -4,7 +4,6 @@
 #include "config/settings.h"
 #include "config/setting/register.h"
 #include "error.h"
-#include "internal/parse.h"
 #include "keybind/keybind_map.h"
 #include "util/log.h"
 #include "util/path.h"

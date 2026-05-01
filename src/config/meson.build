@@ -10,7 +10,6 @@ if build_machine.system() == 'linux'
 endif
 
 
-subdir('internal')
 subdir('keybind')
 subdir('function')
 if get_option('parsing_v2')
