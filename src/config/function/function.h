@@ -23,7 +23,7 @@ typedef struct ConfigFn {
 	size_t argc;
 	// Type signatures for the function's arguments.
 	enum ConfigType *arg_types;
-	// The functions's return type or -1 if the function is a void
+	// The functions's return type
 	enum ConfigType ret_type;
 
 	// The function itself

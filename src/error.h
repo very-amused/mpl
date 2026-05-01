@@ -153,7 +153,7 @@ static inline const char *ConfigFn_ERR_name(enum ConfigFn_ERR err) {
 #define KEYBIND_ERR(VARIANT) \
 	VARIANT(Keybind_OK) \
 	VARIANT(Keybind_NOT_FOUND) /* A binding was not found for the provided key */ \
-	VARIANT(Keybind_SYNTAX_ERR) /* Syntax error while parsing a keybind definition */ \
+	VARIANT(Keybind_SYNTAX_ERR) /* Syntax error while reading a keybind definition */ \
 	VARIANT(Keybind_INVALID_FN) /* A function was called that doesn't exist */ \
 	VARIANT(Keybind_INVALID_ARG) /* An invalid argument was provided in the binding definition */ \
 	VARIANT(Keybind_BINDING_CONFLICT) /* A key that was already bound cannot be bound again without explicitly rebinding it */ \
@@ -240,7 +240,8 @@ static inline const char *UserInterface_ERR_name(enum UserInterface_ERR err) {
 	VARIANT(Parser_INVALID_ARG_COUNT) \
 	VARIANT(Parser_INVALID_ARG_TYPE) \
 	VARIANT(Parser_SYNTAX_ERR) \
-	VARIANT(Parser_TYPE_ERR)
+	VARIANT(Parser_TYPE_ERR) \
+	VARIANT(Parser_KEYBIND_ERR)
 
 enum Parser_ERR {
 	PARSER_ERR(ENUM_VAL)

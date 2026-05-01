@@ -170,22 +170,22 @@ void ParseNode_rfree(ParseNode *node) {
 	free(node);
 }
 
-ParseNode *ParseNode_rcopy(ParseNode *node) {
+ParseNode *ParseNode_rcopy(const ParseNode *node) {
 	// Copy the node itself
-	ParseNode *dst = ParseNode_new(node->type);
-	memcpy(node, dst, ParseNode_size(node->type));
+	ParseNode *copy = ParseNode_new(node->type);
+	memcpy(copy, node, ParseNode_size(node->type));
 
 	// NOTE: this is still a DFS lol
 	// Copy children
 	if (node->child) {
-		dst->child = ParseNode_rcopy(node->child);
+		copy->child = ParseNode_rcopy(node->child);
 	}
 	// Copy siblings
 	if (node->sibling) {
-		dst->sibling = ParseNode_rcopy(node->sibling);
+		copy->sibling = ParseNode_rcopy(node->sibling);
 	}
 
-	return node;
+	return copy;
 }
 
 // Encode arguments for a callable parse tree
@@ -215,21 +215,6 @@ enum Parser_ERR ParseNode_FnCallExpr_eval(ParseNode *node, void **ret) {
 
 	// Cleanup and store result
 	free(args);
-
-	return Parser_OK;
-}
-
-enum Parser_ERR ParseNode_FnCallList_eval(ParseNode *node) {
-	if (node->type != ParseNodeID_FnCallList) {
-		return Parser_INVALID_NODE;
-	}
-
-	for (ParseNode *child = node->child; child != NULL; child = child->child)	 {
-		enum Parser_ERR err = ParseNode_FnCallExpr_eval(child, NULL);
-		if (err != Parser_OK) {
-			return err;
-		}
-	}
 
 	return Parser_OK;
 }
@@ -285,6 +270,15 @@ static enum Parser_ERR ParseNode_FnCallExpr_encode_args(ParseNode_FnCallExpr *fn
 		offset += ConfigType_size(fn->ret_type);
 		free(result);
 	}
+
+	return Parser_OK;
+}
+
+const ConfigFn *ParseNode_FnCallExpr_get_fn(ParseNode *fn_expr) {
+	if (fn_expr->type != ParseNodeID_FnCallExpr) {
+		return NULL;
+	}
+	return ((ParseNode_FnCallExpr *)fn_expr)->fn;
 }
 
 /* #endregion */
@@ -295,12 +289,16 @@ struct Parser {
 	Lexer *lex;
 	ConfigFnDict *fn_dict;
 	ConfigSettingDict *setting_dict;
+
+	void *eval_ret;
+	enum ConfigType eval_ret_type;
 };
 
 
 Parser *Parser_new(Lexer *l, ConfigFnDict *fn_dict, ConfigSettingDict *setting_dict) {
 	Parser *p = malloc(sizeof(Parser));
 	CHECK_ALLOC(p, NULL);
+	memset(p, 0, sizeof(Parser));
 	p->lex = l;
 	p->fn_dict = fn_dict;
 	p->setting_dict = setting_dict;
@@ -675,13 +673,11 @@ enum Parser_ERR Parser_walk(Parser *p, Config *config, ParserWalkFlags flags, Pa
 			}
 		}
 		break;
-
 	case ParseNodeID_ShellStmt:
 		{
 			return Parser_walk(p, config, flags, tree->child);
 		}
 		break;
-
 	case ParseNodeID_KeybindStmt:
 		{
 			if (!(flags & Parser_WALK_KEYBINDS)) {
@@ -689,12 +685,54 @@ enum Parser_ERR Parser_walk(Parser *p, Config *config, ParserWalkFlags flags, Pa
 			}
 
 			ParseNode_KeybindStmt *stmt = (ParseNode_KeybindStmt *)tree;
-			// FIXME: we need a ParseNode_rcopy
+			enum Keybind_ERR err = KeybindMap_define_keybind(config->keybinds, stmt->keycode, tree->child);
+			if (err != Keybind_OK) {
+				return Parser_KEYBIND_ERR;
+			}
 		}
 		break;
+
+	case ParseNodeID_FnCallList:
+		{
+			if (!(flags & Parser_WALK_FUNCTIONS || flags & Parser_WALK_MACROS)) {
+				return Parser_OK;
+			}
+
+			for (ParseNode *fn_expr = tree->child; fn_expr != NULL; fn_expr = fn_expr->sibling) {
+				enum Parser_ERR err = Parser_walk(p, config, flags, fn_expr);
+				if (err != Parser_OK) {
+					return err;
+				}
+			}
+		}
+		break;
+	case ParseNodeID_FnCallExpr:
+		{
+			ParseNode_FnCallExpr *fn_expr = (ParseNode_FnCallExpr *)tree;
+			const ConfigFn *fn = fn_expr->fn;
+			if ((fn->is_macro && !(flags & Parser_WALK_MACROS)) ||
+					(!fn->is_macro && !(flags & Parser_WALK_FUNCTIONS))) {
+				return Parser_OK;
+			}
+
+			void *result;
+			enum Parser_ERR err = ParseNode_FnCallExpr_eval(tree, &result);
+			if (p->eval_ret) {
+				free(p->eval_ret);
+				p->eval_ret = NULL;
+			}
+			p->eval_ret_type = fn->ret_type;
+			p->eval_ret = result;
+
+			return err;
+		}
+		break;
+	
+	case ParseNodeID_ValueLit:
+	case ParseNodeID_ArgList:
+	case ParseNodeID_ArgExpr:
+		return Parser_INVALID_NODE;
 	}
 
-
-	//TODO
 	return Parser_OK;
 }

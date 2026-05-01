@@ -17,7 +17,7 @@ void KeybindMap_free(KeybindMap *keybinds);
 // Define a keybind mapping {keycode} to a parsed FnCallList
 // NOTE: this creates a copy of the parse tree at *fn_call, allowing the original parse tree
 // to be deleted
-int KeybindMap_define_keybind(KeybindMap *keybinds, wchar_t keycode, const ParseNode *fn_call);
+enum Keybind_ERR KeybindMap_define_keybind(KeybindMap *keybinds, wchar_t keycode, const ParseNode *fn_list);
 
 // Parse a config line declaring a keybind.
 // These lines have the form `bind x = somefn(arg1, arg2)`

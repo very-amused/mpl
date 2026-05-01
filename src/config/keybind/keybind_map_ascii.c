@@ -14,13 +14,14 @@
 #include <locale.h>
 
 struct KeybindMap {
-	ConfigFnCallArray *legacy_map[255];
+	ConfigFnCallArray *legacy_map[256];
+	ParseNode *map[256];
 };
 
 KeybindMap *KeybindMap_new() {
 	KeybindMap *keybinds = malloc(sizeof(KeybindMap));
 	CHECK_ALLOC(keybinds, NULL);
-	memset(keybinds->legacy_map, 0, sizeof(KeybindMap));
+	memset(keybinds, 0, sizeof(KeybindMap));
 	return keybinds;
 }
 
@@ -33,6 +34,66 @@ void KeybindMap_free(KeybindMap *keybinds) {
 		free(keybinds->legacy_map[i]);
 	}
 	free(keybinds);
+}
+
+enum Keybind_ERR KeybindMap_define_keybind(KeybindMap *keybinds, wchar_t keycode, const ParseNode *fn_list) {
+	// Ensure we're dealing with an ASCII keycode to prevent overflow
+	if (keycode > (unsigned char)-1) {
+		return Keybind_NON_ASCII;
+	}
+	if (fn_list->type != ParseNodeID_FnCallList) {
+		return Keybind_INVALID_FN;
+	}
+	if (keybinds->map[keycode]) {
+		return Keybind_BINDING_CONFLICT;
+	}
+
+	keybinds->map[keycode] = ParseNode_rcopy(fn_list);
+	return Keybind_OK;
+}
+
+static enum Keybind_ERR KeybindMap_call_keybind_legacy(KeybindMap *keybinds, wchar_t keycode);
+
+enum Keybind_ERR KeybindMap_call_keybind(KeybindMap *keybinds, wchar_t keycode) {
+	// Ensure we're dealing with an ASCII keycode to prevent overflow
+	if (keycode > (unsigned char)-1) {
+		return Keybind_NON_ASCII;
+	}
+
+	const ParseNode *fn_list = keybinds->map[keycode];
+	if (!fn_list) {
+		return KeybindMap_call_keybind_legacy(keybinds, keycode);
+	}
+
+	for (ParseNode *fn_expr = fn_list->child; fn_expr != NULL; fn_expr = fn_expr->sibling) {
+		enum Parser_ERR err = ParseNode_FnCallExpr_eval(fn_expr, NULL);
+		if (err != Parser_OK) {
+			LOG(Verbosity_NORMAL, "Failed to call keybind for key %c: %s returned %s",
+					keycode, ParseNode_FnCallExpr_get_fn(fn_expr)->ident, Parser_ERR_name(err));
+			return Keybind_SYNTAX_ERR;
+		}
+	}
+
+	return Keybind_OK;
+}
+
+static enum Keybind_ERR KeybindMap_call_keybind_legacy(KeybindMap *keybinds, wchar_t keycode) {
+	// Ensure we're dealing with an ASCII keycode to prevent overflow
+	if (keycode > (unsigned char)-1) {
+		return Keybind_NON_ASCII;
+	}
+
+	const ConfigFnCallArray *fn_call_arr = keybinds->legacy_map[keycode];
+	if (!fn_call_arr) {
+		return Keybind_NOT_FOUND;
+	}
+
+	// Call keybind functions
+	for (size_t i = 0; i < fn_call_arr->n; i++) {
+		ConfigFnCall_exec(fn_call_arr->fn_calls[i]);
+	}
+
+	return Keybind_OK;
 }
 
 enum Keybind_ERR KeybindMap_parse_mapping_legacy(KeybindMap *keybinds, const char *line, ConfigFnDict *fn_dict) {
@@ -85,24 +146,5 @@ enum Keybind_ERR KeybindMap_parse_mapping_legacy(KeybindMap *keybinds, const cha
 	}
 
 	keybinds->legacy_map[keycode] = fn_call_arr;
-	return Keybind_OK;
-}
-
-enum Keybind_ERR KeybindMap_call_keybind(KeybindMap *keybinds, wchar_t keycode) {
-	// Ensure we're dealing with an ASCII keycode to prevent overflow
-	if (keycode > (unsigned char)-1) {
-		return Keybind_NON_ASCII;
-	}
-
-	const ConfigFnCallArray *fn_call_arr = keybinds->legacy_map[keycode];
-	if (!fn_call_arr) {
-		return Keybind_NOT_FOUND;
-	}
-
-	// Call keybind functions
-	for (size_t i = 0; i < fn_call_arr->n; i++) {
-		ConfigFnCall_exec(fn_call_arr->fn_calls[i]);
-	}
-
 	return Keybind_OK;
 }

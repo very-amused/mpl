@@ -1,3 +1,4 @@
+#include "config/parse_v2/parser.h"
 extern "C" {
 #include "keybind_map.h"
 #include "keycode.h"
@@ -25,6 +26,7 @@ typedef ParseNode ParseNode_FnCallList;
 
 struct KeybindMap {
 	std::unordered_map<wchar_t, std::unique_ptr<ConfigFnCallArray>> legacy_map;
+	std::unordered_map<wchar_t, std::unique_ptr<ParseNode>> map;
 };
 
 KeybindMap *KeybindMap_new() {
@@ -35,6 +37,52 @@ void KeybindMap_free(KeybindMap *keybinds) {
 	delete keybinds;
 }
 
+enum Keybind_ERR KeybindMap_define_keybind(KeybindMap *keybinds, wchar_t keycode, const ParseNode *fn_list) {
+	if (fn_list->type != ParseNodeID_FnCallList) {
+		return Keybind_INVALID_FN;
+	}
+	if (keybinds->map.find(keycode) != keybinds->map.end()) {
+		return Keybind_BINDING_CONFLICT;
+	}
+
+	keybinds->map[keycode] = std::unique_ptr<ParseNode>(ParseNode_rcopy(fn_list));
+	return Keybind_OK;
+}
+
+static enum Keybind_ERR KeybindMap_call_keybind_legacy(KeybindMap *keybinds, wchar_t keycode);
+
+enum Keybind_ERR KeybindMap_call_keybind(KeybindMap *keybinds, wchar_t keycode) {
+	const bool exists = keybinds->map.find(keycode) != keybinds->map.end();
+	if (!exists) {
+		return KeybindMap_call_keybind_legacy(keybinds, keycode);
+	}
+
+	ParseNode *fn_list = keybinds->map[keycode].get();
+	for (ParseNode *fn_expr = fn_list->child; fn_expr != NULL; fn_expr = fn_expr->sibling) {
+		enum Parser_ERR err = ParseNode_FnCallExpr_eval(fn_expr, NULL);
+		if (err != Parser_OK) {
+			LOG(Verbosity_NORMAL, "Failed to call keybind for key %c: %s returned %s",
+					keycode, ParseNode_FnCallExpr_get_fn(fn_expr)->ident, Parser_ERR_name(err));
+			return Keybind_SYNTAX_ERR;
+		}
+	}
+
+	return Keybind_OK;
+}
+
+static enum Keybind_ERR KeybindMap_call_keybind_legacy(KeybindMap *keybinds, wchar_t keycode) {
+	const bool exists = keybinds->legacy_map.find(keycode) != keybinds->legacy_map.end();
+	if (!exists) {
+		return Keybind_NOT_FOUND;
+	}
+
+	ConfigFnCallArray *fn_call_arr = keybinds->legacy_map[keycode].get();
+	for (size_t i = 0; i < fn_call_arr->n; i++) {
+		ConfigFnCall_exec(fn_call_arr->fn_calls[i]);
+	}
+
+	return Keybind_OK;
+}
 
 enum Keybind_ERR KeybindMap_parse_mapping_legacy(KeybindMap *keybinds, const char *line, ConfigFnDict *fn_dict) {
 	// Ensure UTF-8 support
@@ -78,18 +126,5 @@ enum Keybind_ERR KeybindMap_parse_mapping_legacy(KeybindMap *keybinds, const cha
 	return Keybind_OK;
 }
 
-enum Keybind_ERR KeybindMap_call_keybind(KeybindMap *keybinds, wchar_t keycode) {
-	const bool exists = keybinds->legacy_map.find(keycode) != keybinds->legacy_map.end();
-	if (!exists) {
-		return Keybind_NOT_FOUND;
-	}
-
-	ConfigFnCallArray *fn_call_arr = keybinds->legacy_map[keycode].get();
-	for (size_t i = 0; i < fn_call_arr->n; i++) {
-		ConfigFnCall_exec(fn_call_arr->fn_calls[i]);
-	}
-
-	return Keybind_OK;
-}
 
 }

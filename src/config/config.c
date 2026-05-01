@@ -73,13 +73,20 @@ int Config_parse(Config *conf, const char *path) {
 	ParseLineError_Vec_deinit(parse_errs);
 	free(parse_errs);
 
+	// Walk the parse tree to apply config
+	enum Parser_ERR err = Parser_walk(parser, conf, Parser_WALK_ALL, tree);
+	if (err != Parser_OK) {
+		LOG(Verbosity_VERBOSE, "Failed to walk config tree while parsing: %s\n", Parser_ERR_name(err));
+	}
+
 	ParseNode_rfree(tree);
 	Parser_free(parser);
 	Lexer_free(lex);
 	free(line);
 #endif
 
-	return Config_parse_internal(conf, path, PARSE_ALL);
+	// TODO: We're gonna gradually turn off the old parsing as we incorporate the new system
+	return Config_parse_internal(conf, path, (PARSE_ALL & ~PARSE_KEYBINDS));
 }
 
 // Try to open *path as readable and immediately close it, returns whether we succeeded
