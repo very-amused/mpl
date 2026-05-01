@@ -1,4 +1,4 @@
-#include "config/internal/parse.h"
+#include "config/parse_v2/parser.h"
 #include "state.h"
 
 /* #region Macro function state  */
@@ -13,5 +13,5 @@ void ConfigFn_macroState_init(Config *config) {
 
 
 void include_default_keybinds(void * _) {
-	Config_parse_internal(state.config, NULL, PARSE_KEYBINDS);
+	Parser_walk(state.config->parser, state.config, Parser_WALK_KEYBINDS, state.config->defaults);
 }
