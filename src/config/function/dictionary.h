@@ -1,6 +1,6 @@
 #pragma once
-#include "error.h"
-#include "util/strtokn.h"
+#include "config/parse_v2/types.h"
+#include "function.h"
 
 // A dictionary of all defined (parseable) ConfigFn's
 typedef struct ConfigFnDict ConfigFnDict;
@@ -12,10 +12,10 @@ ConfigFnDict *ConfigFnDict_new();
 void ConfigFnDict_free(ConfigFnDict *dict);
 
 // Lookup a config function in the dictionary
-// NOTE: see register.h for how to define config functions so they can be loaded
-typedef struct ConfigFn ConfigFn;
-enum ConfigFn_ERR ConfigFnDict_lookup(ConfigFnDict *dict, const ConfigFn **dst,
-		const char *ident);
+// Sets *dst = NULL if not found
+// NOTE: see README.md for how to define config functions so they can be loaded
+void ConfigFnDict_lookup(ConfigFnDict *dict, const ConfigFn **dst, const char *ident);
 
 // Check if a function identifier is defined in a ConfigFnDict
 const bool ConfigFnDict_has(ConfigFnDict *dict, const char *ident);
+

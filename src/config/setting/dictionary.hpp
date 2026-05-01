@@ -1,7 +1,9 @@
-#include "util/log.h"
+#pragma once
+
 extern "C" {
 #include "dictionary.h"
 #include "config/settings.h"
+#include "util/log.h"
 
 #include <stdint.h>
 #include <stdbool.h>

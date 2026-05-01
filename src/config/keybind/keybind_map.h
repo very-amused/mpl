@@ -1,6 +1,5 @@
 #pragma once
 
-#include "config/function/dictionary.h"
 #include "error.h"
 #include "config/parse_v2/parser.h"
 
@@ -18,12 +17,6 @@ void KeybindMap_free(KeybindMap *keybinds);
 // NOTE: this creates a copy of the parse tree at *fn_call, allowing the original parse tree
 // to be deleted
 enum Keybind_ERR KeybindMap_define_keybind(KeybindMap *keybinds, wchar_t keycode, const ParseNode *fn_list);
-
-// Parse a config line declaring a keybind.
-// These lines have the form `bind x = somefn(arg1, arg2)`
-// Returns 0 on success
-// TODO: REMOVE! DEPRECATED
-enum Keybind_ERR KeybindMap_parse_mapping_legacy(KeybindMap *keybinds, const char *line, ConfigFnDict *fn_dict);
 
 // Call the keybind mapped to {keycode} if it exists.
 // Returns 0 if a keybind exists and was called, 1 if the keybind doesn't exist 

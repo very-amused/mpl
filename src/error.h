@@ -130,35 +130,13 @@ static inline const char *Verbosity_name(enum Verbosity lvl) {
 
 #undef VERBOSITY
 
-#define CONFIG_FN_ERR(VARIANT) \
-	VARIANT(ConfigFn_OK) \
-	VARIANT(ConfigFn_BAD_ALLOC) /* Failed heap allocation */ \
-	VARIANT(ConfigFn_SYNTAX_ERR) /* Syntax error while parsing a config function */ \
-	VARIANT(ConfigFn_INVALID_FN) /* Invalid function identifier */ \
-	VARIANT(ConfigFn_INVALID_ARG) /* Invalid function argument(s) */
-
-enum ConfigFn_ERR {
-	CONFIG_FN_ERR(ENUM_VAL)
-};
-
-static inline const char *ConfigFn_ERR_name(enum ConfigFn_ERR err) {
-	switch (err) {
-		CONFIG_FN_ERR(ENUM_KEY)
-	}
-	return DEFAULT_ERR_NAME;
-}
-
-#undef CONFIG_FN_ERR
-
 #define KEYBIND_ERR(VARIANT) \
 	VARIANT(Keybind_OK) \
 	VARIANT(Keybind_NOT_FOUND) /* A binding was not found for the provided key */ \
-	VARIANT(Keybind_SYNTAX_ERR) /* Syntax error while reading a keybind definition */ \
-	VARIANT(Keybind_INVALID_FN) /* A function was called that doesn't exist */ \
-	VARIANT(Keybind_INVALID_ARG) /* An invalid argument was provided in the binding definition */ \
 	VARIANT(Keybind_BINDING_CONFLICT) /* A key that was already bound cannot be bound again without explicitly rebinding it */ \
+	VARIANT(Keybind_INVALID_FN) /* A function was called that doesn't exist */ \
 	VARIANT(Keybind_NON_ASCII) /* Non-ASCII codepoint provided when MPL was built with the 'ascii_keybinds' feature */ \
-	VARIANT(Keybind_BAD_ALLOC)
+	VARIANT(Keybind_CALL_ERR)
 
 // Errors returned by a KeybindMap_* method
 enum Keybind_ERR {
@@ -170,22 +148,6 @@ static inline const char *Keybind_ERR_name(enum Keybind_ERR err) {
 		KEYBIND_ERR(ENUM_KEY)
 	}
 	return DEFAULT_ERR_NAME;
-}
-
-static inline const enum Keybind_ERR Keybind_ERR_from_ConfigFn_ERR(enum ConfigFn_ERR cf_err) {
-	switch (cf_err) {
-	case ConfigFn_OK:
-		return Keybind_OK;
-	case ConfigFn_BAD_ALLOC:
-		return Keybind_BAD_ALLOC;
-	case ConfigFn_SYNTAX_ERR:
-		return Keybind_SYNTAX_ERR;
-	case ConfigFn_INVALID_FN:
-		return Keybind_INVALID_FN;
-	case ConfigFn_INVALID_ARG:
-		return Keybind_INVALID_ARG;
-	}
-	return (enum Keybind_ERR)-1;
 }
 
 #undef KEYBIND_ERR

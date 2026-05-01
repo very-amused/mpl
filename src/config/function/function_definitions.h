@@ -1,6 +1,5 @@
 #pragma once
 
-#include "util/strtokn.h"
 #include <stdint.h>
 
 /* Argument parsing */
@@ -8,10 +7,7 @@
 // We pack argument structs so they can be dynamically encoded using just type info
 #pragma pack(1)
 
-enum ConfigFn_ERR argparse_noArgs(void ** args, StrtoknState *parse_state);
-
 struct seekArgs { int32_t ms; }; // Args passed to a seek function
-enum ConfigFn_ERR argparse_seekArgs(struct seekArgs **args, StrtoknState *parse_state);
 
 // Turn struct packing off
 #pragma pack()

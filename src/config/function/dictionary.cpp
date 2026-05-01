@@ -1,7 +1,5 @@
-#include "register.h"
 extern "C" {
 #include "dictionary.h"
-#include "error.h"
 #include "function.h"
 
 #include <string.h>
@@ -30,16 +28,14 @@ void ConfigFnDict_free(ConfigFnDict *dict) {
 	delete dict;
 }
 
-enum ConfigFn_ERR ConfigFnDict_lookup(ConfigFnDict *dict, const ConfigFn **dst,
-		const char *ident) {
+void ConfigFnDict_lookup(ConfigFnDict *dict, const ConfigFn **dst, const char *ident) {
+	*dst = NULL;
 	const bool exists = dict->map.find(ident) != dict->map.end();
 	if (!exists) {
-		return ConfigFn_INVALID_FN;
+		return;
 	}
 
 	*dst = dict->map[ident].get();
-
-	return ConfigFn_OK;
 }
 
 const bool ConfigFnDict_has(ConfigFnDict *dict, const char *ident) {
@@ -48,13 +44,10 @@ const bool ConfigFnDict_has(ConfigFnDict *dict, const char *ident) {
 
 }
 
-
 void ConfigFnDict_define_fn(ConfigFnDict *dict, const char *ident,
-		void (*routine)(void *args),
+		void *(*routine)(void *args),
 		const enum ConfigType ret_type,
-		const enum ConfigType *arg_types, const size_t arg_count,
-		enum ConfigFn_ERR (*parse_args)(void **args, StrtoknState *parse_state),
-		void (*free_args)(void *args)) {
+		const enum ConfigType *arg_types, const size_t arg_count) {
 	std::unique_ptr<ConfigFn> fn = std::unique_ptr<ConfigFn>(new ConfigFn);
 	fn->ident = strdup(ident);
 	fn->is_macro = false;
@@ -71,18 +64,14 @@ void ConfigFnDict_define_fn(ConfigFnDict *dict, const char *ident,
 	fn->ret_type = ret_type;
 
 	fn->routine = routine;
-	fn->parse_args = parse_args;
-	fn->free_args = free_args;
 
 	dict->map[std::string(fn->ident)] = std::move(fn);
 }
 
 void ConfigFnDict_define_macro(ConfigFnDict *dict, const char *ident,
-		void (*routine)(void *args),
+		void *(*routine)(void *args),
 		const enum ConfigType ret_type,
-		const enum ConfigType *arg_types, const size_t arg_count,
-		enum ConfigFn_ERR (*parse_args)(void **args, StrtoknState *parse_state),
-		void (*free_args)(void *args)) {
+		const enum ConfigType *arg_types, const size_t arg_count) {
 	std::unique_ptr<ConfigFn> macro = std::unique_ptr<ConfigFn>(new ConfigFn);
 	macro->ident = strdup(ident);
 	macro->is_macro = true;
@@ -99,8 +88,6 @@ void ConfigFnDict_define_macro(ConfigFnDict *dict, const char *ident,
 	macro->ret_type = ret_type;
 
 	macro->routine = routine;
-	macro->parse_args = parse_args;
-	macro->free_args = free_args;
 
 	dict->map[std::string(macro->ident)] = std::move(macro);
 }
