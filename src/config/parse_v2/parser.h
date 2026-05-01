@@ -68,12 +68,12 @@ void ParseNode_rfree(ParseNode *node);
 // Create a deep copy of the parse tree starting at *node
 ParseNode *ParseNode_rcopy(ParseNode *node);
 
-// A FnCallList / FnCallExpr node that can be called using
-// ParseNode_call()
-typedef ParseNode ParseNode_Callable;
-
-// Call/evaluate a ParseNode tree representing one or more function calls
-enum Parser_ERR ParseNode_eval(ParseNode_Callable *node, void **ret);
+// Evaluate a function call
+// fn_expr must be a ParseNode_FnCallExpr
+enum Parser_ERR ParseNode_FnCallExpr_eval(ParseNode *fn_expr, void **ret);
+// Evaluate a series of function calls
+// fn_list must be a ParseNode_FnCallList
+enum Parser_ERR ParseNode_FnCallList_eval(ParseNode *fn_list);
 
 // A MPL config/shell parser
 typedef struct Parser Parser;

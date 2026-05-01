@@ -189,31 +189,21 @@ ParseNode *ParseNode_rcopy(ParseNode *node) {
 }
 
 // Encode arguments for a callable parse tree
-static enum Parser_ERR ParseNode_eval_encode_args(ParseNode_Callable *node, void **args_buf);
+static enum Parser_ERR ParseNode_FnCallExpr_encode_args(ParseNode_FnCallExpr *node, void **args_buf);
 
-enum Parser_ERR ParseNode_eval(ParseNode_Callable *node, void **ret) {
+enum Parser_ERR ParseNode_FnCallExpr_eval(ParseNode *node, void **ret) {
+	if (node->type != ParseNodeID_FnCallExpr) {
+		return Parser_INVALID_NODE;
+	}
+	ParseNode_FnCallExpr *fn_expr = (ParseNode_FnCallExpr *)node;
 	if (ret) {
 		*ret = NULL;
 	}
 
-	// Handle FnCallList's as a sequence
-	if (node->type == ParseNodeID_FnCallList) {
-		for (ParseNode *child = node->child; child != NULL; child = child->child) {
-			ParseNode_eval(child, NULL);
-		}
-		return Parser_OK;
-	}
-
-	// Otherwise, make sure we're working with a FnCallExpr
-	if (node->type != ParseNodeID_FnCallExpr) {
-		return Parser_INVALID_NODE;
-	}
-
 	// Encode argument struct for the function
-	ParseNode_FnCallExpr *fn_expr = (ParseNode_FnCallExpr *)node;
 	void *args = NULL;
 	if (fn_expr->fn->argc > 0) {
-		enum Parser_ERR err = ParseNode_eval_encode_args(node, &args);
+		enum Parser_ERR err = ParseNode_FnCallExpr_encode_args(fn_expr, &args);
 		if (err != Parser_OK) {
 			return err;
 		}
@@ -229,8 +219,22 @@ enum Parser_ERR ParseNode_eval(ParseNode_Callable *node, void **ret) {
 	return Parser_OK;
 }
 
-static enum Parser_ERR ParseNode_eval_encode_args(ParseNode_Callable *node, void **args_buf) {
-	ParseNode_FnCallExpr *fn_expr = (ParseNode_FnCallExpr *)node;
+enum Parser_ERR ParseNode_FnCallList_eval(ParseNode *node) {
+	if (node->type != ParseNodeID_FnCallList) {
+		return Parser_INVALID_NODE;
+	}
+
+	for (ParseNode *child = node->child; child != NULL; child = child->child)	 {
+		enum Parser_ERR err = ParseNode_FnCallExpr_eval(child, NULL);
+		if (err != Parser_OK) {
+			return err;
+		}
+	}
+
+	return Parser_OK;
+}
+
+static enum Parser_ERR ParseNode_FnCallExpr_encode_args(ParseNode_FnCallExpr *fn_expr, void **args_buf) {
 	const ConfigFn *fn = fn_expr->fn;
 	if (fn->argc == 0) {
 		return Parser_OK;
@@ -244,11 +248,11 @@ static enum Parser_ERR ParseNode_eval_encode_args(ParseNode_Callable *node, void
 	*args_buf = malloc(args_size);
 	size_t offset = 0; // byte offset in args_buf
 
-	if (!(node->child && node->child->type == ParseNodeID_ArgList)) {
+	if (!(fn_expr->node.child && fn_expr->node.child->type == ParseNodeID_ArgList)) {
 		return Parser_INVALID_ARG_COUNT;
 	}
 
-	ParseNode *arg_node = node->child->child;
+	ParseNode *arg_node = fn_expr->node.child->child;
 	size_t i = 0;
 	for (; arg_node != NULL; arg_node = arg_node->child, i++) {
 		if (!arg_node->child) {
@@ -273,7 +277,7 @@ static enum Parser_ERR ParseNode_eval_encode_args(ParseNode_Callable *node, void
 			return Parser_INVALID_ARG_TYPE;
 		}
 		void *result;
-		enum Parser_ERR err = ParseNode_eval((ParseNode_Callable *)arg_fn, &result);
+		enum Parser_ERR err = ParseNode_FnCallExpr_eval(&arg_fn->node, &result);
 		if (err != Parser_OK) {
 			return err;
 		}
