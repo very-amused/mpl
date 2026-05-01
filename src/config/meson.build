@@ -12,9 +12,7 @@ endif
 
 subdir('keybind')
 subdir('function')
-if get_option('parsing_v2')
-	subdir('parse_v2')
-	subdir('setting')
-endif
+subdir('parse_v2')
+subdir('setting')
 
 src += src_config

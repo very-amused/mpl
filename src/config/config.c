@@ -8,6 +8,8 @@
 #include "util/log.h"
 #include "util/path.h"
 #include "function/register.h"
+#include "config/parse_v2/lexer.h"
+#include "config/parse_v2/parser.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -16,12 +18,7 @@
 #include <string.h>
 #include <stddef.h>
 #include <fcntl.h>
-#ifdef MPL_PARSING_V2
-#include "config/parse_v2/lexer.h"
-#include "config/parse_v2/parser.h"
-
 #include <assert.h>
-#endif
 
 void Config_init(Config *conf) {
 	// Load default settings
@@ -76,13 +73,16 @@ int Config_parse(Config *conf, const char *path) {
 	// Initialize config state to its zero value
 	Config_init(conf);
 
-#ifdef MPL_PARSING_V2
 	FILE *fp = fopen(path, "r");
 	char *line = NULL;
 	size_t line_len;
+	size_t lineno = 1;
 	while (getline(&line, &line_len, fp) != EOF) {
 		enum Parser_ERR err = Lexer_tokenize(conf->lexer, line);
-		assert(err == Parser_OK);
+		if (err != Parser_OK) {
+			LOG(Verbosity_NORMAL, "Failed to parse config: %s (line %zu)\n", Parser_ERR_name(err), lineno);
+		}
+		lineno++;
 	}
 	free(line);
 	fclose(fp);
@@ -91,7 +91,7 @@ int Config_parse(Config *conf, const char *path) {
 	ParseNode *tree = Parser_parse(conf->parser, &parse_errs);
 	for (size_t i = 0; i < parse_errs->len; i++) {
 		ParseLineError *err = &parse_errs->data[i];
-		LOG(Verbosity_DEBUG, "parse_v2: %s on line %zu\n", Parser_ERR_name(err->type), err->line);
+		LOG(Verbosity_DEBUG, "Failed to parse config: %s (line %zu)\n", Parser_ERR_name(err->type), err->line);
 	}
 	ParseLineError_Vec_deinit(parse_errs);
 	free(parse_errs);
@@ -101,8 +101,8 @@ int Config_parse(Config *conf, const char *path) {
 	if (err != Parser_OK) {
 		LOG(Verbosity_VERBOSE, "Failed to walk config tree while parsing: %s\n", Parser_ERR_name(err));
 	}
+	// Free the parse tree now that we've walked and applied it
 	ParseNode_rfree(tree);
-#endif
 
 	return 0;
 }

@@ -88,9 +88,6 @@ endif
 if get_option('test_config')
 	cflags += '-DMPL_TEST_CONFIG'
 endif
-if get_option('parsing_v2')
-	cflags += '-DMPL_PARSING_V2'
-endif
 if get_option('parsing_debug')
 	cflags += '-DMPL_PARSING_DEBUG'
 endif
