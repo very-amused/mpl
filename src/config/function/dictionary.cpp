@@ -3,12 +3,13 @@ extern "C" {
 #include "function.h"
 
 #include <string.h>
+#include <stdlib.h>
 }
-
 
 #include <string>
 #include <unordered_map>
 #include <memory>
+#include <vector>
 
 ConfigFn::~ConfigFn() {
 	ConfigFn_deinit(this);
@@ -47,15 +48,16 @@ const bool ConfigFnDict_has(ConfigFnDict *dict, const char *ident) {
 void ConfigFnDict_define_fn(ConfigFnDict *dict, const char *ident,
 		void *(*routine)(void *args),
 		const enum ConfigType ret_type,
-		const enum ConfigType *arg_types, const size_t arg_count) {
+		std::vector<enum ConfigType> arg_types) {
 	std::unique_ptr<ConfigFn> fn = std::unique_ptr<ConfigFn>(new ConfigFn);
 	fn->ident = strdup(ident);
 	fn->is_macro = false;
 
+
 	// Handle arg types and return type
 	fn->arg_types = NULL;
-	fn->argc = arg_count;
-	if (arg_count > 0) {
+	fn->argc = arg_types.size();
+	if (fn->argc > 0) {
 		fn->arg_types = (enum ConfigType *)malloc(fn->argc * sizeof(enum ConfigType));
 		for (size_t i = 0; i < fn->argc; i++) {
 			fn->arg_types[i] = arg_types[i];

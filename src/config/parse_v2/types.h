@@ -33,4 +33,5 @@ static const inline size_t ConfigType_size(enum ConfigType t) {
 		case Config_STR:
 			return sizeof(char *);
 	}
+	return 0;
 }

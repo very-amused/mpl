@@ -9,30 +9,26 @@ extern "C" {
 
 #include "dictionary.hpp"
 
+#include <vector>
+
 void register_ConfigFn_functions(ConfigFnDict *dict) {
 	ConfigFnDict_define_fn(dict, "play_toggle",
 			play_toggle,
-			Config_VOID,
-			NULL, 0);
+			{});
 	ConfigFnDict_define_fn(dict, "quit",
 			quit,
-			Config_VOID,
-			NULL, 0);
+			{});
 
-	static const enum ConfigType seekArgTypes[] = {Config_I32};
-	static const size_t seekArgTypes_len = sizeof(seekArgTypes) / sizeof(seekArgTypes[0]);
+	static const std::vector<ConfigType> seekArgTypes = {Config_I32};
 	ConfigFnDict_define_fn(dict, "seek",
 			seek,
-			Config_VOID,
-			seekArgTypes, seekArgTypes_len);
+			seekArgTypes);
 	ConfigFnDict_define_fn(dict, "seek_snap",
 			seek_snap,
-			Config_VOID,
-			seekArgTypes, seekArgTypes_len);
+			seekArgTypes);
 	ConfigFnDict_define_fn(dict, "show_metadata",
 			show_metadata,
-			Config_VOID,
-			NULL, 0);
+			seekArgTypes);
 }
 
 void register_ConfigFn_macros(ConfigFnDict *dict) {

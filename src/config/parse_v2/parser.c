@@ -127,6 +127,7 @@ static const size_t ParseNode_size(enum ParseNodeID type_id) {
 	case ParseNodeID_ArgExpr:
 		return sizeof(ParseNode_ArgExpr);
 	}
+	return 0;
 }
 
 ParseNode *ParseNode_new(enum ParseNodeID type_id) {
@@ -189,7 +190,7 @@ ParseNode *ParseNode_rcopy(const ParseNode *node) {
 }
 
 // Encode arguments for a callable parse tree
-static enum Parser_ERR ParseNode_FnCallExpr_encode_args(ParseNode_FnCallExpr *node, void **args_buf);
+static enum Parser_ERR ParseNode_FnCallExpr_encode_args(ParseNode_FnCallExpr *node, unsigned char **args_buf);
 
 enum Parser_ERR ParseNode_FnCallExpr_eval(ParseNode *node, void **ret) {
 	if (node->type != ParseNodeID_FnCallExpr) {
@@ -203,7 +204,7 @@ enum Parser_ERR ParseNode_FnCallExpr_eval(ParseNode *node, void **ret) {
 	// Encode argument struct for the function
 	void *args = NULL;
 	if (fn_expr->fn->argc > 0) {
-		enum Parser_ERR err = ParseNode_FnCallExpr_encode_args(fn_expr, &args);
+		enum Parser_ERR err = ParseNode_FnCallExpr_encode_args(fn_expr, (unsigned char **)&args);
 		if (err != Parser_OK) {
 			return err;
 		}
@@ -219,7 +220,7 @@ enum Parser_ERR ParseNode_FnCallExpr_eval(ParseNode *node, void **ret) {
 	return Parser_OK;
 }
 
-static enum Parser_ERR ParseNode_FnCallExpr_encode_args(ParseNode_FnCallExpr *fn_expr, void **args_buf) {
+static enum Parser_ERR ParseNode_FnCallExpr_encode_args(ParseNode_FnCallExpr *fn_expr, unsigned char **args_buf) {
 	const ConfigFn *fn = fn_expr->fn;
 	if (fn->argc == 0) {
 		return Parser_OK;
