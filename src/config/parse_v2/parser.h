@@ -73,7 +73,7 @@ ParseNode *ParseNode_rcopy(ParseNode *node);
 typedef ParseNode ParseNode_Callable;
 
 // Call/evaluate a ParseNode tree representing one or more function calls
-void *ParseNode_eval(ParseNode_Callable *node);
+enum Parser_ERR ParseNode_eval(ParseNode_Callable *node, void **ret);
 
 // A MPL config/shell parser
 typedef struct Parser Parser;

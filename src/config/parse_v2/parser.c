@@ -191,19 +191,22 @@ ParseNode *ParseNode_rcopy(ParseNode *node) {
 // Encode arguments for a callable parse tree
 static enum Parser_ERR ParseNode_eval_encode_args(ParseNode_Callable *node, void **args_buf);
 
-void *ParseNode_eval(ParseNode_Callable *node) {
+enum Parser_ERR ParseNode_eval(ParseNode_Callable *node, void **ret) {
+	if (ret) {
+		*ret = NULL;
+	}
+
 	// Handle FnCallList's as a sequence
 	if (node->type == ParseNodeID_FnCallList) {
 		for (ParseNode *child = node->child; child != NULL; child = child->child) {
-			ParseNode_eval(child);
+			ParseNode_eval(child, NULL);
 		}
-		return NULL;
+		return Parser_OK;
 	}
 
 	// Otherwise, make sure we're working with a FnCallExpr
 	if (node->type != ParseNodeID_FnCallExpr) {
-		LOG(Verbosity_NORMAL, "Error: ParseNode_eval called with invalid node type %s\n", ParseNodeID_name(node->type));
-		return NULL;
+		return Parser_INVALID_NODE;
 	}
 
 	// Encode argument struct for the function
@@ -212,14 +215,18 @@ void *ParseNode_eval(ParseNode_Callable *node) {
 	if (fn_expr->fn->argc > 0) {
 		enum Parser_ERR err = ParseNode_eval_encode_args(node, &args);
 		if (err != Parser_OK) {
-			return NULL;
+			return err;
 		}
 	}
 
 	// Get the function pointer and call it
 	// FIXME: support function return values
 	fn_expr->fn->routine(args);
-	return NULL;
+
+	// Cleanup and store result
+	free(args);
+
+	return Parser_OK;
 }
 
 static enum Parser_ERR ParseNode_eval_encode_args(ParseNode_Callable *node, void **args_buf) {
@@ -265,12 +272,14 @@ static enum Parser_ERR ParseNode_eval_encode_args(ParseNode_Callable *node, void
 		if (fn->ret_type != fn->arg_types[i]) {
 			return Parser_INVALID_ARG_TYPE;
 		}
-		void *result = ParseNode_eval((ParseNode_Callable *)arg_fn);
-		if (!result) {
-			return Parser_TYPE_ERR;
+		void *result;
+		enum Parser_ERR err = ParseNode_eval((ParseNode_Callable *)arg_fn, &result);
+		if (err != Parser_OK) {
+			return err;
 		}
 		memcpy(&(*args_buf)[offset], result, ConfigType_size(fn->ret_type));
 		offset += ConfigType_size(fn->ret_type);
+		free(result);
 	}
 }
 
