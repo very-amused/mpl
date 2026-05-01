@@ -226,7 +226,7 @@ enum Parser_ERR Lexer_tokenize(Lexer *l, const char *chunk) {
 			c = end;
 		}
 
-		// Append the token to our list
+#ifdef MPL_PARSING_DEBUG
 		LOG(Verbosity_DEBUG, "tok->type = %s\n", LexerToken_t_name(tok->type));
 		if (cli_args.verbosity >= Verbosity_DEBUG) {
 			switch (tok->type) {
@@ -246,6 +246,8 @@ enum Parser_ERR Lexer_tokenize(Lexer *l, const char *chunk) {
 				break;
 			}
 		}
+#endif
+		// Append the token to our list
 		Lexer_append(l, tok);
 	}
 

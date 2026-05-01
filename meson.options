@@ -15,3 +15,4 @@ option('test_config', type : 'boolean', value : false) # Read ../test/mpl.conf i
 option('ao_fast', type : 'boolean', value : false) # Support libFAST fake audio output for testing
 option('test_resampling', type : 'boolean', value : false) # Enable resampling on audio backends that don't require it
 option('parsing_v2', type : 'boolean', value : false) # Enable two-stage config parsing, currently unstable
+option('parsing_debug', type : 'boolean', value : false) # Enable trace level logging in parsing functions

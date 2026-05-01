@@ -140,7 +140,9 @@ ParseNode *ParseNode_new(enum ParseNodeID type_id) {
 
 void ParseNode_rfree(ParseNode *node) {
 	static int depth = 0;
+#ifdef MPL_PARSING_DEBUG
 	LOG(Verbosity_DEBUG, "ParseNode_rfree called on a %s (depth = %d)\n", ParseNodeID_name(node->type), depth);
+#endif
 	// NOTE: this is a DFS lol
 	// Free children
 	if (node->child != NULL) {
@@ -381,7 +383,9 @@ ParseNode *Parser_parse(Parser *p, ParseLineError_Vec **errors) {
 static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 	LexerToken *tok = Lexer_peek(p->lex);
 
+#ifdef MPL_PARSING_DEBUG
 	LOG(Verbosity_DEBUG, "Parsing node: %s\n", ParseNodeID_name(node->type));
+#endif
 
 	switch (node->type) {
 	case ParseNodeID_Root:
