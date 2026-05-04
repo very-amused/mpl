@@ -319,6 +319,7 @@ struct Parser {
 	ConfigFnDict *fn_dict;
 	ConfigSettingDict *setting_dict;
 
+	// Function eval return register
 	void *eval_ret;
 	enum ConfigType eval_ret_type;
 };
@@ -580,6 +581,36 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 				if (err != Parser_OK) {
 					return err;
 				}
+
+				// Typecheck args
+				ParseNode *arg = arg_list->node.child;
+				for (size_t i = 0; i < expr->fn->argc; i++, arg = arg->sibling) {
+					// Ensure arg is provided
+					if (!(arg && arg->child)) {
+						return Parser_INVALID_ARG_COUNT;
+					}
+
+					// Deduce arg type
+					enum ConfigType arg_type;
+					switch (arg->child->type) {
+					case ParseNodeID_ValueLit:
+						arg_type = ((ParseNode_ValueLit *)arg->child)->type;
+						break;
+					case ParseNodeID_FnCallExpr:
+						arg_type = ((ParseNode_FnCallExpr *)arg->child)->fn->ret_type;
+						break;
+					default:
+						return Parser_INVALID_NODE;
+					}
+					// Ensure arg has correct type
+					const enum ConfigType correct_arg_type = expr->fn->arg_types[i];
+					// TODO: use a strerr buffer to return this error message instead of logging it
+					if (arg_type != correct_arg_type) {
+						LOG(Verbosity_VERBOSE, "%s argument %zu has incorrect type %s, expected %s\n",
+								expr->fn->ident, i, ConfigType_name(arg_type), ConfigType_name(correct_arg_type));
+						return Parser_INVALID_ARG_TYPE;
+					}
+				}
 			}
 
 			// )
@@ -627,7 +658,6 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 
 	case ParseNodeID_ArgExpr:
 		{
-			// FIXME: we have no type checking of function args right now!
 			switch (tok->type) {
 			case Tok_I32Lit:
 			case Tok_BoolLit:

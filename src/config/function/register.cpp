@@ -26,9 +26,10 @@ void register_ConfigFn_functions(ConfigFnDict *dict) {
 	ConfigFnDict_define_fn(dict, "seek_snap",
 			seek_snap,
 			&seekArgTypes);
+
 	ConfigFnDict_define_fn(dict, "show_metadata",
 			show_metadata,
-			&seekArgTypes);
+			NULL);
 }
 
 void register_ConfigFn_macros(ConfigFnDict *dict) {

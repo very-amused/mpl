@@ -47,8 +47,9 @@ void Config_init(Config *conf) {
 	ParseLineError_Vec *errors; // default config parse errors
 	conf->defaults = Parser_parse(conf->parser, &errors);
 	for (size_t i = 0; i < errors->len; i++) {
+		ParseLineError *err = &errors->data[i];
 		LOG(Verbosity_NORMAL, "Failed to parse default config: %s (line %zu)\n",
-				Parser_ERR_name(err), errors->data[i].line);
+				Parser_ERR_name(err->type), err->line);
 	}
 	ParseLineError_Vec_deinit(errors);
 	free(errors);
