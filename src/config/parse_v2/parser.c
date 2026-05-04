@@ -161,12 +161,17 @@ void ParseNode_rfree(ParseNode *node) {
 	switch (node->type) {
 	case ParseNodeID_ValueLit:
 		{
+			// For some reason the below cast triggers a false positive
+			// for indexing an array outside its bounds
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
 			ParseNode_ValueLit *value_node = (ParseNode_ValueLit *)node;
 			if (value_node->type == Config_STR) {
 				free(value_node->val_str);
 			}
-			break;
+#pragma GCC diagnostic pop
 		}
+		break;
 	default:
 		break;
 	}
