@@ -142,6 +142,8 @@ void ParseNode_rfree(ParseNode *node) {
 	static int depth = 0;
 #ifdef MPL_PARSING_DEBUG
 	LOG(Verbosity_DEBUG, "ParseNode_rfree called on a %s (depth = %d)\n", ParseNodeID_name(node->type), depth);
+#else
+	(void)depth;
 #endif
 	// NOTE: this is a DFS lol
 	// Free children
@@ -227,19 +229,31 @@ static enum Parser_ERR ParseNode_FnCallExpr_encode_args(ParseNode_FnCallExpr *fn
 	if (fn->argc == 0) {
 		return Parser_OK;
 	}
-
-	// Compute total size of function arguments
-	size_t args_size = 0;
-	for (size_t i = 0; i < fn->argc; i++) {
-		args_size += ConfigType_size(fn->arg_types[i]);
-	}
-	LOG(Verbosity_DEBUG, "args_size = %zu\n", args_size);
-	*args_buf = malloc(args_size);
-	size_t offset = 0; // byte offset in args_buf
-
 	if (!(fn_expr->node.child && fn_expr->node.child->type == ParseNodeID_ArgList)) {
 		return Parser_INVALID_ARG_COUNT;
 	}
+
+	// Compute total size of function arguments
+	size_t args_size = 0;
+	size_t arg_maxsize = 0; // size of the largest argument
+	for (size_t i = 0; i < fn->argc; i++) {
+		const size_t arg_size = ConfigType_size(fn->arg_types[i]);
+		if (arg_size > arg_maxsize) {
+			arg_maxsize = arg_size;
+		}
+		args_size += arg_size;
+	}
+#ifdef KNOWN_STRUCT_PADDING
+	// Align struct to a multiple of its largest member's size
+	size_t align_rem = args_size % arg_maxsize;
+	if (align_rem > 0) {
+		args_size += arg_maxsize - align_rem;
+	}
+#endif
+	LOG(Verbosity_DEBUG, "args_size = %zu\n", args_size);
+
+	*args_buf = malloc(args_size);
+	size_t offset = 0; // byte offset in args_buf
 
 	ParseNode *arg_node = fn_expr->node.child->child;
 	size_t i = 0;
@@ -251,6 +265,17 @@ static enum Parser_ERR ParseNode_FnCallExpr_encode_args(ParseNode_FnCallExpr *fn
 		// Handle value literal arguments
 		if (arg_node->child->type == ParseNodeID_ValueLit) {
 			ParseNode_ValueLit *arg_val = (ParseNode_ValueLit *)arg_node->child;
+			if (arg_val->type != fn->arg_types[i]) {
+				return Parser_INVALID_ARG_TYPE;
+			}
+#ifdef KNOWN_STRUCT_PADDING
+			// Align member to a multiple of its size
+			const size_t arg_size = ConfigType_size(arg_val->type);
+			align_rem = offset % arg_size;
+			if (align_rem > 0) {
+				offset += arg_size - align_rem;
+			}
+#endif
 			// unions let us skip a switch here
 			memcpy(&(*args_buf)[offset], &arg_val->val_i32, ConfigType_size(arg_val->type));
 			offset += ConfigType_size(arg_val->type);

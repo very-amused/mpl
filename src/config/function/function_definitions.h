@@ -5,12 +5,16 @@
 /* Argument parsing */
 
 // We pack argument structs so they can be dynamically encoded using just type info
+#ifndef KNOWN_STRUCT_PADDING
 #pragma pack(1)
+#endif
 
 struct seekArgs { int32_t ms; }; // Args passed to a seek function
 
 // Turn struct packing off
+#ifndef KNOWN_STRUCT_PADDING
 #pragma pack()
+#endif
 
 /* These functions can be bound to keys and called in mpl.conf.
  * They control MPL's behavior. */
