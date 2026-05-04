@@ -1,3 +1,3 @@
-src_config_parse = files('lexer.c', 'parser.c', 'parser_raii.cpp', 'keycode.c')
+src_config_parse = files('lexer.c', 'parser.c', 'keycode.c')
 
 src += src_config_parse

@@ -12,7 +12,6 @@ extern "C" {
 }
 
 #include <unordered_map>
-#include <memory>
 
 extern "C" {
 
@@ -20,7 +19,7 @@ extern "C" {
 typedef ParseNode ParseNode_FnCallList;
 
 struct KeybindMap {
-	std::unordered_map<wchar_t, std::unique_ptr<ParseNode>> map;
+	std::unordered_map<wchar_t, ParseNode *> map;
 };
 
 KeybindMap *KeybindMap_new() {
@@ -28,6 +27,13 @@ KeybindMap *KeybindMap_new() {
 }
 
 void KeybindMap_free(KeybindMap *keybinds) {
+	// Free all copied ParseNode_FnCallList trees
+	// we can't rely on RAII for this because
+	// 1. ParseNode is a semi-opaque type 
+	// 2. ParseNode_new is a C-implemented constructor that uses malloc, not new
+	for (auto kv : keybinds->map) {
+		ParseNode_rfree(kv.second);
+	}
 	delete keybinds;
 }
 
@@ -39,7 +45,7 @@ enum Keybind_ERR KeybindMap_define_keybind(KeybindMap *keybinds, wchar_t keycode
 		return Keybind_BINDING_CONFLICT;
 	}
 
-	keybinds->map[keycode] = std::unique_ptr<ParseNode>(ParseNode_rcopy(fn_list));
+	keybinds->map[keycode] = ParseNode_rcopy(fn_list);
 	return Keybind_OK;
 }
 
@@ -50,7 +56,7 @@ enum Keybind_ERR KeybindMap_call_keybind(KeybindMap *keybinds, wchar_t keycode) 
 		return Keybind_NOT_FOUND;
 	}
 
-	ParseNode *fn_list = keybinds->map[keycode].get();
+	ParseNode *fn_list = keybinds->map[keycode];
 	for (ParseNode *fn_expr = fn_list->child; fn_expr != NULL; fn_expr = fn_expr->sibling) {
 		enum Parser_ERR err = ParseNode_FnCallExpr_eval(fn_expr, NULL);
 		if (err != Parser_OK) {
