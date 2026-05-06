@@ -235,8 +235,11 @@ enum Parser_ERR ParseNode_FnCallExpr_eval(ParseNode *node, void **ret) {
 	}
 
 	// Get the function pointer and call it
-	// FIXME: support function return values
-	fn_expr->fn->routine(args);
+	if (fn_expr->fn->ret_type != Config_VOID) {
+		*ret = fn_expr->fn->routine(args);
+	} else {
+		fn_expr->fn->routine(args);
+	}
 
 	// Cleanup and store result
 	free(args);
@@ -645,8 +648,9 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 							expr->fn->ident, expr->fn->argc, args_passed);
 					return Parser_INVALID_ARG_COUNT;
 				}
-				arg = arg_list->child;
+
 				// Check arg types
+				arg = arg_list->child;
 				for (size_t i = 0; i < expr->fn->argc; i++, arg = arg->sibling) {
 					// Deduce arg type
 					enum ConfigType arg_type;
@@ -687,7 +691,6 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 				ParseNode *arg = ParseNode_new(ParseNodeID_ArgExpr);
 				enum Parser_ERR err = Parser_parse_node(p, arg);
 				if (err != Parser_OK) {
-					LOG(Verbosity_DEBUG, "failed to parse ArgExpr\n");
 					ParseNode_rfree(arg);
 					return err;
 				}
