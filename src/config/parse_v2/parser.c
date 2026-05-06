@@ -518,7 +518,18 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 
 			// {val}
 			node->child = ParseNode_new(ParseNodeID_ValueLit);
-			return Parser_parse_node(p, node->child);
+			const enum Parser_ERR err = Parser_parse_node(p, node->child);
+			if (err != Parser_OK) {
+				return err;
+			}
+
+			// Check setting type
+			ParseNode_ValueLit *value_node = (ParseNode_ValueLit *)node->child;
+			if (value_node->type != stmt->setting->type) {
+				snprintf(p->strerr, strerr_len, "Setting %s has type %s but %s was passed",
+						stmt->setting->ident, ConfigType_name(stmt->setting->type), ConfigType_name(value_node->type));
+				return Parser_TYPE_ERR;
+			}
 		}
 		break;
 
