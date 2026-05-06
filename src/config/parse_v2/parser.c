@@ -88,7 +88,7 @@ typedef struct ParseNode_FnCallExpr ParseNode_FnCallExpr;
 // A list of function arguments
 // siblings: none
 // children: ArgExpr
-typedef struct ParseNode_ArgList ParseNode_ArgList;
+typedef struct ParseNode ParseNode_ArgList;
 // A single function argument
 // siblings: other ArgExpr's in the ArgList
 // child: ValueLit | FnCallExpr
@@ -118,11 +118,6 @@ struct ParseNode_KeybindStmt {
 struct ParseNode_FnCallExpr {
 	ParseNode node;
 	const ConfigFn *fn;
-};
-
-struct ParseNode_ArgList {
-	ParseNode node;
-	const ConfigFn *fn; // used to check argument count and types
 };
 
 // Get the true (full) size of a ParseNode using its type ID
@@ -634,24 +629,24 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 			if (expr->fn->argc > 0) {
 				expr->node.child = ParseNode_new(ParseNodeID_ArgList);
 				ParseNode_ArgList *arg_list = (ParseNode_ArgList *)expr->node.child;
-				arg_list->fn = expr->fn;
 				enum Parser_ERR err = Parser_parse_node(p, expr->node.child);
 				if (err != Parser_OK) {
-					fprintf(stderr, "Failed to parse ArgList (fn = %s)\n", arg_list->fn->ident);
 					return err;
 				}
 
 				// Check number of args
-				ParseNode *arg = arg_list->node.child;
-				for (size_t i = 0; i < expr->fn->argc; i++, arg = arg->sibling) {
-					if (!(arg && arg->child)) {
-						snprintf(p->strerr, strerr_len, "%s accepts %zu arguments, but only %zu are provided",
-								expr->fn->ident, expr->fn->argc, i);
-						return Parser_INVALID_ARG_COUNT;
-					}
+				ParseNode *arg = arg_list->child;
+				size_t args_passed = 0;
+				for (; arg != NULL; arg = arg->sibling) {
+					args_passed++;
 				}
+				if (args_passed != expr->fn->argc) {
+					snprintf(p->strerr, strerr_len, "Function %s accepts %zu arg(s) but %zu arg(s) were passed",
+							expr->fn->ident, expr->fn->argc, args_passed);
+					return Parser_INVALID_ARG_COUNT;
+				}
+				arg = arg_list->child;
 				// Check arg types
-				arg = arg_list->node.child;
 				for (size_t i = 0; i < expr->fn->argc; i++, arg = arg->sibling) {
 					// Ensure arg is provided (should've been caught in the check above)
 					if (!(arg && arg->child)) {
@@ -674,8 +669,8 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 					// Ensure arg has correct type
 					const enum ConfigType correct_arg_type = expr->fn->arg_types[i];
 					if (arg_type != correct_arg_type) {
-						snprintf(p->strerr, strerr_len, "%s argument %zu has incorrect type %s, expected %s",
-								expr->fn->ident, i, ConfigType_name(arg_type), ConfigType_name(correct_arg_type));
+						snprintf(p->strerr, strerr_len, "Function %s argument %zu has type %s but %s was passed",
+								expr->fn->ident, i, ConfigType_name(correct_arg_type), ConfigType_name(arg_type));
 						return Parser_INVALID_ARG_TYPE;
 					}
 				}
@@ -692,20 +687,13 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 
 	case ParseNodeID_ArgList:
 		{
-			ParseNode_ArgList *arg_list = (ParseNode_ArgList *)node;
-
-			size_t n_parsed = 0; // # of arguments parsed
 			ParseNode_ArgExpr *tail = NULL;
 			while (Lexer_peek(p->lex)->type != Tok_Rparen) {
-				// Check # of args
-				if (n_parsed > arg_list->fn->argc) {
-					return Parser_INVALID_ARG_COUNT;
-				}
-
-				// Parse ArgExpr
+				// ArgExpr
 				ParseNode *arg = ParseNode_new(ParseNodeID_ArgExpr);
 				enum Parser_ERR err = Parser_parse_node(p, arg);
 				if (err != Parser_OK) {
+					LOG(Verbosity_DEBUG, "failed to parse ArgExpr\n");
 					ParseNode_rfree(arg);
 					return err;
 				}
@@ -718,12 +706,9 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 				}
 				tail = (ParseNode_ArgExpr *)arg;
 
-				// Consume delim
-				if (++n_parsed < arg_list->fn->argc) {
-					tok = Lexer_peek(p->lex);
-					if (tok->type != Tok_Comma) {
-						return Parser_INVALID_TOKEN;
-					}
+				// Consume delim 
+				tok = Lexer_peek(p->lex);
+				if (tok->type == Tok_Comma) {
 					Lexer_consume(p->lex);
 				}
 			}
