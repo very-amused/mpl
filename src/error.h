@@ -194,17 +194,15 @@ static inline const char *UserInterface_ERR_name(enum UserInterface_ERR err) {
 
 #define PARSER_ERR(VARIANT) \
 	VARIANT(Parser_OK) \
-	VARIANT(Parser_INVALID_TOKEN) \
-	VARIANT(Parser_INVALID_NODE) \
-	VARIANT(Parser_INVALID_IDENT) \
-	VARIANT(Parser_INVALID_SETTING) \
-	VARIANT(Parser_INVALID_FUNCTION) \
-	VARIANT(Parser_INVALID_ARG_COUNT) \
-	VARIANT(Parser_INVALID_ARG_TYPE) \
-	VARIANT(Parser_UNTERMINATED_STR) \
-	VARIANT(Parser_SYNTAX_ERR) \
-	VARIANT(Parser_TYPE_ERR) \
-	VARIANT(Parser_KEYBIND_ERR)
+	VARIANT(Parser_SYNTAX_ERR) /* Invalid token received */ \
+	VARIANT(Parser_INVALID_NODE) /* Invalid node type passed as parameter */ \
+	VARIANT(Parser_INVALID_IDENT) /* Invalid identifier. We don't know what kind of ident */ \
+	VARIANT(Parser_INVALID_SETTING) /* Invalid setting ident */ \
+	VARIANT(Parser_INVALID_FUNCTION) /* Invalid function ident */ \
+	VARIANT(Parser_INVALID_ARG_COUNT) /* argc mismatch */ \
+	VARIANT(Parser_UNTERMINATED_STR) /* Open string encountered during lexing */ \
+	VARIANT(Parser_TYPE_ERR) /* Typechecking error */ \
+	VARIANT(Parser_KEYBIND_ERR) /* Failed to define a keybind */
 
 enum Parser_ERR {
 	PARSER_ERR(ENUM_VAL)

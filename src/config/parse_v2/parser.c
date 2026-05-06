@@ -286,7 +286,7 @@ static enum Parser_ERR ParseNode_FnCallExpr_encode_args(ParseNode_FnCallExpr *fn
 		if (arg_node->child->type == ParseNodeID_ValueLit) {
 			ParseNode_ValueLit *arg_val = (ParseNode_ValueLit *)arg_node->child;
 			if (arg_val->type != fn->arg_types[i]) {
-				return Parser_INVALID_ARG_TYPE;
+				return Parser_TYPE_ERR;
 			}
 #ifdef KNOWN_STRUCT_PADDING
 			// Align member to a multiple of its size
@@ -308,7 +308,7 @@ static enum Parser_ERR ParseNode_FnCallExpr_encode_args(ParseNode_FnCallExpr *fn
 		}
 		ParseNode_FnCallExpr *arg_fn = (ParseNode_FnCallExpr *)arg_node->child;
 		if (fn->ret_type != fn->arg_types[i]) {
-			return Parser_INVALID_ARG_TYPE;
+			return Parser_TYPE_ERR;
 		}
 		void *result;
 		enum Parser_ERR err = ParseNode_FnCallExpr_eval(&arg_fn->node, &result);
@@ -410,7 +410,7 @@ ParseNode *Parser_parse(Parser *p, Parser_LineError_Vec **errors) {
 			default:
 				{
 					Parser_LineError line_err;
-					Parser_LineError_init(&line_err, Parser_INVALID_TOKEN, lineno);
+					Parser_LineError_init(&line_err, Parser_SYNTAX_ERR, lineno);
 					Parser_LineError_Vec_push(*errors, &line_err);
 				}
 		}
@@ -491,7 +491,7 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 					lit->val_bool = tok->bool_lit;
 					break;
 				default:
-					return Parser_INVALID_TOKEN;
+					return Parser_SYNTAX_ERR;
 			}
 			Lexer_consume(p->lex);
 		}
@@ -509,7 +509,7 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 
 			// =
 			if (Lexer_peek(p->lex)->type != Tok_EQ){
-				return Parser_INVALID_TOKEN;
+				return Parser_SYNTAX_ERR;
 			}
 			Lexer_consume(p->lex);
 
@@ -537,7 +537,7 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 					}
 				}
 			default:
-				return Parser_INVALID_TOKEN;
+				return Parser_SYNTAX_ERR;
 			}
 		}
 		break;
@@ -547,21 +547,21 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 			ParseNode_KeybindStmt *stmt = (ParseNode_KeybindStmt *)node;
 			// bind
 			if (tok->type != Tok_Bind) {
-				return Parser_INVALID_TOKEN;
+				return Parser_SYNTAX_ERR;
 			}
 			Lexer_consume(p->lex);
 
 			// {keysym}
 			tok = Lexer_peek(p->lex);
 			if (tok->type != Tok_Keysym) {
-				return Parser_INVALID_TOKEN;
+				return Parser_SYNTAX_ERR;
 			}
 			stmt->keycode = tok->keycode;
 			Lexer_consume(p->lex);
 
 			// =
 			if (Lexer_peek(p->lex)->type != Tok_EQ) {
-				return Parser_INVALID_TOKEN;
+				return Parser_SYNTAX_ERR;
 			}
 			Lexer_consume(p->lex);
 
@@ -575,7 +575,7 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 		{
 			if (tok->type != Tok_Ident) {
 				LOG(Verbosity_DEBUG, "in FnCallList: tok->type = %s\n", LexerToken_t_name(tok->type));
-				return Parser_INVALID_TOKEN;
+				return Parser_SYNTAX_ERR;
 			}
 
 			ParseNode_FnCallExpr *tail = NULL;
@@ -610,7 +610,7 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 			ParseNode_FnCallExpr *expr = (ParseNode_FnCallExpr *)node;
 			// {ident}
 			if (tok->type != Tok_Ident) {
-				return Parser_INVALID_TOKEN;
+				return Parser_SYNTAX_ERR;
 			}
 			ConfigFnDict_lookup(p->fn_dict, &expr->fn, tok->ident);
 			Lexer_consume(p->lex);
@@ -621,7 +621,7 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 			// (
 			tok = Lexer_peek(p->lex);
 			if (tok->type != Tok_Lparen) {
-				return Parser_INVALID_TOKEN;
+				return Parser_SYNTAX_ERR;
 			}
 			Lexer_consume(p->lex);
 
@@ -634,7 +634,7 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 					return err;
 				}
 
-				// Check number of args
+				// Check arg count
 				ParseNode *arg = arg_list->child;
 				size_t args_passed = 0;
 				for (; arg != NULL; arg = arg->sibling) {
@@ -648,12 +648,6 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 				arg = arg_list->child;
 				// Check arg types
 				for (size_t i = 0; i < expr->fn->argc; i++, arg = arg->sibling) {
-					// Ensure arg is provided (should've been caught in the check above)
-					if (!(arg && arg->child)) {
-						LOG(Verbosity_DEBUG, "ERROR: Parser_parse_node: argc check failed\n");
-						return Parser_INVALID_ARG_COUNT;
-					}
-
 					// Deduce arg type
 					enum ConfigType arg_type;
 					switch (arg->child->type) {
@@ -671,7 +665,7 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 					if (arg_type != correct_arg_type) {
 						snprintf(p->strerr, strerr_len, "Function %s argument %zu has type %s but %s was passed",
 								expr->fn->ident, i, ConfigType_name(correct_arg_type), ConfigType_name(arg_type));
-						return Parser_INVALID_ARG_TYPE;
+						return Parser_TYPE_ERR;
 					}
 				}
 			}
@@ -679,7 +673,7 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 			// )
 			tok = Lexer_peek(p->lex);
 			if (tok->type != Tok_Rparen) {
-				return Parser_INVALID_TOKEN;
+				return Parser_SYNTAX_ERR;
 			}
 			Lexer_consume(p->lex);
 		}
@@ -735,7 +729,7 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 				break;
 
 			default:
-				return Parser_INVALID_TOKEN;
+				return Parser_SYNTAX_ERR;
 			}
 		}
 	}

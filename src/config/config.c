@@ -89,7 +89,7 @@ int Config_parse(Config *conf, const char *path) {
 	while (getline(&line, &line_len, fp) != EOF) {
 		enum Parser_ERR err = Lexer_tokenize(conf->lexer, line);
 		if (err != Parser_OK) {
-			LOG(Verbosity_NORMAL, "Failed to parse config: %s (line %zu)\n", Parser_ERR_name(err), lineno);
+			LOG(Verbosity_NORMAL, "Failed to parse config line %zu: %s\n", lineno, Parser_ERR_name(err));
 		}
 		lineno++;
 	}
@@ -102,10 +102,10 @@ int Config_parse(Config *conf, const char *path) {
 	for (size_t i = 0; i < parse_errs->len; i++) {
 		Parser_LineError *err = &parse_errs->data[i];
 		if (err->strerr) {
-			LOG(Verbosity_NORMAL, "Failed to parse config: %s (%s) (line %zu)\n",
-					err->strerr, Parser_ERR_name(err->type), err->line);
+			LOG(Verbosity_NORMAL, "Failed to parse config line %zu: %s (%s)\n",
+					err->line, err->strerr, Parser_ERR_name(err->type));
 		} else {
-			LOG(Verbosity_NORMAL, "Failed to parse config: %s (line %zu)\n", Parser_ERR_name(err->type), err->line);
+			LOG(Verbosity_NORMAL, "Failed to parse config line %zu: %s\n", err->line, Parser_ERR_name(err->type));
 		}
 	}
 	Parser_LineError_Vec_deinit(parse_errs);
