@@ -38,20 +38,24 @@ void Config_init(Config *conf) {
 	// Set up config/shell parsing
 	conf->lexer = Lexer_new();
 	conf->parser = Parser_new(conf->lexer, conf->fn_dict, conf->setting_dict);
-	// TODO: Parse default config
+	// Parse default config
 	// We save this tree so macros can walk it later if they want to apply various defaults
 	enum Parser_ERR err = Lexer_tokenize(conf->lexer, mpl_default_config);
 	if (err != Parser_OK) {
 		LOG(Verbosity_NORMAL, "Failed to tokenize default config: %s\n", Parser_ERR_name(err));
 	}
-	ParseLineError_Vec *errors; // default config parse errors
+	Parser_LineError_Vec *errors; // default config parse errors
 	conf->defaults = Parser_parse(conf->parser, &errors);
 	for (size_t i = 0; i < errors->len; i++) {
-		ParseLineError *err = &errors->data[i];
-		LOG(Verbosity_NORMAL, "Failed to parse default config: %s (line %zu)\n",
-				Parser_ERR_name(err->type), err->line);
+		Parser_LineError *err = &errors->data[i];
+		if (err->strerr) {
+			LOG(Verbosity_NORMAL, "Failed to parse default config: %s (%s) (line %zu)\n",
+					err->strerr, Parser_ERR_name(err->type), err->line);
+		} else {
+			LOG(Verbosity_NORMAL, "Failed to parse default config: %s (line %zu)\n", Parser_ERR_name(err->type), err->line);
+		}
 	}
-	ParseLineError_Vec_deinit(errors);
+	Parser_LineError_Vec_deinit(errors);
 	free(errors);
 
 	// Empty keybind map
@@ -74,6 +78,7 @@ int Config_parse(Config *conf, const char *path) {
 	// Initialize config state to its zero value
 	Config_init(conf);
 
+	// Tokenize config
 	FILE *fp = fopen(path, "r");
 	if (!fp) {
 		return 1;
@@ -91,13 +96,19 @@ int Config_parse(Config *conf, const char *path) {
 	free(line);
 	fclose(fp);
 
-	ParseLineError_Vec *parse_errs;
+	// Parse token stream
+	Parser_LineError_Vec *parse_errs;
 	ParseNode *tree = Parser_parse(conf->parser, &parse_errs);
 	for (size_t i = 0; i < parse_errs->len; i++) {
-		ParseLineError *err = &parse_errs->data[i];
-		LOG(Verbosity_DEBUG, "Failed to parse config: %s (line %zu)\n", Parser_ERR_name(err->type), err->line);
+		Parser_LineError *err = &parse_errs->data[i];
+		if (err->strerr) {
+			LOG(Verbosity_NORMAL, "Failed to parse config: %s (%s) (line %zu)\n",
+					err->strerr, Parser_ERR_name(err->type), err->line);
+		} else {
+			LOG(Verbosity_NORMAL, "Failed to parse config: %s (line %zu)\n", Parser_ERR_name(err->type), err->line);
+		}
 	}
-	ParseLineError_Vec_deinit(parse_errs);
+	Parser_LineError_Vec_deinit(parse_errs);
 	free(parse_errs);
 
 	// Walk the parse tree to apply config

@@ -11,26 +11,46 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* #region ParserLineError */
+/* #region Parser_LineError */
 
-static void ParseLineError_Vec_init(ParseLineError_Vec *v) {
-	v->cap = 8;
-	v->len = 0;
-	v->data = malloc(v->cap * sizeof(ParseLineError));
+void Parser_LineError_init(Parser_LineError *line_err, enum Parser_ERR err_type, size_t lineno) {
+	memset(line_err, 0, sizeof(Parser_LineError));
+	line_err->type = err_type;
+	line_err->line = lineno;
 }
 
-void ParseLineError_Vec_deinit(ParseLineError_Vec *v) {
+void Parser_LineError_deinit(Parser_LineError *line_err) {
+	if (line_err->strerr) {
+		free(line_err->strerr);
+	}
+}
+
+static void Parser_LineError_Vec_init(Parser_LineError_Vec *v) {
+	v->cap = 8;
+	v->len = 0;
+	v->data = malloc(v->cap * sizeof(Parser_LineError));
+}
+
+void Parser_LineError_Vec_deinit(Parser_LineError_Vec *v) {
+	for (size_t i = 0; i < v->len; i++) {
+		Parser_LineError_deinit(&v->data[i]);
+	}
 	free(v->data);
 }
 
-static void ParseLineError_Vec_push(ParseLineError_Vec *v, enum Parser_ERR err, size_t lineno) {
+// Append a Parser_LineError. Takes ownership of error->strerr if non-NULL
+static void Parser_LineError_Vec_push(Parser_LineError_Vec *v, Parser_LineError *error) {
 	if (v->len == v->cap)	{
 		v->cap *= 2;
-		v->data = realloc(v->data, v->cap * sizeof(ParseLineError));
+		v->data = realloc(v->data, v->cap * sizeof(Parser_LineError));
 	}
-	ParseLineError *dst = &v->data[v->len];
-	dst->type = err;
-	dst->line = lineno;
+
+	Parser_LineError *dst = &v->data[v->len];
+	*dst = *error;
+	if (error->strerr != NULL) {
+		error->strerr = NULL;
+	}
+
 	v->len++;
 }
 
@@ -324,6 +344,11 @@ struct Parser {
 	ConfigFnDict *fn_dict;
 	ConfigSettingDict *setting_dict;
 
+	// Used to pass rich error messages from Parser_parse_node
+	char strerr[255];
+	// Used to pass the type of node where an error occured from Parser_parse_node
+	enum ParseNodeID cur_node_type;
+
 	// Function eval return register
 	void *eval_ret;
 	enum ConfigType eval_ret_type;
@@ -346,14 +371,15 @@ void Parser_free(Parser *p) {
 	free(p);
 }
 
+// Parse a ParseNode. Makes recursive calls as needed.
 static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node);
 
-ParseNode *Parser_parse(Parser *p, ParseLineError_Vec **errors) {
+ParseNode *Parser_parse(Parser *p, Parser_LineError_Vec **errors) {
 	ParseNode_Root *root = ParseNode_new(ParseNodeID_Root);
 
 	// Initialize error vector
-	*errors = malloc(sizeof(ParseLineError_Vec));
-	ParseLineError_Vec_init(*errors);
+	*errors = malloc(sizeof(Parser_LineError_Vec));
+	Parser_LineError_Vec_init(*errors);
 
 	// Track line number by counting LF tokens
 	size_t lineno = 1;
@@ -380,12 +406,18 @@ ParseNode *Parser_parse(Parser *p, ParseLineError_Vec **errors) {
 				} else if (ConfigSettingDict_has(p->setting_dict, tok->ident)) {
 					child = ParseNode_new(ParseNodeID_SettingStmt);
 				} else {
-					ParseLineError_Vec_push(*errors, Parser_INVALID_IDENT, lineno);
+					Parser_LineError line_err;
+					Parser_LineError_init(&line_err, Parser_INVALID_IDENT, lineno);
+					Parser_LineError_Vec_push(*errors, &line_err);
 				}
 				break;
 
 			default:
-				ParseLineError_Vec_push(*errors, Parser_INVALID_TOKEN, lineno);
+				{
+					Parser_LineError line_err;
+					Parser_LineError_init(&line_err, Parser_INVALID_TOKEN, lineno);
+					Parser_LineError_Vec_push(*errors, &line_err);
+				}
 		}
 
 		if (!child) {
@@ -396,10 +428,26 @@ ParseNode *Parser_parse(Parser *p, ParseLineError_Vec **errors) {
 		// Parse the child node
 		enum Parser_ERR err = Parser_parse_node(p, child);
 		if (err != Parser_OK) {
+			// Add parser error to list
+			Parser_LineError line_err;
+			Parser_LineError_init(&line_err, err, lineno);
+			if (p->strerr[0]) {
+				line_err.strerr = strdup(p->strerr);
+				p->strerr[0] = '\0';
+			}
+			Parser_LineError_Vec_push(*errors, &line_err);
+
+			// Free child node with possibly invalid state
 			ParseNode_rfree(child);
+
+			// Advance to next line to avoid extraneous errors
+			for (tok = Lexer_peek(p->lex); tok && tok->type != Tok_LF; tok = Lexer_peek(p->lex)) {
+				Lexer_consume(p->lex);
+			}
 			continue;
 		}
 
+		// Add valid child node
 		if (tail) {
 			tail->sibling = child;
 		} else {
@@ -411,7 +459,11 @@ ParseNode *Parser_parse(Parser *p, ParseLineError_Vec **errors) {
 	return root;
 }
 
+
 static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
+	static const size_t strerr_len = sizeof(p->strerr) / sizeof(p->strerr[0]);
+
+	p->cur_node_type = node->type;
 	LexerToken *tok = Lexer_peek(p->lex);
 
 #ifdef MPL_PARSING_DEBUG
@@ -537,6 +589,7 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 				ParseNode *fn_call = ParseNode_new(ParseNodeID_FnCallExpr);
 				enum Parser_ERR err = Parser_parse_node(p, fn_call);
 				if (err != Parser_OK) {
+					ParseNode_rfree(fn_call);
 					return err;
 				}
 
@@ -584,14 +637,25 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 				arg_list->fn = expr->fn;
 				enum Parser_ERR err = Parser_parse_node(p, expr->node.child);
 				if (err != Parser_OK) {
+					fprintf(stderr, "Failed to parse ArgList (fn = %s)\n", arg_list->fn->ident);
 					return err;
 				}
 
-				// Typecheck args
+				// Check number of args
 				ParseNode *arg = arg_list->node.child;
 				for (size_t i = 0; i < expr->fn->argc; i++, arg = arg->sibling) {
-					// Ensure arg is provided
 					if (!(arg && arg->child)) {
+						snprintf(p->strerr, strerr_len, "%s accepts %zu arguments, but only %zu are provided",
+								expr->fn->ident, expr->fn->argc, i);
+						return Parser_INVALID_ARG_COUNT;
+					}
+				}
+				// Check arg types
+				arg = arg_list->node.child;
+				for (size_t i = 0; i < expr->fn->argc; i++, arg = arg->sibling) {
+					// Ensure arg is provided (should've been caught in the check above)
+					if (!(arg && arg->child)) {
+						LOG(Verbosity_DEBUG, "ERROR: Parser_parse_node: argc check failed\n");
 						return Parser_INVALID_ARG_COUNT;
 					}
 
@@ -609,9 +673,8 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 					}
 					// Ensure arg has correct type
 					const enum ConfigType correct_arg_type = expr->fn->arg_types[i];
-					// TODO: use a strerr buffer to return this error message instead of logging it
 					if (arg_type != correct_arg_type) {
-						LOG(Verbosity_VERBOSE, "%s argument %zu has incorrect type %s, expected %s\n",
+						snprintf(p->strerr, strerr_len, "%s argument %zu has incorrect type %s, expected %s",
 								expr->fn->ident, i, ConfigType_name(arg_type), ConfigType_name(correct_arg_type));
 						return Parser_INVALID_ARG_TYPE;
 					}
@@ -634,10 +697,16 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 			size_t n_parsed = 0; // # of arguments parsed
 			ParseNode_ArgExpr *tail = NULL;
 			while (Lexer_peek(p->lex)->type != Tok_Rparen) {
+				// Check # of args
+				if (n_parsed > arg_list->fn->argc) {
+					return Parser_INVALID_ARG_COUNT;
+				}
+
 				// Parse ArgExpr
 				ParseNode *arg = ParseNode_new(ParseNodeID_ArgExpr);
 				enum Parser_ERR err = Parser_parse_node(p, arg);
 				if (err != Parser_OK) {
+					ParseNode_rfree(arg);
 					return err;
 				}
 

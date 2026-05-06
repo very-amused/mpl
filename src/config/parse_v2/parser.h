@@ -7,21 +7,27 @@ typedef struct Config Config;
 
 // An error encountered while parsing mpl.conf
 // line number included so we can build helpful error messages
-typedef struct ParseLineError {
+typedef struct Parser_LineError {
 	enum Parser_ERR type;
 	size_t line;
-} ParseLineError;
+	char *strerr;
+} Parser_LineError;
+
+// Initialize a Parser_LineError for use
+void Parser_LineError_init(Parser_LineError *line_err, enum Parser_ERR err_type, size_t lineno);
+// Deinitialize a Parser_LineError for freeing
+void Parser_LineError_deinit(Parser_LineError *line_err);
 
 // A vector of parse errors.
 // Using this prevents any single error from halting the main parse routine
-typedef struct ParseLineError_Vec {
+typedef struct Parser_LineError_Vec {
 	size_t cap;
 	size_t len;
-	ParseLineError *data;
-} ParseLineError_Vec;
+	Parser_LineError *data;
+} Parser_LineError_Vec;
 
 // Deinitialize a ParseLineError_Vec for freeing
-void ParseLineError_Vec_deinit(ParseLineError_Vec *vec);
+void Parser_LineError_Vec_deinit(Parser_LineError_Vec *vec);
 
 #define PARSE_NODE_ID_ENUM(VARIANT) \
 	VARIANT(ParseNodeID_ValueLit) \
@@ -88,7 +94,7 @@ void Parser_free(Parser *p);
 // so every error and its line number can be reported.
 //
 // Use [ParseNode_rfree] to free the parse tree.
-ParseNode *Parser_parse(Parser *p, ParseLineError_Vec **errors);
+ParseNode *Parser_parse(Parser *p, Parser_LineError_Vec **errors);
 
 // Flags that control what information is processed when walking a parse tree
 typedef int ParserWalkFlags;
