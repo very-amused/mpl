@@ -4,19 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## Unreleased
-
-MPL is in AGGRESSIVE BUG HUNTING MODE for v0.4.5+ until we hit v0.5.0!
-
 ### v0.5.0
-The next major release in terms of new features will be v0.5.0.
+The next major release will be v0.5.0. This release will add a shell and the ability to manage multiple tracks.
 
-## [0.4.10] (UNRELEASED)
-### Internal
-- Rewrote the config parsing to use two-stage lexing + parsing and build a parse tree. This is to support the more powerful syntax needed for a shell
+## [0.4.10]
+### Added
+- `play()` and `pause()` config functions
 
 ### Fixed
 - Segfault when providing an invalid track path
+- Logic error in `TrackQueue_play` that could cause us to get stuck in a pause state
+
+### Internal
+- Rewrote the config parsing to use two-stage lexing + parsing and build a parse tree. This is to support the more powerful syntax needed for a shell
+- NOTE: This *major* parsing rewrite completely replaced the (comparably) *minor* parsing rewrite done in v0.4.9
 
 ## [0.4.9]
 ### Internal
