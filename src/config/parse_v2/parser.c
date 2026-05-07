@@ -273,7 +273,6 @@ static enum Parser_ERR ParseNode_FnCallExpr_encode_args(ParseNode_FnCallExpr *fn
 		args_size += arg_maxsize - align_rem;
 	}
 #endif
-	LOG(Verbosity_DEBUG, "args_size = %zu\n", args_size);
 
 	*args_buf = malloc(args_size);
 	size_t offset = 0; // byte offset in args_buf

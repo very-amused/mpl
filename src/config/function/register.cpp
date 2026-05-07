@@ -12,6 +12,12 @@ extern "C" {
 #include <vector>
 
 void register_ConfigFn_functions(ConfigFnDict *dict) {
+	ConfigFnDict_define_fn(dict, "play",
+			play,
+			NULL);
+	ConfigFnDict_define_fn(dict, "pause",
+			pause,
+			NULL);
 	ConfigFnDict_define_fn(dict, "play_toggle",
 			play_toggle,
 			NULL);

@@ -21,6 +21,12 @@ void ConfigFn_fnState_init(TrackQueue *track_queue, EventQueue *eq) {
 /* #endregion */
 
 
+void play(void * _) {
+	TrackQueue_play(state.queue, false);
+}
+void pause(void * _) {
+	TrackQueue_play(state.queue, true);
+}
 void play_toggle(void * _) {
 	const bool pause = state.queue->playback_state == Queue_PLAYING;
 	TrackQueue_play(state.queue, pause);

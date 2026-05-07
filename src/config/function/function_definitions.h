@@ -19,7 +19,9 @@ struct seekArgs { int32_t ms; }; // Args passed to a seek function
 /* These functions can be bound to keys and called in mpl.conf.
  * They control MPL's behavior. */
 
-void play_toggle(void * _); // Play/pause
+void play(void * _); // Play
+void pause(void * _); // Pause
+void play_toggle(void * _); // Play/pause (toggle)
 
 void quit(void * _); // Exit MPL
 
