@@ -1,4 +1,5 @@
 #include "config/function/function.h"
+#include "config/parse_v2/keycode.h"
 #include "error.h"
 #include "keybind_map.h"
 #include "util/log.h"
@@ -32,9 +33,10 @@ void KeybindMap_free(KeybindMap *keybinds) {
 
 enum Keybind_ERR KeybindMap_define_keybind(KeybindMap *keybinds, wchar_t keycode, const ParseNode *fn_list) {
 	// Ensure we're dealing with an ASCII keycode to prevent overflow
-	if (keycode > (unsigned char)-1) {
+	if (!is_uascii(keycode)) {
 		return Keybind_NON_ASCII;
 	}
+
 	if (fn_list->type != ParseNodeID_FnCallList) {
 		return Keybind_INVALID_FN;
 	}
@@ -48,7 +50,7 @@ enum Keybind_ERR KeybindMap_define_keybind(KeybindMap *keybinds, wchar_t keycode
 
 enum Keybind_ERR KeybindMap_call_keybind(KeybindMap *keybinds, wchar_t keycode) {
 	// Ensure we're dealing with an ASCII keycode to prevent overflow
-	if (keycode > (unsigned char)-1) {
+	if (!is_uascii(keycode)) {
 		return Keybind_NON_ASCII;
 	}
 
