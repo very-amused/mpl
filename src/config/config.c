@@ -79,7 +79,7 @@ int Config_parse(Config *conf, const char *path) {
 	// Initialize config state to its zero value
 	Config_init(conf);
 
-	// Tokenize config
+	// Open mpl.conf
 	FILE *fp = fopen(path, "r");
 	if (!fp) {
 		LOG(Verbosity_VERBOSE, "No mpl.conf was found, applying default config\n");
@@ -90,6 +90,7 @@ int Config_parse(Config *conf, const char *path) {
 		}
 		return 0;
 	}
+	// Tokenize config
 	char *line = NULL;
 	size_t line_len;
 	size_t lineno = 1;
