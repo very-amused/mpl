@@ -41,6 +41,7 @@ extern uint64_t mpl_default_config_len;
 #else
 static const char mpl_default_config[] = {
 #embed "mpl.conf"
+, '\0' // Null terminate
 };
 static const uint64_t mpl_default_config_len = sizeof(mpl_default_config);
 #endif
