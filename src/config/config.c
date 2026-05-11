@@ -5,11 +5,12 @@
 #include "config/setting/register.h"
 #include "error.h"
 #include "keybind/keybind_map.h"
-#include "util/log.h"
-#include "util/path.h"
 #include "function/register.h"
 #include "config/parse_v2/lexer.h"
 #include "config/parse_v2/parser.h"
+#include "util/log.h"
+#include "util/path.h"
+#include "util/compat/string_win32.h"
 
 #include <stdbool.h>
 #include <stdint.h>

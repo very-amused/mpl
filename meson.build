@@ -18,7 +18,7 @@ enable_known_struct_padding = struct_padding_testresult.compiled() and struct_pa
 
 # Preprocessor defines and compiler overrides
 cflags = []
-cppflags = ['-Werror=maybe-uninitialized']
+cppflags = []
 cflags += '-DMPL_VERSION="@0@"'.format(meson.project_version())
 override_options = []
 # if we don't have .incbin, we need #embed

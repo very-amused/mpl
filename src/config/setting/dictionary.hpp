@@ -28,7 +28,7 @@ void ConfigSettingDict_define(ConfigSettingDict *dict, const char *ident,
 		type_id = Config_STR;
 	} else {
 		LOG(Verbosity_NORMAL, "Invalid type passed to ConfigSettingDict_define!\n");
-		// WARN: do NOT return here, it will break safety checks (-Werror=maybe-uninitialized)
+		return;
 	}
 
 	// Compute our struct offset

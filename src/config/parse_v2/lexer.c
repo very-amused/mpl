@@ -2,6 +2,7 @@
 #include "error.h"
 #include "keycode.h"
 #include "util/log.h"
+#include "util/compat/string_win32.h"
 
 #include <ctype.h>
 #include <locale.h>
