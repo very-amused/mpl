@@ -82,7 +82,13 @@ int Config_parse(Config *conf, const char *path) {
 	// Tokenize config
 	FILE *fp = fopen(path, "r");
 	if (!fp) {
-		return 1;
+		LOG(Verbosity_VERBOSE, "No mpl.conf was found, applying default config\n");
+		enum Parser_ERR err = Parser_walk(conf->parser, conf, Parser_WALK_ALL, conf->defaults);
+		if (err != Parser_OK) {
+			LOG(Verbosity_VERBOSE, "Failed to walk default config tree: %s\n", Parser_ERR_name(err));
+			return 1;
+		}
+		return 0;
 	}
 	char *line = NULL;
 	size_t line_len;
