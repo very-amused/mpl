@@ -1,4 +1,6 @@
 #include "config/keybind/keybind_map.h"
+#include "config/parse_v2/lexer.h"
+#include "config/parse_v2/parser.h"
 #include "error.h"
 #include "interface.h"
 #include "track_queue/queue.h"
@@ -94,9 +96,30 @@ static enum UserInterface_ERR mainloop(void * ctx__,
 		case mpl_INPUT_LINE:
 			{
 				EventBody_InputLine line = evt.body;
-				LOG(Verbosity_DEBUG, "\n\x1b[1mPulled shell line `%s` from EventQueue\x1b[0m\n", line);
-				// TODO: parse and eval
+				enum Parser_ERR err = Lexer_tokenize(config->lexer, line);
 				free(line);
+				if (err != Parser_OK) {
+					LOG(Verbosity_NORMAL, "Parse error: %s\n", Parser_ERR_name(err));
+					break;
+				}
+
+				Parser_LineError parse_err;
+				ParseNode *stmt = Parser_parse_ShellStmt(config->parser, &parse_err);
+				if (parse_err.type != Parser_OK) {
+					if (parse_err.strerr) {
+						LOG(Verbosity_NORMAL, "Parse error: %s\n", parse_err.strerr);
+					} else {
+						LOG(Verbosity_NORMAL, "Parse error: %s\n", Parser_ERR_name(err));
+					}
+					Parser_LineError_deinit(&parse_err);
+					ParseNode_rfree(stmt);
+					break;
+				}
+				err = Parser_walk(config->parser, config, Parser_WALK_KEYBINDS | Parser_WALK_FUNCTIONS | Parser_WALK_MACROS, stmt);
+				if (err != Parser_OK) {
+					LOG(Verbosity_NORMAL, "Error: %s\n", Parser_ERR_name(err));
+				}
+				ParseNode_rfree(stmt);
 			}
 			break;
 

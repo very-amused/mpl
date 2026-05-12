@@ -99,7 +99,7 @@ ParseNode *Parser_parse(Parser *p, Parser_LineError_Vec **errors);
 // MPL's shell.
 //
 // Use [ParseNode_rfree] to free the returned parse tree.
-ParseNode *Parser_parse_ShellStmt(Parser *p, enum Parser_ERR *err);
+ParseNode *Parser_parse_ShellStmt(Parser *p, Parser_LineError *err);
 
 // Flags that control what information is processed when walking a parse tree
 typedef int ParserWalkFlags;

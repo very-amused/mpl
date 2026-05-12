@@ -456,11 +456,12 @@ ParseNode *Parser_parse(Parser *p, Parser_LineError_Vec **errors) {
 	return root;
 }
 
-ParseNode *Parser_parse_ShellStmt(Parser *p, enum Parser_ERR *err) {
+ParseNode *Parser_parse_ShellStmt(Parser *p, Parser_LineError *err) {
 	static const size_t strerr_len = sizeof(p->strerr) / sizeof(p->strerr[0]);
 
 	// Initialize err
-	*err = Parser_OK;
+	memset(err, 0, sizeof(Parser_LineError));
+	err->type = Parser_OK;
 
 	ParseNode_ShellStmt *stmt = ParseNode_new(ParseNodeID_ShellStmt);
 
@@ -471,22 +472,24 @@ ParseNode *Parser_parse_ShellStmt(Parser *p, enum Parser_ERR *err) {
 				continue;
 
 			case Tok_Bind:
-				*err = Parser_parse_node(p, stmt);
+				err->type = Parser_parse_node(p, stmt);
 				return stmt;
 
 			case Tok_Ident:
 				if (ConfigFnDict_has(p->fn_dict, tok->ident)) {
-					*err = Parser_parse_node(p, stmt);
+					err->type =  Parser_parse_node(p, stmt);
 					return stmt;
 				} else if (ConfigSettingDict_has(p->setting_dict, tok->ident)) {
 					snprintf(p->strerr, strerr_len, "Settings cannot be directly edited from the shell (%s)", tok->ident);
-					*err = Parser_INVALID_NODE;
+					err->strerr = strdup(p->strerr);
+					p->strerr[0] = '\0';
+					err->type = Parser_INVALID_NODE;
 					return stmt;
 				}
 				break;
 
 			default:
-				*err = Parser_SYNTAX_ERR;
+				err->type = Parser_SYNTAX_ERR;
 		}
 	}
 
@@ -630,7 +633,7 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 			}
 
 			ParseNode_FnCallExpr *tail = NULL;
-			while (tok->type == Tok_Ident) {
+			while (tok && tok->type == Tok_Ident) {
 				// Parse FnCallExpr
 				ParseNode *fn_call = ParseNode_new(ParseNodeID_FnCallExpr);
 				enum Parser_ERR err = Parser_parse_node(p, fn_call);
@@ -648,7 +651,7 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 				tail = (ParseNode_FnCallExpr *)fn_call;
 
 				// Consume delim
-				while (Lexer_peek(p->lex)->type == Tok_Semi) {
+				while (Lexer_peek(p->lex) && Lexer_peek(p->lex)->type == Tok_Semi) {
 					Lexer_consume(p->lex);
 				}
 				tok = Lexer_peek(p->lex);
