@@ -4,6 +4,7 @@
 #include "config/function/function.h"
 #include "error.h"
 #include "state.h"
+#include "ui/event.h"
 #include "ui/event_queue.h"
 #include "track_queue/queue.h"
 #include "track_queue/state.h"
@@ -38,6 +39,23 @@ void quit(void * _) {
 		.body_size = 0
 	};
 	EventSubQueue_send(state.evt_sq, &quit_evt, false);
+}
+
+void shell_open(void * _) {
+	static const Event evt = {
+		.event_type = mpl_SHELL_OPEN,
+		.body_size = 0
+	};
+	EventSubQueue_send(state.evt_sq, &evt, false);
+}
+void shell_close(void * _) {
+	static const Event evt = {
+		.event_type = mpl_SHELL_CLOSE,
+		.body_size = 0
+	};
+	fprintf(stderr, "yuh\n");
+	EventSubQueue_send(state.evt_sq, &evt, false);
+	fprintf(stderr, "yuh\n");
 }
 
 void seek(const struct seekArgs *args) {

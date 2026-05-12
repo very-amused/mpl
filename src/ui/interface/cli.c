@@ -61,8 +61,9 @@ static void refresh_timecode(EventBody_Timecode timecode, const AudioTrack *audi
 // Print track metadata
 static void refresh_metadata(const TrackMeta *meta);
 
-static enum UserInterface_ERR mainloop(void * _,
+static enum UserInterface_ERR mainloop(void * ctx__,
 		EventQueue *evt_queue, TrackQueue *track_queue, Config *config) {
+	Ctx *ctx = ctx__;
 
 	// Handle if there's a track loaded in the queue
 	const Track *track = TrackQueue_cur_track(track_queue);
@@ -80,38 +81,54 @@ static enum UserInterface_ERR mainloop(void * _,
 			return 0;
 
 		case mpl_KEYPRESS:
-		{
-			EventBody_Keypress key = evt.body_inline;
-			LOG(Verbosity_DEBUG, "Pulled keypress `%c` from EventQueue\n", key);
-			enum Keybind_ERR err = KeybindMap_call_keybind(config->keybinds, key);
-			if (err != Keybind_OK) {
-				LOG(Verbosity_VERBOSE, "Keybind error: %s\n", Keybind_ERR_name(err));
+			{
+				EventBody_Keypress key = evt.body_inline;
+				LOG(Verbosity_DEBUG, "Pulled keypress `%c` from EventQueue\n", key);
+				enum Keybind_ERR err = KeybindMap_call_keybind(config->keybinds, key);
+				if (err != Keybind_OK) {
+					LOG(Verbosity_VERBOSE, "Keybind error: %s\n", Keybind_ERR_name(err));
+				}
 			}
 			break;
-		}
+
+		case mpl_INPUT_LINE:
+			{
+				EventBody_InputLine line = evt.body;
+				LOG(Verbosity_DEBUG, "Pulled shell line `%s` from EventQueue\n", line);
+				free(line);
+			}
+			break;
 
 		case mpl_TIMECODE:
-		{
 			refresh_timecode(evt.body_inline, &TrackQueue_cur_track(track_queue)->audio, &config->settings);
 			break;
-		}
 	
 		case mpl_TRACK_META:
-		{
 			refresh_metadata(evt.body);
 			free(evt.body);
 			break;
-		}
 
 		case mpl_TRACK_END:
-		{
-			const Track *next = TrackQueue_next_track(track_queue);
-			if (!next) {
-				return 0;
+			{
+				const Track *next = TrackQueue_next_track(track_queue);
+				if (!next) {
+					return 0;
+				}
+				// TODO: implement track switching
+				// (we need a mpl_TRACK_BUFFERED event to initiate prebuffering of the next track in the queue)
 			}
-			// TODO: implement track switching
-			// (we need a mpl_TRACK_BUFFERED event to initiate prebuffering of the next track in the queue)
-		}
+			break;
+
+		case mpl_SHELL_OPEN:
+			{
+				InputThread_set_mode(ctx->input_thread, InputMode_TEXT);
+			}
+			break;
+
+		case mpl_SHELL_CLOSE:
+			{
+				InputThread_set_mode(ctx->input_thread, InputMode_KEY);
+			}
 
 		default:
 			fprintf(stderr, "Warning: unhandled event %s\n", MPL_EVENT_name(evt.event_type));
@@ -123,6 +140,7 @@ static enum UserInterface_ERR mainloop(void * _,
 
 static void refresh_timecode(EventBody_Timecode timecode,
 		const AudioTrack *audio, const Settings *settings) {
+	return;
 	const AudioPCM pcm = audio->buf_pcm;
 	const bool show_ms = settings->ui_timecode_ms;
 

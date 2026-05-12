@@ -47,6 +47,8 @@ if enable_resampling
 		cflags += '-DMPL_RESAMPLE_PHONY'
 	endif
 endif
+# readline (used for shell)
+deps += dependency('readline', version : '>=8.3')
 # audio output
 pulseaudio = dependency('libpulse', version : '>=16.0.0', required : get_option('pulseaudio'))
 deps += pulseaudio

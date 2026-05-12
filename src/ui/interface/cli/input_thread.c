@@ -112,7 +112,10 @@ void *InputThread_loop(void *thr__) {
 	while (true) {
 		// Get user input
 		pthread_mutex_lock(&thr->mode_lock);
-		switch (thr->mode) {
+		enum InputMode mode = thr->mode;
+		pthread_mutex_unlock(&thr->mode_lock);
+
+		switch (mode) {
 		case InputMode_KEY:
 			{
 				EventBody_Keypress input_key = InputThread_getchar(thr, pollfds);
@@ -137,7 +140,6 @@ void *InputThread_loop(void *thr__) {
 			}
 			break;
 		}
-		pthread_mutex_unlock(&thr->mode_lock);
 	}
 
 cancel:
@@ -193,7 +195,9 @@ void InputThread_free(InputThread *thr) {
 void InputThread_set_mode(InputThread *thr, enum InputMode mode) {
 	pthread_mutex_lock(&thr->mode_lock);
 
-	switch (mode) {
+	thr->mode = mode;
+
+	switch (thr->mode) {
 	case InputMode_KEY:
 		{
 			// Clean up readline input
@@ -210,7 +214,7 @@ void InputThread_set_mode(InputThread *thr, enum InputMode mode) {
 		{
 			// Tell the terminal we want to receive line buffered input
 			struct termios term_opts = thr->orig_term_opts;
-			term_opts.c_lflag &= (ECHO | ICANON);
+			term_opts.c_lflag |= (ECHO | ICANON);
 			tcsetattr(STDIN_FILENO, TCSANOW, &term_opts);
 			// Setup readline input
 			rl_input_thread_ = thr;

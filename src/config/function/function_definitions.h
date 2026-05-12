@@ -25,6 +25,9 @@ void play_toggle(void * _); // Play/pause (toggle)
 
 void quit(void * _); // Exit MPL
 
+void shell_open(void * _); // Open MPL's shell
+void shell_close(void * _); // Close MPL's shell
+
 void seek(const struct seekArgs *args); // Seek += args.ms milliseconds
 void seek_snap(const struct seekArgs *args); // Seek that snaps to the next whole second
 

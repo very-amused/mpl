@@ -24,6 +24,12 @@ void register_ConfigFn_functions(ConfigFnDict *dict) {
 	ConfigFnDict_define_fn(dict, "quit",
 			quit,
 			NULL);
+	ConfigFnDict_define_fn(dict, "shell_open",
+			shell_open,
+			NULL);
+	ConfigFnDict_define_fn(dict, "shell_close",
+			shell_close,
+			NULL);
 
 	static const std::vector<ConfigType> seekArgTypes = {Config_I32};
 	ConfigFnDict_define_fn(dict, "seek",
