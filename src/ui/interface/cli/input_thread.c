@@ -14,6 +14,7 @@
 #include <sys/poll.h>
 #include <string.h>
 #include <stddef.h>
+#include <readline/readline.h>
 
 struct InputThread {
 	// EventSubQueue for sending input events
@@ -30,7 +31,13 @@ struct InputThread {
 	pthread_mutex_t mode_lock; // Mutex guaranteeing the thread will stay in a given mode while held
 
 	struct termios orig_term_opts; // Original terminal state we reset to before exiting
+
+	/* Readline handling for InputMode_TEXT */
+	char *line; // Line of input read using readline
+	pthread_cond_t line_cv; // Readline's char callback is finished, we can check if a new line is ready
+	pthread_mutex_t line_lock; // Lock for rl_line
 };
+
 
 // Block until a character is read from *thr or a cancel signal is received, returning EOF in the latter case.
 //
@@ -44,21 +51,49 @@ static char InputThread_getchar(InputThread *thr, struct pollfd pollfds[2]) {
 	return fgetc(thr->input);
 }
 
+// Since readline's callback interface doesn't support passing userdata,
+// we need a global pointer to the InputThread we notify when a line is ready
+static struct InputThread *rl_input_thread_ = NULL;
+
 // Block until a line of text is read from *thr or a cancel signal is received, returning EOF in the latter case.
 //
 // NOTE: assumes thr->input_fd is on pollfds[0] and thr->cancel_pipe[0] is on pollfds[1]
-int InputThread_getline(InputThread *thr, struct pollfd pollfds[2], char **line, size_t *line_len) {
-	poll(pollfds, 2, -1);
-	if (pollfds[1].revents & POLLIN) {
-		return EOF;
+int InputThread_readline(InputThread *thr, struct pollfd pollfds[2], char **line, size_t *line_len) {
+	while (true) {
+		poll(pollfds, 2, -1);
+		if (pollfds[1].revents & POLLIN) {
+			return EOF;
+		}
+
+		// Notify readline that a char is available
+		rl_callback_read_char();
+		// Check if a line is available
+		pthread_mutex_lock(&thr->line_lock);
+		pthread_cond_wait(&thr->line_cv, &thr->line_lock);
+		if (!thr->line) {
+			pthread_mutex_unlock(&thr->line_lock);
+			continue;
+		}
+
+		*line = thr->line;
+		*line_len = strlen(*line);
+		thr->line = NULL;
+		pthread_mutex_unlock(&thr->line_lock);
+		break;
 	}
 
-	// TODO: use readline callback interface instead of what's below
-
-	*line = NULL;
-	getline(line, line_len, thr->input);
-
 	return 0;
+}
+
+// Called when a line of input is ready
+void rl_line_cb_(char *line) {
+	InputThread *thr = rl_input_thread_;
+	pthread_mutex_lock(&thr->line_lock);
+
+	thr->line = line;
+	pthread_cond_signal(&thr->line_cv);
+
+	pthread_mutex_unlock(&thr->line_lock);
 }
 
 void *InputThread_loop(void *thr__) {
@@ -93,7 +128,7 @@ void *InputThread_loop(void *thr__) {
 			{
 				EventBody_InputLine line;
 				size_t line_len;
-				int status = InputThread_getline(thr, pollfds, &line, &line_len);
+				int status = InputThread_readline(thr, pollfds, &line, &line_len);
 				if (status == EOF) {
 					goto cancel;
 				}
@@ -128,6 +163,8 @@ InputThread *InputThread_new(EventQueue *eq) {
 	thr->input = stdin;
 
 	pthread_mutex_init(&thr->mode_lock, NULL);
+	pthread_mutex_init(&thr->line_lock, NULL);
+	pthread_cond_init(&thr->line_cv, NULL);
 
 	// Store original terminal state
 	tcgetattr(STDIN_FILENO, &thr->orig_term_opts);
@@ -159,6 +196,9 @@ void InputThread_set_mode(InputThread *thr, enum InputMode mode) {
 	switch (mode) {
 	case InputMode_KEY:
 		{
+			// Clean up readline input
+			rl_callback_handler_remove();
+			rl_input_thread_ = NULL;
 			// Tell the terminal we want to receive input without line buffering
 			struct termios term_opts = thr->orig_term_opts;
 			term_opts.c_lflag &= ~(ECHO | ICANON);
@@ -172,7 +212,9 @@ void InputThread_set_mode(InputThread *thr, enum InputMode mode) {
 			struct termios term_opts = thr->orig_term_opts;
 			term_opts.c_lflag &= (ECHO | ICANON);
 			tcsetattr(STDIN_FILENO, TCSANOW, &term_opts);
-			// TODO: setup readline input
+			// Setup readline input
+			rl_input_thread_ = thr;
+			rl_callback_handler_install("[mpl]$ ", rl_line_cb_);
 		}
 		break;
 	}
