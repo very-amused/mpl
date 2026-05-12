@@ -36,11 +36,6 @@ struct InputThread {
 	pthread_mutex_t mode_lock; // Mutex guaranteeing the thread will stay in a given mode while held
 
 	struct termios orig_term_opts; // Original terminal state we reset to before exiting
-
-	/* Readline handling for InputMode_TEXT */
-	char *line; // Line of input read using readline
-	pthread_cond_t line_cv; // Readline's char callback is finished, we can check if a new line is ready
-	pthread_mutex_t line_lock; // Lock for rl_line
 };
 
 // pthread routine for the InputThread
@@ -61,8 +56,6 @@ InputThread *InputThread_new(EventQueue *eq) {
 	thr->input = stdin;
 
 	pthread_mutex_init(&thr->mode_lock, NULL);
-	pthread_mutex_init(&thr->line_lock, NULL);
-	pthread_cond_init(&thr->line_cv, NULL);
 
 	// Store original terminal state
 	tcgetattr(STDIN_FILENO, &thr->orig_term_opts);
@@ -115,16 +108,10 @@ static char InputThread_getchar(InputThread *thr, struct pollfd pollfds[3]) {
 // we need a global pointer to the InputThread we notify when a line is ready
 static struct InputThread *rl_input_thread_ = NULL;
 
-// Block until a line of text is read from *thr or a cancel signal is received, returning EOF in the latter case.
-//
-// NOTE: assumes
-// 1. thr->input_fd is on pollfds[0]
-// 2. thr->cancel_pipe[0] is on pollfds[1]
-// 3. thr->mode_change_pipe[0] is on pollfds[2]
-int InputThread_readline(InputThread *thr, struct pollfd pollfds[3], char **line, size_t *line_len) {
+// Enter a readline-powered shell, passing shell line events as needed.
+int InputThread_shell(InputThread *thr, struct pollfd pollfds[3]) {
 	while (true) {
 		poll(pollfds, 3, -1);
-		LOG(Verbosity_DEBUG, "Done polling in InputThread_readline\n");
 		if (pollfds[1].revents & POLLIN) {
 			return EOF;
 		} else if (pollfds[2].revents & POLLIN) {
@@ -133,40 +120,24 @@ int InputThread_readline(InputThread *thr, struct pollfd pollfds[3], char **line
 			return CHANGE_MODE;
 		}
 
-
-		// Notify readline that a char is available
-		LOG(Verbosity_DEBUG, "Key pressed in InputThread_readline\n");
 		rl_callback_read_char();
-		// Check if a line is available
-		// FIXME: here's our problem, line_cv only gets posted if the char is LF,
-		// otherwise we get stuck here. I don't think the callback API for readline is going to work for us
-		pthread_mutex_lock(&thr->line_lock);
-		pthread_cond_wait(&thr->line_cv, &thr->line_lock);
-		if (!thr->line) {
-			pthread_mutex_unlock(&thr->line_lock);
-			continue;
-		}
-		LOG(Verbosity_VERBOSE, "thr->line = %s\n", thr->line);
-
-		*line = thr->line;
-		*line_len = strlen(*line);
-		thr->line = NULL;
-		pthread_mutex_unlock(&thr->line_lock);
-		break;
 	}
-
-	return 0;
 }
 
 // Called when a line of input is ready
-void rl_line_cb_(char *line) {
+void rl_line_ready_cb_(char *line) {
+	// Pass the line to be evaluated as shell syntax
 	InputThread *thr = rl_input_thread_;
-	pthread_mutex_lock(&thr->line_lock);
 
-	thr->line = line;
-	pthread_cond_signal(&thr->line_cv);
+	// Send SHELL_CLOSE on EOF
+	if (!line) {
+		static const Event evt = {.event_type = mpl_SHELL_CLOSE, .body_size = 0};
+		EventSubQueue_send(thr->evt_sq, &evt, false);
+		return;
+	}
 
-	pthread_mutex_unlock(&thr->line_lock);
+	Event evt = {.event_type = mpl_INPUT_LINE, .body_size = strlen(line), .body = line};
+	EventSubQueue_send(thr->evt_sq, &evt, false);
 }
 
 void *InputThread_loop(void *thr__) {
@@ -208,16 +179,12 @@ void *InputThread_loop(void *thr__) {
 
 		case InputMode_TEXT:
 			{
-				EventBody_InputLine line;
-				size_t line_len;
-				int status = InputThread_readline(thr, pollfds, &line, &line_len);
+				int status = InputThread_shell(thr, pollfds);
 				if (status == EOF) {
 					goto cancel;
 				} else if (status == CHANGE_MODE) {
 					continue;
 				}
-				Event evt = {.event_type = mpl_INPUT_LINE, .body_size = line_len, .body = line};
-				EventSubQueue_send(thr->evt_sq, &evt, false);
 			}
 			break;
 		}
@@ -253,17 +220,14 @@ void InputThread_set_mode(InputThread *thr, enum InputMode mode) {
 	case InputMode_TEXT:
 		{
 			// Tell the terminal we want to receive line buffered input
-#if 0
 			struct termios term_opts = thr->orig_term_opts;
 			term_opts.c_lflag |= (ECHO | ICANON);
 			tcsetattr(STDIN_FILENO, TCSANOW, &term_opts);
-#endif
 			// Setup readline input
 			rl_initialize();
 			rl_instream = thr->input;
-			rl_resize_terminal();
 			rl_input_thread_ = thr;
-			rl_callback_handler_install("[mpl]$ ", rl_line_cb_);
+			rl_callback_handler_install("[mpl]$ ", rl_line_ready_cb_);
 		}
 		break;
 	}
