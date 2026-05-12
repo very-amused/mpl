@@ -95,6 +95,7 @@ static enum UserInterface_ERR mainloop(void * ctx__,
 			{
 				EventBody_InputLine line = evt.body;
 				LOG(Verbosity_DEBUG, "\n\x1b[1mPulled shell line `%s` from EventQueue\x1b[0m\n", line);
+				// TODO: parse and eval
 				free(line);
 			}
 			break;

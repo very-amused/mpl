@@ -95,6 +95,11 @@ void Parser_free(Parser *p);
 //
 // Use [ParseNode_rfree] to free the parse tree.
 ParseNode *Parser_parse(Parser *p, Parser_LineError_Vec **errors);
+// Parse a ShellStmt from a stream of lexer tokens. Used to implement
+// MPL's shell.
+//
+// Use [ParseNode_rfree] to free the returned parse tree.
+ParseNode *Parser_parse_ShellStmt(Parser *p, enum Parser_ERR *err);
 
 // Flags that control what information is processed when walking a parse tree
 typedef int ParserWalkFlags;

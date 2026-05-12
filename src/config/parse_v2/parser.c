@@ -456,6 +456,44 @@ ParseNode *Parser_parse(Parser *p, Parser_LineError_Vec **errors) {
 	return root;
 }
 
+ParseNode *Parser_parse_ShellStmt(Parser *p, enum Parser_ERR *err) {
+	static const size_t strerr_len = sizeof(p->strerr) / sizeof(p->strerr[0]);
+
+	// Initialize err
+	*err = Parser_OK;
+
+	ParseNode_ShellStmt *stmt = ParseNode_new(ParseNodeID_ShellStmt);
+
+	for (const LexerToken *tok = Lexer_peek(p->lex); tok != NULL; tok = Lexer_peek(p->lex)) {
+		switch (tok->type) {
+			case Tok_LF:
+			case Tok_Semi:
+				continue;
+
+			case Tok_Bind:
+				*err = Parser_parse_node(p, stmt);
+				return stmt;
+
+			case Tok_Ident:
+				if (ConfigFnDict_has(p->fn_dict, tok->ident)) {
+					*err = Parser_parse_node(p, stmt);
+					return stmt;
+				} else if (ConfigSettingDict_has(p->setting_dict, tok->ident)) {
+					snprintf(p->strerr, strerr_len, "Settings cannot be directly edited from the shell (%s)", tok->ident);
+					*err = Parser_INVALID_NODE;
+					return stmt;
+				}
+				break;
+
+			default:
+				*err = Parser_SYNTAX_ERR;
+		}
+	}
+
+
+	return stmt;
+}
+
 
 static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 	static const size_t strerr_len = sizeof(p->strerr) / sizeof(p->strerr[0]);
