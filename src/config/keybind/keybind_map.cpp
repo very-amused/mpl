@@ -63,11 +63,7 @@ enum Keybind_ERR KeybindMap_define_keybind(KeybindMap *keybinds, wchar_t keycode
 	}
 
 	std::unique_ptr<KeybindRoutine> routine(new KeybindRoutine(fn_list));
-	if (shell) {
-		keybinds->shell_map[keycode] = std::move(routine);
-	} else {
-		keybinds->map[keycode] = std::move(routine);
-	}
+	map[keycode] = std::move(routine);
 	return Keybind_OK;
 }
 
