@@ -28,15 +28,17 @@ static const inline char *TermIO_Event_t(enum TermIO_Event_t evt) {
 // A MPL event message send from the main thread to the TermIOThread
 typedef struct TermIO_Event {
 	enum TermIO_Event_t event_type;
-	// We have two inline bodies so we can send timecodes with current track duration
+	// NOTE: unlike the pointer body used in normal Event's, we do NOT own this data and MUST NOT free it
+	const void *body;
+	const void *body2;
 	uint64_t body_inline;
-	uint64_t body_inline2;
 } TermIO_Event;
 
 // Timecodes sent with TermIO_TIMECODE events:
-// body_inline is the position timecode,
-// body_inline2 is the duration timecode
+// (char *)body is the position timecode string
+// (char *)body2 is the duration timecode string
 typedef EventBody_Timecode TermIO_EventBody_Timecode;
 
 // Playback state sent with TermIO_PLAYBACK_STATE events
+// (enum Queue_PLAYBACK_STATE)body_inline is the playback state
 typedef enum Queue_PLAYBACK_STATE TermIO_EventBody_PlaybackState;

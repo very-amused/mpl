@@ -1,8 +1,10 @@
 #include "input_thread.h"
 #include "config/keybind/keybind_map.h"
 #include "error.h"
+#include "track_queue/state.h"
 #include "ui/event_queue.h"
 #include "ui/event.h"
+#include "ui/icons.h"
 #include "util/log.h"
 #include "termio_events.h"
 
@@ -27,8 +29,18 @@ struct InputThread {
 
 	int input_fd; // FD to receive input on, usually stdin
 	FILE *input;
+	int output_fd; // FD to send output on, usually stderr
+	FILE *output;
+
 	// Pipe used to send TermIO_Event's which will wake up the thread
 	int evt_pipe[2];
+
+	// We need to keep track of these because
+	// 1. when the timecode changes, we must already know the playback state
+	// 2. when the playback state changes, we must already know the timecode
+	char timecode_buf[255];
+	char duration_buf[255];
+	enum Queue_PLAYBACK_STATE playback_state;
 
 	pthread_t thread;
 
@@ -56,6 +68,8 @@ InputThread *InputThread_new(EventQueue *eq, KeybindMap *keybinds) {
 
 	thr->input_fd = STDIN_FILENO;
 	thr->input = stdin;
+	thr->output_fd = STDERR_FILENO;
+	thr->output = stderr;
 
 	pthread_mutex_init(&thr->mode_lock, NULL);
 
@@ -84,7 +98,10 @@ void InputThread_free(InputThread *thr) {
 	free(thr);
 }
 
-static const char CHANGE_MODE = -2;
+static const char CONTINUE_IO_LOOP = -2;
+
+// Used to clear current line when refreshing timecode or playback state
+static const char CLEAR_LINE_VT100[] = "\033[2K\r";
 
 // Block until a character is read from *thr or a cancel signal is received, returning EOF in the latter case.
 //
@@ -101,17 +118,38 @@ static char InputThread_getchar(InputThread *thr, struct pollfd pollfds[2]) {
 			case TermIO_SHUTDOWN:
 				return EOF;
 			case TermIO_CHANGE_MODE:
-				return CHANGE_MODE;
+				return CONTINUE_IO_LOOP;
+
 			case TermIO_TIMECODE:
-				// TODO: do what refresh_timecode in cli.c does
+				{
+					// Update timecode
+					strncpy(thr->timecode_buf, evt.body, sizeof(thr->timecode_buf)-1);
+					strncpy(thr->duration_buf, evt.body2, sizeof(thr->duration_buf)-1);
+					// Render timecode and playback state
+#define WRITE_PLAYBACK_INFO() \
+					thr->playback_state == Queue_STOPPED \
+					? fprintf(thr->output, "%s", get_playback_icon(thr->playback_state)) \
+					: fprintf(thr->output, "%s/%s %s", thr->timecode_buf, thr->duration_buf, get_playback_icon(thr->playback_state))
+
+					fprintf(thr->output, CLEAR_LINE_VT100);
+					WRITE_PLAYBACK_INFO();
+				}
 				break;
+
 			case TermIO_PLAYBACK_STATE:
-				// TODO: update playback state indicator
-				// currently, we have no playback state indicator
+				{
+					// Update playback state
+					thr->playback_state = evt.body_inline;
+					// Render timecode and playback state
+					fprintf(thr->output, CLEAR_LINE_VT100);
+					WRITE_PLAYBACK_INFO();
+
+#undef WRITE_PLAYBACK_INFO
+				}
 				break;
 		}
-		// This just restarts the thread's loop
-		return CHANGE_MODE;
+
+		return CONTINUE_IO_LOOP;
 	}
 
 	return fgetc(thr->input);
@@ -137,7 +175,7 @@ int InputThread_shell(InputThread *thr, struct pollfd pollfds[2]) {
 				case TermIO_SHUTDOWN:
 					return EOF;
 				case TermIO_CHANGE_MODE:
-					return CHANGE_MODE;
+					return CONTINUE_IO_LOOP;
 				case TermIO_TIMECODE:
 					// TODO: impl
 					break;
@@ -201,7 +239,7 @@ void *InputThread_loop(void *thr__) {
 				EventBody_Keypress input_key = InputThread_getchar(thr, pollfds);
 				if (input_key == EOF) {
 					goto cancel;
-				} else if (input_key == CHANGE_MODE) {
+				} else if (input_key == CONTINUE_IO_LOOP) {
 					continue;
 				}
 				Event evt = {.event_type = mpl_KEYPRESS, .body_size = sizeof(EventBody_Keypress), .body_inline = input_key};
@@ -214,7 +252,7 @@ void *InputThread_loop(void *thr__) {
 				int status = InputThread_shell(thr, pollfds);
 				if (status == EOF) {
 					goto cancel;
-				} else if (status == CHANGE_MODE) {
+				} else if (status == CONTINUE_IO_LOOP) {
 					continue;
 				}
 			}
@@ -274,5 +312,22 @@ void InputThread_set_mode(InputThread *thr, enum InputMode mode) {
 
 	// Cancel anything blocking us from implementing the mode change
 	const TermIO_Event evt = {.event_type = TermIO_CHANGE_MODE};
+	write(thr->evt_pipe[1], &evt, sizeof(TermIO_Event));
+}
+
+void InputThread_update_timecode(InputThread *thr, const char *timecode_buf, const char *duration_buf) {
+	const TermIO_Event evt = {
+		.event_type = TermIO_TIMECODE,
+		.body = timecode_buf,
+		.body2 = duration_buf
+	};
+	write(thr->evt_pipe[1], &evt, sizeof(TermIO_Event));
+}
+
+void InputThread_update_playback_state(InputThread *thr, enum Queue_PLAYBACK_STATE playback_state) {
+	const TermIO_Event evt = {
+		.event_type = TermIO_PLAYBACK_STATE,
+		.body_inline = playback_state
+	};
 	write(thr->evt_pipe[1], &evt, sizeof(TermIO_Event));
 }

@@ -59,7 +59,7 @@ static void deinit(void *ud) {
 /* Mainloop for CLI */
 
 // Print track timecode and duration
-static void refresh_timecode(EventBody_Timecode timecode, const AudioTrack *audio, const Settings *settings);
+static void refresh_timecode(EventBody_Timecode timecode, const AudioTrack *audio, const Settings *settings, InputThread *thr);
 // Print track metadata
 static void refresh_metadata(const TrackMeta *meta);
 
@@ -124,7 +124,7 @@ static enum UserInterface_ERR mainloop(void * ctx__,
 			break;
 
 		case mpl_TIMECODE:
-			refresh_timecode(evt.body_inline, &TrackQueue_cur_track(track_queue)->audio, &config->settings);
+			refresh_timecode(evt.body_inline, &TrackQueue_cur_track(track_queue)->audio, &config->settings, ctx->input_thread);
 			break;
 	
 		case mpl_TRACK_META:
@@ -164,8 +164,8 @@ static enum UserInterface_ERR mainloop(void * ctx__,
 }
 
 static void refresh_timecode(EventBody_Timecode timecode,
-		const AudioTrack *audio, const Settings *settings) {
-	return;
+		const AudioTrack *audio, const Settings *settings,
+		InputThread *thr) {
 	const AudioPCM pcm = audio->buf_pcm;
 	const bool show_ms = settings->ui_timecode_ms;
 
@@ -174,9 +174,7 @@ static void refresh_timecode(EventBody_Timecode timecode,
 	fmt_timecode(timecode_buf, sizeof(timecode_buf), timecode, &pcm, show_ms);
 	fmt_timecode(duration_buf, sizeof(duration_buf), audio->duration_timecode, &pcm, show_ms);
 
-	static const char CLEAR_LINE_VT100[] = "\033[2K\r";
-	fprintf(stderr, CLEAR_LINE_VT100);
-	fprintf(stderr, "%s/%s", timecode_buf, duration_buf);
+	InputThread_update_timecode(thr, timecode_buf, duration_buf);
 }
 
 static void refresh_metadata(const TrackMeta *meta) {
