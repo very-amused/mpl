@@ -10,12 +10,8 @@ uint32_t AudioPCM_sample_size(const AudioPCM *pcm) {
 }
 
 uint32_t AudioPCM_buffer_size(const AudioPCM *pcm, const uint32_t ms) {
-	return av_samples_get_buffer_size(
-			NULL,
-			pcm->n_channels,
-			pcm->sample_rate * (ms / 1000.0),
-			pcm->sample_fmt,
-			0);
+	const uint32_t n_samples = pcm->sample_rate * (ms / 1000.0);
+	return pcm->n_channels * n_samples * AudioPCM_sample_size(pcm);
 }
 
 float AudioPCM_seconds(const AudioPCM *pcm, size_t n_bytes) {
