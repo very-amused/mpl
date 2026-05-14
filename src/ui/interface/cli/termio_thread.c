@@ -229,7 +229,7 @@ static int TermIOThread_shell(TermIOThread *thr, struct pollfd pollfds[2]) {
 static TermIOThread *rl_callback_userdata_ = NULL;
 
 // Called when a line of input is ready
-void rl_line_ready_cb_(char *line) {
+static void rl_line_ready_cb_(char *line) {
 	// Pass the line to be evaluated as shell syntax
 	TermIOThread *thr = rl_callback_userdata_;
 
