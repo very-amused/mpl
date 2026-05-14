@@ -106,18 +106,18 @@ static const char CLEAR_LINE_VT100[] = "\033[2K\r";
 static void write_playback_info(TermIOThread *thr, enum InputMode mode) {
 	if (mode == InputMode_KEY) {
 		thr->playback_state == Queue_STOPPED
-			? fprintf(thr->output, "%s", get_playback_icon(thr->playback_state))
-			: fprintf(thr->output, "%s/%s %s", thr->timecode_buf, thr->duration_buf, get_playback_icon(thr->playback_state));
+			? fprintf(thr->output, "(%s)", get_playback_icon(thr->playback_state))
+			: fprintf(thr->output, "(%s) %s/%s", get_playback_icon(thr->playback_state), thr->timecode_buf, thr->duration_buf);
 		return;
 	} else if (mode == InputMode_SHELL) {
-		static const char PROMPT_FMT[] = "%s/%s [mpl %s]$ ";
-		static const char PROMPT_FMT_STOPPED[] = "[mpl %s]$ ";
+		static const char PROMPT_FMT[] = "(%s) %s/%s [mpl]$ ";
+		static const char PROMPT_FMT_STOPPED[] = "(%s) [mpl]$ ";
 
 		static char prompt[255];
 		static size_t prompt_len = 0;
 		const size_t new_prompt_len = thr->playback_state == Queue_STOPPED
 			? snprintf(prompt, sizeof(prompt), PROMPT_FMT_STOPPED, get_playback_icon(thr->playback_state))
-			: snprintf(prompt, sizeof(prompt), PROMPT_FMT, thr->timecode_buf, thr->duration_buf, get_playback_icon(thr->playback_state));
+			: snprintf(prompt, sizeof(prompt), PROMPT_FMT, get_playback_icon(thr->playback_state), thr->timecode_buf, thr->duration_buf);
 		if (new_prompt_len != prompt_len) {
 			// Make readline aware of the prompt's length for redisplay purposes
 			rl_set_prompt(prompt);

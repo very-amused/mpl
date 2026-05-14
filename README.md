@@ -8,8 +8,11 @@ A WIP music player with a focus on build-time modularity, stability, and perform
 meson setup build
 cd build
 meson configure -Dbuildtype=release # debug is the default build type
-# If you're using a keyboard layout covered by unsigned (extended) ASCII:
-meson configure -Dascii_keybinds=true
+
+### Customization:
+meson configure -Dnerdfont_icons=false # Enable Nerdfont icons (default: true)
+
+### DEV OPTIONS:
 # Build with emulated audio output (no sound):
 meson configure -Dao_fast=true # useful for compatibility checking on platforms before implementing an AudioBackend
 ```
