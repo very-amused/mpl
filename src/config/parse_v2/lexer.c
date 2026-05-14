@@ -87,7 +87,7 @@ enum Parser_ERR Lexer_tokenize(Lexer *l, const char *chunk) {
 	static const char KEYWORD_FALSE[] = "false";
 
 	const char *c = chunk;
-	while (*c != '\0') {	
+	while (*c != '\0') {
 		// Eat whitespace and comments
 		switch (*c) {
 			case ' ':
@@ -161,9 +161,17 @@ enum Parser_ERR Lexer_tokenize(Lexer *l, const char *chunk) {
 			{
 				tok->type = Tok_I32Lit;
 				sscanf(c, "%d", &tok->i32_lit);
-				const size_t tok_strlen = (*c == '-' ? 1 : 0) + floorl(log10(abs(tok->i32_lit)))+1;
+				size_t tok_strlen;
+				if (tok->i32_lit == 0) {
+					tok_strlen = 1;
+				} else {
+					tok_strlen = floorl(log10(abs(tok->i32_lit)))+1;
+				}
+				if (*c == '-')
+					tok_strlen++;
 				c += tok_strlen;
 			}
+			break;
 
 
 			/* Keywords */
