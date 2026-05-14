@@ -8,7 +8,8 @@ const wchar_t parse_keycode(const char *keyname) {
 	switch (keyname[0]) {
 	case 'E':
 		if (strcmp(keyname, "Escape") == 0) {
-			return (wchar_t)27;
+			// FIXME: make this correct on win32 as well
+			return (wchar_t)0x1B;
 		}
 		break;
 	}
