@@ -53,9 +53,7 @@ void shell_close(void * _) {
 		.event_type = mpl_SHELL_CLOSE,
 		.body_size = 0
 	};
-	fprintf(stderr, "yuh\n");
 	EventSubQueue_send(state.evt_sq, &evt, false);
-	fprintf(stderr, "yuh\n");
 }
 
 void seek(const struct seekArgs *args) {

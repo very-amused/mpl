@@ -35,7 +35,7 @@ int main(int argc, const char **argv) {
 
 	// Fire up user interface and main EventQueue	
 	UserInterface *ui = UI_Configured(&config.settings);
-	enum UserInterface_ERR ui_err = UserInterface_init(ui, &config.settings);
+	enum UserInterface_ERR ui_err = UserInterface_init(ui, &config);
 	if (ui_err != UserInterface_OK) {
 		LOG(Verbosity_NORMAL, "Failed to initialize user interface: %s\n", UserInterface_ERR_name(ui_err));
 		ret = 1;

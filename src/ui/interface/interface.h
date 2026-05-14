@@ -13,7 +13,7 @@ struct UserInterface {
 	EventQueue *evt_queue; // Main event queue owned and handled by the UI. Allows aux threads to message the main thread
 
 	// Initialize UI context (including registering control methods)
-	enum UserInterface_ERR (*init)(void *ctx, EventQueue *evt_queue, const Settings *settings);
+	enum UserInterface_ERR (*init)(void *ctx, EventQueue *evt_queue, Config *config);
 	// Deinitialize the UI
 	void (*deinit)(void *ctx);
 
@@ -28,7 +28,7 @@ struct UserInterface {
 };
 
 // Initialize the UI for the main loop to run.
-enum UserInterface_ERR UserInterface_init(UserInterface *ui, const Settings *settings);
+enum UserInterface_ERR UserInterface_init(UserInterface *ui, Config *config);
 // Deinitialize the UI for shutdown
 void UserInterface_deinit(UserInterface *ui);
 

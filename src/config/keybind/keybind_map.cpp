@@ -12,14 +12,37 @@ extern "C" {
 }
 
 #include <unordered_map>
+#include <memory>
 
 extern "C" {
+
+/* #region KeybindRoutine */
 
 // Better to be specific about the type of parse node we're calling
 typedef ParseNode ParseNode_FnCallList;
 
+typedef struct KeybindRoutine {
+	ParseNode *fn_list;
+	bool shell_enabled;
+	KeybindRoutine(const ParseNode *fn_list);
+	~KeybindRoutine();
+} KeybindDefinition;
+
+KeybindRoutine::KeybindRoutine(const ParseNode *fn_list) {
+	this->fn_list = ParseNode_rcopy(fn_list);
+	this->shell_enabled = ParseNode_FnCallList_is_shell_enabled(fn_list);
+}
+
+KeybindRoutine::~KeybindRoutine() {
+	ParseNode_rfree(this->fn_list);
+}
+
+/* #endregion */
+
+/* #region KeybindMap */
+
 struct KeybindMap {
-	std::unordered_map<wchar_t, ParseNode *> map;
+	std::unordered_map<wchar_t, std::unique_ptr<KeybindRoutine>> map;
 };
 
 KeybindMap *KeybindMap_new() {
@@ -27,13 +50,6 @@ KeybindMap *KeybindMap_new() {
 }
 
 void KeybindMap_free(KeybindMap *keybinds) {
-	// Free all copied ParseNode_FnCallList trees
-	// we can't rely on RAII for this because
-	// 1. ParseNode is a semi-opaque type 
-	// 2. ParseNode_new is a C-implemented constructor that uses malloc, not new
-	for (auto kv : keybinds->map) {
-		ParseNode_rfree(kv.second);
-	}
 	delete keybinds;
 }
 
@@ -45,7 +61,8 @@ enum Keybind_ERR KeybindMap_define_keybind(KeybindMap *keybinds, wchar_t keycode
 		return Keybind_BINDING_CONFLICT;
 	}
 
-	keybinds->map[keycode] = ParseNode_rcopy(fn_list);
+	std::unique_ptr<KeybindRoutine> routine(new KeybindRoutine(fn_list));
+	keybinds->map[keycode] = std::move(routine);
 	return Keybind_OK;
 }
 
@@ -56,7 +73,8 @@ enum Keybind_ERR KeybindMap_call_keybind(KeybindMap *keybinds, wchar_t keycode) 
 		return Keybind_NOT_FOUND;
 	}
 
-	ParseNode *fn_list = keybinds->map[keycode];
+	KeybindRoutine *routine = keybinds->map[keycode].get();
+	ParseNode *fn_list = routine->fn_list;
 	for (ParseNode *fn_expr = fn_list->child; fn_expr != NULL; fn_expr = fn_expr->sibling) {
 		enum Parser_ERR err = ParseNode_FnCallExpr_eval(fn_expr, NULL);
 		if (err != Parser_OK) {
@@ -68,5 +86,21 @@ enum Keybind_ERR KeybindMap_call_keybind(KeybindMap *keybinds, wchar_t keycode) 
 
 	return Keybind_OK;
 }
+
+enum Keybind_ERR KeybindMap_call_shell_keybind(KeybindMap *keybinds, wchar_t keycode) {
+	const bool exists = keybinds->map.find(keycode) != keybinds->map.end();
+	if (!exists) {
+		return Keybind_NOT_FOUND;
+	}
+
+	KeybindRoutine *routine = keybinds->map[keycode].get();
+	if (!routine->shell_enabled) {
+		return Keybind_NOT_FOUND;
+	}
+
+	return KeybindMap_call_keybind(keybinds, keycode);
+}
+
+/* #endregion */
 
 }

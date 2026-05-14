@@ -17,7 +17,7 @@ typedef struct Ctx {
 } Ctx;
 
 // UserInterface methods
-static enum UserInterface_ERR init(void *ud, EventQueue *evt_queue, const Settings *settings);
+static enum UserInterface_ERR init(void *ud, EventQueue *evt_queue, Config *config);
 static void deinit(void *ud);
 static enum UserInterface_ERR mainloop(void *ud, EventQueue *evt_queue,
 		TrackQueue *track_queue, Config *config);
@@ -36,11 +36,11 @@ UserInterface UI_CommandLine = {
 	.ctx_size = sizeof(Ctx)
 };
 
-static enum UserInterface_ERR init(void *ud, EventQueue *evt_queue, const Settings *settings) {
+static enum UserInterface_ERR init(void *ud, EventQueue *evt_queue, Config *config) {
 	Ctx *ctx = ud;
 	memset(ctx, 0, sizeof(Ctx));
 
-	ctx->input_thread = InputThread_new(evt_queue);
+	ctx->input_thread = InputThread_new(evt_queue, config->keybinds);
 	if (!ctx->input_thread) {
 		return UserInterface_BAD_ALLOC;
 	}
@@ -153,6 +153,7 @@ static enum UserInterface_ERR mainloop(void * ctx__,
 			{
 				InputThread_set_mode(ctx->input_thread, InputMode_KEY);
 			}
+			break;
 
 		default:
 			fprintf(stderr, "Warning: unhandled event %s\n", MPL_EVENT_name(evt.event_type));

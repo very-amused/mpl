@@ -19,5 +19,7 @@ void KeybindMap_free(KeybindMap *keybinds);
 enum Keybind_ERR KeybindMap_define_keybind(KeybindMap *keybinds, wchar_t keycode, const ParseNode *fn_list);
 
 // Call the keybind mapped to {keycode} if it exists.
-// Returns 0 if a keybind exists and was called, 1 if the keybind doesn't exist 
 enum Keybind_ERR KeybindMap_call_keybind(KeybindMap *keybinds, wchar_t keycode);
+
+// Call the keybind mapped to {keycode} if it exists and is enabled in the shell.
+enum Keybind_ERR KeybindMap_call_shell_keybind(KeybindMap *keybinds, wchar_t keycode);

@@ -79,6 +79,8 @@ ParseNode *ParseNode_rcopy(const ParseNode *node);
 enum Parser_ERR ParseNode_FnCallExpr_eval(ParseNode *fn_expr, void **ret);
 // Get the function being called in a FnCallExpr
 const ConfigFn *ParseNode_FnCallExpr_get_fn(ParseNode *fn_expr);
+// Compute whether a keybind to a FnCallList should be enabled in MPL's shell.
+bool ParseNode_FnCallList_is_shell_enabled(const ParseNode *fn_list);
 
 // A MPL config/shell parser
 typedef struct Parser Parser;

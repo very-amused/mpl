@@ -2,6 +2,7 @@
 #include "config/config.h"
 #include "config/function/function.h"
 #include "config/function/dictionary.h"
+#include "config/function/function_definitions.h"
 #include "config/parse_v2/lexer.h"
 #include "config/parse_v2/types.h"
 #include "config/setting/dictionary.h"
@@ -330,6 +331,25 @@ const ConfigFn *ParseNode_FnCallExpr_get_fn(ParseNode *fn_expr) {
 		return NULL;
 	}
 	return ((ParseNode_FnCallExpr *)fn_expr)->fn;
+}
+
+bool ParseNode_FnCallList_is_shell_enabled(const ParseNode *node) {
+	if (node->type != ParseNodeID_FnCallList) {
+		LOG(Verbosity_NORMAL, "Error: ParseNode_FnCallList_is_shell_enabled called with invalid node type\n");
+		return false;
+	}
+
+	bool shell_enabled = false;
+	for (ParseNode *child = node->child; child != NULL; child = child->sibling) {
+		ParseNode_FnCallExpr *fn_expr = (ParseNode_FnCallExpr *)child;
+
+		if (fn_expr->fn->routine == (ConfigFn_routine)shell_close) {
+			shell_enabled = true;
+			break;
+		}
+	}
+
+	return shell_enabled;
 }
 
 /* #endregion */

@@ -5,7 +5,7 @@
 #include <string.h>
 
 
-enum UserInterface_ERR UserInterface_init(UserInterface *ui, const Settings *settings) {
+enum UserInterface_ERR UserInterface_init(UserInterface *ui, Config *config) {
 	// Initialize event queue
 	ui->evt_queue = EventQueue_new();
 	if (!ui->evt_queue) {
@@ -18,7 +18,7 @@ enum UserInterface_ERR UserInterface_init(UserInterface *ui, const Settings *set
 		CHECK_ALLOC(ui->ctx, UserInterface_BAD_ALLOC);
 	}
 
-	return ui->init(ui->ctx, ui->evt_queue, settings);
+	return ui->init(ui->ctx, ui->evt_queue, config);
 }
 
 void UserInterface_deinit(UserInterface *ui) {

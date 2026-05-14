@@ -19,7 +19,6 @@ typedef struct Config {
 	Lexer *lexer;
 	Parser *parser;
 	ParseNode *defaults; // Macros can walk this to apply various defaults
-
 } Config;
 
 // Find a valid path to parse mpl.conf from. Allocates *path using malloc, returns NULL if no config was found.

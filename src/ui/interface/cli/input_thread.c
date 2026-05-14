@@ -1,4 +1,5 @@
 #include "input_thread.h"
+#include "config/keybind/keybind_map.h"
 #include "error.h"
 #include "ui/event_queue.h"
 #include "ui/event.h"
@@ -20,6 +21,8 @@
 struct InputThread {
 	// EventSubQueue for sending input events
 	EventSubQueue *evt_sq;
+	// KeybindMap to implement shell_close keybind
+	KeybindMap *keybinds;
 
 	int input_fd; // FD to receive input on, usually stdin
 	FILE *input;
@@ -41,7 +44,7 @@ struct InputThread {
 // pthread routine for the InputThread
 void *InputThread_loop(void *thr__);
 
-InputThread *InputThread_new(EventQueue *eq) {
+InputThread *InputThread_new(EventQueue *eq, KeybindMap *keybinds) {
 	InputThread *thr = malloc(sizeof(InputThread));
 	CHECK_ALLOC(thr, NULL);
 	memset(thr, 0, sizeof(InputThread));
@@ -51,6 +54,7 @@ InputThread *InputThread_new(EventQueue *eq) {
 		free(thr);
 		return NULL;
 	}
+	thr->keybinds = keybinds;
 
 	thr->input_fd = STDIN_FILENO;
 	thr->input = stdin;
@@ -120,6 +124,14 @@ int InputThread_shell(InputThread *thr, struct pollfd pollfds[3]) {
 			return CHANGE_MODE;
 		}
 
+		char c = rl_getc(thr->input);
+		// Call any shell-enabled keybind bound to {c}
+		if (KeybindMap_call_shell_keybind(thr->keybinds, c) == Keybind_OK) {
+			continue;
+		}
+		// If {c} is not bound to a shell-enabled keybind,
+		// return it to the input stream and have readline process it
+		rl_stuff_char(c);
 		rl_callback_read_char();
 	}
 }
