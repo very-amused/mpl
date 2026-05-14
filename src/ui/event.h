@@ -26,7 +26,7 @@ static inline const char *MPL_EVENT_name(enum MPL_EVENT evt) {
 	switch (evt) {
 		MPL_EVENT_ENUM(ENUM_KEY)
 	}
-	return NULL;
+	return DEFAULT_ERR_NAME;
 }
 
 #undef MPL_EVENT_ENUM

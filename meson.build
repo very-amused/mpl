@@ -33,6 +33,10 @@ endif
 if get_option('cli').allowed()
 	cflags += '-DUI_CLI'
 endif
+# Nerdfont icon support
+if get_option('nerdfont_icons')
+	cflags += '-DNERDFONT'
+endif
 
 # Dependencies
 deps = []
