@@ -493,23 +493,31 @@ ParseNode *Parser_parse_ShellStmt(Parser *p, Parser_LineError *err) {
 
 			case Tok_Bind:
 				err->type = Parser_parse_node(p, stmt);
-				return stmt;
+				break;
 
 			case Tok_Ident:
 				if (ConfigFnDict_has(p->fn_dict, tok->ident)) {
 					err->type =  Parser_parse_node(p, stmt);
-					return stmt;
 				} else if (ConfigSettingDict_has(p->setting_dict, tok->ident)) {
 					snprintf(p->strerr, strerr_len, "Settings cannot be directly edited from the shell (%s)", tok->ident);
 					err->strerr = strdup(p->strerr);
 					p->strerr[0] = '\0';
 					err->type = Parser_INVALID_NODE;
-					return stmt;
+				} else {
+					err->type = Parser_SYNTAX_ERR;
 				}
 				break;
 
 			default:
 				err->type = Parser_SYNTAX_ERR;
+		}
+
+		if (err->type != Parser_OK) {
+			// Flush lexer to avoid locking up the shell
+			while (Lexer_peek(p->lex)) {
+				Lexer_consume(p->lex);
+			}
+			break;
 		}
 	}
 

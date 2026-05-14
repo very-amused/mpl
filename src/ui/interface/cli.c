@@ -109,7 +109,7 @@ static enum UserInterface_ERR mainloop(void * ctx__,
 					if (parse_err.strerr) {
 						LOG(Verbosity_NORMAL, "Parse error: %s\n", parse_err.strerr);
 					} else {
-						LOG(Verbosity_NORMAL, "Parse error: %s\n", Parser_ERR_name(err));
+						LOG(Verbosity_NORMAL, "Parse error: %s\n", Parser_ERR_name(parse_err.type));
 					}
 					Parser_LineError_deinit(&parse_err);
 					ParseNode_rfree(stmt);
