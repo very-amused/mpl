@@ -183,7 +183,7 @@ static char TermIOThread_getchar(TermIOThread *thr, struct pollfd pollfds[2]) {
 // NOTE: assumes
 // 1. thr->input_fd is on pollfds[0]
 // 2. thr->evt_pipe[0] is on pollfds[1]
-static int InputThread_shell(TermIOThread *thr, struct pollfd pollfds[2]) {
+static int TermIOThread_shell(TermIOThread *thr, struct pollfd pollfds[2]) {
 
 	while (true) {
 		poll(pollfds, 2, -1);
@@ -278,7 +278,7 @@ void *TermIOThread_loop(void *thr__) {
 
 		case InputMode_SHELL:
 			{
-				int status = InputThread_shell(thr, pollfds);
+				int status = TermIOThread_shell(thr, pollfds);
 				if (status == EOF) {
 					goto cancel;
 				} else if (status == CONTINUE_IO_LOOP) {
