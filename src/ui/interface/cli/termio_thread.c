@@ -9,6 +9,7 @@
 #include "termio_events.h"
 
 #include <pthread.h>
+#include <readline/keymaps.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdatomic.h>
@@ -20,6 +21,7 @@
 #include <string.h>
 #include <stddef.h>
 #include <readline/readline.h>
+#include <readline/history.h>
 
 struct TermIOThread {
 	// EventSubQueue for sending input events
@@ -240,6 +242,7 @@ static void rl_line_ready_cb_(char *line) {
 		return;
 	}
 
+	add_history(line);
 	Event evt = {.event_type = mpl_INPUT_LINE, .body_size = strlen(line), .body = line};
 	EventSubQueue_send(thr->evt_sq, &evt, false);
 }
@@ -330,6 +333,12 @@ void TermIOThread_set_mode(TermIOThread *thr, enum InputMode mode) {
 			tcsetattr(STDIN_FILENO, TCSANOW, &term_opts);
 			// Advance to a blank line
 			fprintf(thr->output, "\n");
+			// Setup command history
+			static bool history_initialized = false;
+			if (!history_initialized) {
+				using_history();
+				history_initialized = true;
+			}
 			// Setup readline input
 			rl_initialize();
 			rl_instream = thr->input;
