@@ -21,7 +21,7 @@
 #include <stddef.h>
 #include <readline/readline.h>
 
-struct InputThread {
+struct TermIOThread {
 	// EventSubQueue for sending input events
 	EventSubQueue *evt_sq;
 	// KeybindMap to implement shell_close keybind
@@ -54,10 +54,10 @@ struct InputThread {
 // pthread routine for the InputThread
 void *InputThread_loop(void *thr__);
 
-InputThread *InputThread_new(EventQueue *eq, KeybindMap *keybinds) {
-	InputThread *thr = malloc(sizeof(InputThread));
+TermIOThread *TermIOThread_new(EventQueue *eq, KeybindMap *keybinds) {
+	TermIOThread *thr = malloc(sizeof(TermIOThread));
 	CHECK_ALLOC(thr, NULL);
-	memset(thr, 0, sizeof(InputThread));
+	memset(thr, 0, sizeof(TermIOThread));
 
 	thr->evt_sq = EventQueue_connect(eq, 100);
 	if (!thr->evt_sq) {
@@ -85,7 +85,7 @@ InputThread *InputThread_new(EventQueue *eq, KeybindMap *keybinds) {
 	return thr;
 }
 
-void InputThread_free(InputThread *thr) {
+void TermIOThread_free(TermIOThread *thr) {
 	// Send stop signal to thread
 	const TermIO_Event shutdown_evt = {.event_type = TermIO_SHUTDOWN};
 	write(thr->evt_pipe[1], &shutdown_evt, sizeof(TermIO_Event));
@@ -108,7 +108,7 @@ static const char CLEAR_LINE_VT100[] = "\033[2K\r";
 // NOTE: assumes
 // 1. thr->input_fd is on pollfds[0]
 // 2. thr->evt_pipe[0] is on pollfds[1]
-static char InputThread_getchar(InputThread *thr, struct pollfd pollfds[2]) {
+static char InputThread_getchar(TermIOThread *thr, struct pollfd pollfds[2]) {
 	poll(pollfds, 2, -1);
 	if (pollfds[1].revents & POLLIN) {
 		TermIO_Event evt;
@@ -157,14 +157,14 @@ static char InputThread_getchar(InputThread *thr, struct pollfd pollfds[2]) {
 
 // Since readline's callback interface doesn't support passing userdata,
 // we need a global pointer to the InputThread we notify when a line is ready
-static struct InputThread *rl_input_thread_ = NULL;
+static TermIOThread *rl_thr_ptr_ = NULL;
 
 // Enter a readline-powered shell, passing shell line events as needed.
 //
 // NOTE: assumes
 // 1. thr->input_fd is on pollfds[0]
 // 2. thr->evt_pipe[0] is on pollfds[1]
-int InputThread_shell(InputThread *thr, struct pollfd pollfds[2]) {
+int InputThread_shell(TermIOThread *thr, struct pollfd pollfds[2]) {
 	while (true) {
 		poll(pollfds, 2, -1);
 		if (pollfds[1].revents & POLLIN) {
@@ -201,7 +201,7 @@ int InputThread_shell(InputThread *thr, struct pollfd pollfds[2]) {
 // Called when a line of input is ready
 void rl_line_ready_cb_(char *line) {
 	// Pass the line to be evaluated as shell syntax
-	InputThread *thr = rl_input_thread_;
+	TermIOThread *thr = rl_thr_ptr_;
 
 	// Send SHELL_CLOSE on EOF
 	if (!line) {
@@ -215,10 +215,10 @@ void rl_line_ready_cb_(char *line) {
 }
 
 void *InputThread_loop(void *thr__) {
-	InputThread *thr = thr__;
+	TermIOThread *thr = thr__;
 
 	// Start in key input mode
-	InputThread_set_mode(thr, InputMode_KEY);
+	TermIOThread_set_mode(thr, InputMode_KEY);
 
 	// Set up FD polling to make our blocking reads soft-cancelable
 	struct pollfd pollfds[2];
@@ -247,7 +247,7 @@ void *InputThread_loop(void *thr__) {
 			}
 			break;
 
-		case InputMode_TEXT:
+		case InputMode_SHELL:
 			{
 				int status = InputThread_shell(thr, pollfds);
 				if (status == EOF) {
@@ -269,7 +269,7 @@ cancel:
 }
 
 
-void InputThread_set_mode(InputThread *thr, enum InputMode mode) {
+void TermIOThread_set_mode(TermIOThread *thr, enum InputMode mode) {
 	pthread_mutex_lock(&thr->mode_lock);
 
 	thr->mode = mode;
@@ -280,7 +280,7 @@ void InputThread_set_mode(InputThread *thr, enum InputMode mode) {
 			if (thr->has_prompt) {
 				// Clean up readline input
 				rl_callback_handler_remove();
-				rl_input_thread_ = NULL;
+				rl_thr_ptr_ = NULL;
 				// Advance to a blank line
 				printf("\n");
 			}
@@ -292,7 +292,7 @@ void InputThread_set_mode(InputThread *thr, enum InputMode mode) {
 		}
 		break;
 	
-	case InputMode_TEXT:
+	case InputMode_SHELL:
 		{
 			// Tell the terminal we want to receive line buffered input
 			struct termios term_opts = thr->orig_term_opts;
@@ -301,7 +301,7 @@ void InputThread_set_mode(InputThread *thr, enum InputMode mode) {
 			// Setup readline input
 			rl_initialize();
 			rl_instream = thr->input;
-			rl_input_thread_ = thr;
+			rl_thr_ptr_ = thr;
 			rl_callback_handler_install("[mpl]$ ", rl_line_ready_cb_);
 			thr->has_prompt = true;
 		}
@@ -315,7 +315,7 @@ void InputThread_set_mode(InputThread *thr, enum InputMode mode) {
 	write(thr->evt_pipe[1], &evt, sizeof(TermIO_Event));
 }
 
-void InputThread_update_timecode(InputThread *thr, const char *timecode_buf, const char *duration_buf) {
+void TermIOThread_update_timecode(TermIOThread *thr, const char *timecode_buf, const char *duration_buf) {
 	const TermIO_Event evt = {
 		.event_type = TermIO_TIMECODE,
 		.body = timecode_buf,
@@ -324,7 +324,7 @@ void InputThread_update_timecode(InputThread *thr, const char *timecode_buf, con
 	write(thr->evt_pipe[1], &evt, sizeof(TermIO_Event));
 }
 
-void InputThread_update_playback_state(InputThread *thr, enum Queue_PLAYBACK_STATE playback_state) {
+void TermIOThread_update_playback_state(TermIOThread *thr, enum Queue_PLAYBACK_STATE playback_state) {
 	const TermIO_Event evt = {
 		.event_type = TermIO_PLAYBACK_STATE,
 		.body_inline = playback_state

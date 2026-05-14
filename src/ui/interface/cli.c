@@ -13,7 +13,7 @@
 
 // CLI context
 typedef struct Ctx {
-	InputThread *input_thread;	
+	TermIOThread *input_thread;	
 } Ctx;
 
 // UserInterface methods
@@ -40,7 +40,7 @@ static enum UserInterface_ERR init(void *ud, EventQueue *evt_queue, Config *conf
 	Ctx *ctx = ud;
 	memset(ctx, 0, sizeof(Ctx));
 
-	ctx->input_thread = InputThread_new(evt_queue, config->keybinds);
+	ctx->input_thread = TermIOThread_new(evt_queue, config->keybinds);
 	if (!ctx->input_thread) {
 		return UserInterface_BAD_ALLOC;
 	}
@@ -51,7 +51,7 @@ static enum UserInterface_ERR init(void *ud, EventQueue *evt_queue, Config *conf
 static void deinit(void *ud) {
 	Ctx *ctx = ud;
 	if (ctx->input_thread) {
-		InputThread_free(ctx->input_thread);
+		TermIOThread_free(ctx->input_thread);
 		ctx->input_thread = NULL;
 	}
 }
@@ -59,7 +59,7 @@ static void deinit(void *ud) {
 /* Mainloop for CLI */
 
 // Print track timecode and duration
-static void refresh_timecode(EventBody_Timecode timecode, const AudioTrack *audio, const Settings *settings, InputThread *thr);
+static void refresh_timecode(EventBody_Timecode timecode, const AudioTrack *audio, const Settings *settings, TermIOThread *thr);
 // Print track metadata
 static void refresh_metadata(const TrackMeta *meta);
 
@@ -145,13 +145,13 @@ static enum UserInterface_ERR mainloop(void * ctx__,
 
 		case mpl_SHELL_OPEN:
 			{
-				InputThread_set_mode(ctx->input_thread, InputMode_TEXT);
+				TermIOThread_set_mode(ctx->input_thread, InputMode_SHELL);
 			}
 			break;
 
 		case mpl_SHELL_CLOSE:
 			{
-				InputThread_set_mode(ctx->input_thread, InputMode_KEY);
+				TermIOThread_set_mode(ctx->input_thread, InputMode_KEY);
 			}
 			break;
 
@@ -165,7 +165,7 @@ static enum UserInterface_ERR mainloop(void * ctx__,
 
 static void refresh_timecode(EventBody_Timecode timecode,
 		const AudioTrack *audio, const Settings *settings,
-		InputThread *thr) {
+		TermIOThread *thr) {
 	const AudioPCM pcm = audio->buf_pcm;
 	const bool show_ms = settings->ui_timecode_ms;
 
@@ -174,7 +174,7 @@ static void refresh_timecode(EventBody_Timecode timecode,
 	fmt_timecode(timecode_buf, sizeof(timecode_buf), timecode, &pcm, show_ms);
 	fmt_timecode(duration_buf, sizeof(duration_buf), audio->duration_timecode, &pcm, show_ms);
 
-	InputThread_update_timecode(thr, timecode_buf, duration_buf);
+	TermIOThread_update_timecode(thr, timecode_buf, duration_buf);
 }
 
 static void refresh_metadata(const TrackMeta *meta) {
