@@ -184,6 +184,7 @@ static char TermIOThread_getchar(TermIOThread *thr, struct pollfd pollfds[2]) {
 // 1. thr->input_fd is on pollfds[0]
 // 2. thr->evt_pipe[0] is on pollfds[1]
 static int TermIOThread_shell(TermIOThread *thr, struct pollfd pollfds[2]) {
+	write_playback_info(thr, InputMode_SHELL);
 
 	while (true) {
 		poll(pollfds, 2, -1);
