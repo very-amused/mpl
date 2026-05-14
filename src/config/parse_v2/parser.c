@@ -755,7 +755,7 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 
 			// )
 			tok = Lexer_peek(p->lex);
-			if (tok->type != Tok_Rparen) {
+			if (!tok || tok->type != Tok_Rparen) {
 				return Parser_SYNTAX_ERR;
 			}
 			Lexer_consume(p->lex);
@@ -765,7 +765,7 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 	case ParseNodeID_ArgList:
 		{
 			ParseNode_ArgExpr *tail = NULL;
-			while (Lexer_peek(p->lex)->type != Tok_Rparen) {
+			while (Lexer_peek(p->lex) && Lexer_peek(p->lex)->type != Tok_Rparen) {
 				// ArgExpr
 				ParseNode *arg = ParseNode_new(ParseNodeID_ArgExpr);
 				enum Parser_ERR err = Parser_parse_node(p, arg);
@@ -784,7 +784,7 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 
 				// Consume delim 
 				tok = Lexer_peek(p->lex);
-				if (tok->type == Tok_Comma) {
+				if (tok && tok->type == Tok_Comma) {
 					Lexer_consume(p->lex);
 				}
 			}

@@ -80,7 +80,7 @@ int Config_parse(Config *conf, const char *path) {
 	Config_init(conf);
 
 	// Open mpl.conf
-	FILE *fp = fopen(path, "r");
+	FILE *fp = path ? fopen(path, "r") : NULL;
 	if (!fp) {
 		LOG(Verbosity_VERBOSE, "No mpl.conf was found, applying default config\n");
 		enum Parser_ERR err = Parser_walk(conf->parser, conf, Parser_WALK_ALL, conf->defaults);
