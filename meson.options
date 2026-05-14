@@ -2,10 +2,6 @@
 option('pulseaudio', type : 'feature', value : 'auto')
 option('pipewire', type : 'feature', value : 'auto')
 option('wasapi', type : 'feature', value : 'auto')
-# Use the simpler ASCII-only implementation of KeybindMap defined in
-# keybind_map_ascii.c
-# By default, MPL uses the UTF-8 implementation in keybind_map.cpp
-option('ascii_keybinds', type : 'boolean', value : false)
 
 # Enable various UserInterfaces
 option('cli', type : 'feature', value : 'auto')

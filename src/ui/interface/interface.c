@@ -2,9 +2,6 @@
 #include "error.h"
 #include "ui/event_queue.h"
 
-#include <string.h>
-
-
 enum UserInterface_ERR UserInterface_init(UserInterface *ui, Config *config) {
 	// Initialize event queue
 	ui->evt_queue = EventQueue_new();

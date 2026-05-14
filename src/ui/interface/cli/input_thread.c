@@ -36,7 +36,8 @@ struct InputThread {
 	pthread_t thread;
 
 	enum InputMode mode; // Input Mode
-	pthread_mutex_t mode_lock; // Mutex guaranteeing the thread will stay in a given mode while held
+	bool has_prompt;
+	pthread_mutex_t mode_lock; // Lock over {mode} and {has_prompt}
 
 	struct termios orig_term_opts; // Original terminal state we reset to before exiting
 };
@@ -219,13 +220,18 @@ void InputThread_set_mode(InputThread *thr, enum InputMode mode) {
 	switch (thr->mode) {
 	case InputMode_KEY:
 		{
-			// Clean up readline input
-			rl_callback_handler_remove();
-			rl_input_thread_ = NULL;
+			if (thr->has_prompt) {
+				// Clean up readline input
+				rl_callback_handler_remove();
+				rl_input_thread_ = NULL;
+				// Advance to a blank line
+				printf("\n");
+			}
 			// Tell the terminal we want to receive input without line buffering
 			struct termios term_opts = thr->orig_term_opts;
 			term_opts.c_lflag &= ~(ECHO | ICANON);
 			tcsetattr(STDIN_FILENO, TCSANOW, &term_opts);
+			thr->has_prompt = false;
 		}
 		break;
 	
@@ -240,6 +246,7 @@ void InputThread_set_mode(InputThread *thr, enum InputMode mode) {
 			rl_instream = thr->input;
 			rl_input_thread_ = thr;
 			rl_callback_handler_install("[mpl]$ ", rl_line_ready_cb_);
+			thr->has_prompt = true;
 		}
 		break;
 	}
