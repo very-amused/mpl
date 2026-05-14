@@ -86,7 +86,7 @@ static enum UserInterface_ERR mainloop(void * ctx__,
 			{
 				EventBody_Keypress key = evt.body_inline;
 				LOG(Verbosity_DEBUG, "Pulled keypress `%c` from EventQueue\n", key);
-				enum Keybind_ERR err = KeybindMap_call_keybind(config->keybinds, key);
+				enum Keybind_ERR err = KeybindMap_call_keybind(config->keybinds, key, false);
 				if (err != Keybind_OK) {
 					LOG(Verbosity_VERBOSE, "Keybind error: %s\n", Keybind_ERR_name(err));
 				}

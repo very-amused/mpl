@@ -14,6 +14,7 @@
 	VARIANT(Tok_Rparen) /* ) */ \
 	VARIANT(Tok_Comma) /* , */ \
 	VARIANT(Tok_Bind) /* bind (used in keybind definitions) */ \
+	VARIANT(Tok_ShBind) /* shbind (used in shell keybind defs) */ \
 	/* Literals */ \
 	VARIANT(Tok_I32Lit) \
 	VARIANT(Tok_StrLit) \

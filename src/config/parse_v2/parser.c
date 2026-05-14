@@ -114,6 +114,7 @@ struct ParseNode_SettingStmt {
 struct ParseNode_KeybindStmt {
 	ParseNode node;
 	wchar_t keycode; // (lhs)
+	bool shell; // true if this is a shell bind (shbind)
 };
 
 struct ParseNode_FnCallExpr {
@@ -413,6 +414,7 @@ ParseNode *Parser_parse(Parser *p, Parser_LineError_Vec **errors) {
 				lineno++;
 				break;
 
+			case Tok_ShBind:
 			case Tok_Bind:
 				child = ParseNode_new(ParseNodeID_ShellStmt);
 				break;
@@ -491,6 +493,7 @@ ParseNode *Parser_parse_ShellStmt(Parser *p, Parser_LineError *err) {
 			case Tok_Semi:
 				continue;
 
+			case Tok_ShBind:
 			case Tok_Bind:
 				err->type = Parser_parse_node(p, stmt);
 				break;
@@ -604,9 +607,13 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 	case ParseNodeID_ShellStmt:
 		{
 			switch (tok->type) {
+			case Tok_ShBind:
 			case Tok_Bind:
 				{
 					node->child = ParseNode_new(ParseNodeID_KeybindStmt);
+					if (tok->type == Tok_ShBind) {
+						((ParseNode_KeybindStmt *)node->child)->shell = true;
+					}
 					return Parser_parse_node(p, node->child);
 				}
 			case Tok_Ident:
@@ -627,10 +634,11 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 	case ParseNodeID_KeybindStmt:
 		{
 			ParseNode_KeybindStmt *stmt = (ParseNode_KeybindStmt *)node;
-			// bind
-			if (tok->type != Tok_Bind) {
+			// bind / shbind
+			if (!(tok->type == Tok_Bind || tok->type == Tok_ShBind)) {
 				return Parser_SYNTAX_ERR;
 			}
+			stmt->shell = tok->type == Tok_ShBind;
 			Lexer_consume(p->lex);
 
 			// {keysym}
@@ -882,7 +890,7 @@ enum Parser_ERR Parser_walk(Parser *p, Config *config, ParserWalkFlags flags, Pa
 			}
 
 			ParseNode_KeybindStmt *stmt = (ParseNode_KeybindStmt *)tree;
-			enum Keybind_ERR err = KeybindMap_define_keybind(config->keybinds, stmt->keycode, tree->child);
+			enum Keybind_ERR err = KeybindMap_define_keybind(config->keybinds, stmt->keycode, tree->child, stmt->shell);
 			if (err != Keybind_OK) {
 				return Parser_KEYBIND_ERR;
 			}

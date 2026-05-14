@@ -83,6 +83,7 @@ enum Parser_ERR Lexer_tokenize(Lexer *l, const char *chunk) {
 	setlocale(LC_ALL, "");
 
 	static const char KEYWORD_BIND[] = "bind";
+	static const char KEYWORD_SHELL_BIND[] = "shbind";
 	static const char KEYWORD_TRUE[] = "true";
 	static const char KEYWORD_FALSE[] = "false";
 
@@ -185,6 +186,7 @@ enum Parser_ERR Lexer_tokenize(Lexer *l, const char *chunk) {
 					c += kw_len;
 
 					// Parse keyname token
+parse_keysym:
 					tok = malloc(sizeof(LexerToken));
 					tok->type = Tok_Keysym;
 					while (*c == ' ' || *c == '\t') {
@@ -209,6 +211,17 @@ enum Parser_ERR Lexer_tokenize(Lexer *l, const char *chunk) {
 					tok->type = Tok_BoolLit;
 					tok->bool_lit = false;
 					c += kw_len;
+				}
+				break;
+			}
+			case 's':
+			{
+				const size_t kw_len = sizeof(KEYWORD_SHELL_BIND)-1;
+				if (strncmp(c, KEYWORD_SHELL_BIND, kw_len) == 0) {
+					tok->type = Tok_ShBind;
+					Lexer_append(l, tok);
+					c += kw_len;
+					goto parse_keysym;
 				}
 				break;
 			}

@@ -216,7 +216,8 @@ static int TermIOThread_shell(TermIOThread *thr, struct pollfd pollfds[2]) {
 
 		char c = rl_getc(thr->input);
 		// Call any shell-enabled keybind bound to {c}
-		if (KeybindMap_call_shell_keybind(thr->keybinds, c) == Keybind_OK) {
+		// FIXME: we NEED mod key support after v0.5.0
+		if (KeybindMap_call_keybind(thr->keybinds, c, true) == Keybind_OK) {
 			continue;
 		}
 		// If {c} is not bound to a shell-enabled keybind,
