@@ -4,6 +4,7 @@
 #include "ui/event_queue.h"
 #include "ui/event.h"
 #include "util/log.h"
+#include "termio_events.h"
 
 #include <pthread.h>
 #include <stdlib.h>
@@ -26,12 +27,8 @@ struct InputThread {
 
 	int input_fd; // FD to receive input on, usually stdin
 	FILE *input;
-	// Pipe used to interrupt blocking and shutdown the input thread
-	int shutdown_pipe[2];
-	// Pipe used to interrupt blocking for changing the input mode
-	int change_mode_pipe[2];
-	// Whether we're polling (so it's safe to write to pipes)
-	atomic_bool is_polling;
+	// Pipe used to send TermIO_Event's which will wake up the thread
+	int evt_pipe[2];
 
 	pthread_t thread;
 
@@ -65,9 +62,8 @@ InputThread *InputThread_new(EventQueue *eq, KeybindMap *keybinds) {
 	// Store original terminal state
 	tcgetattr(STDIN_FILENO, &thr->orig_term_opts);
 
-	// Initialize pipes
-	pipe(thr->shutdown_pipe);
-	pipe(thr->change_mode_pipe);
+	// Initialize event pipe for receiving TermIO events from the main thread
+	pipe(thr->evt_pipe);
 
 	// Start input thread
 	pthread_create(&thr->thread, NULL, InputThread_loop, thr);
@@ -77,14 +73,14 @@ InputThread *InputThread_new(EventQueue *eq, KeybindMap *keybinds) {
 
 void InputThread_free(InputThread *thr) {
 	// Send stop signal to thread
-	int cancel = 1;
-	write(thr->shutdown_pipe[1], &cancel, sizeof(cancel));
+	const TermIO_Event shutdown_evt = {.event_type = TermIO_SHUTDOWN};
+	write(thr->evt_pipe[1], &shutdown_evt, sizeof(TermIO_Event));
 
 	// Join thread so we can safely free its resources
 	pthread_join(thr->thread, NULL);
 
 	// Free thread resources
-	close(thr->shutdown_pipe[1]);
+	close(thr->evt_pipe[1]);
 	free(thr);
 }
 
@@ -94,15 +90,27 @@ static const char CHANGE_MODE = -2;
 //
 // NOTE: assumes
 // 1. thr->input_fd is on pollfds[0]
-// 2. thr->cancel_pipe[0] is on pollfds[1]
-// 3. thr->mode_change_pipe[0] is on pollfds[2]
-static char InputThread_getchar(InputThread *thr, struct pollfd pollfds[3]) {
-	poll(pollfds, 3, -1);
+// 2. thr->evt_pipe[0] is on pollfds[1]
+static char InputThread_getchar(InputThread *thr, struct pollfd pollfds[2]) {
+	poll(pollfds, 2, -1);
 	if (pollfds[1].revents & POLLIN) {
-		return EOF;
-	} else if (pollfds[2].revents & POLLIN) {
-		int tmp;
-		read(thr->change_mode_pipe[0], &tmp, sizeof(tmp));
+		TermIO_Event evt;
+		read(pollfds[1].fd, &evt, sizeof(TermIO_Event));
+
+		switch (evt.event_type) {
+			case TermIO_SHUTDOWN:
+				return EOF;
+			case TermIO_CHANGE_MODE:
+				return CHANGE_MODE;
+			case TermIO_TIMECODE:
+				// TODO: do what refresh_timecode in cli.c does
+				break;
+			case TermIO_PLAYBACK_STATE:
+				// TODO: update playback state indicator
+				// currently, we have no playback state indicator
+				break;
+		}
+		// This just restarts the thread's loop
 		return CHANGE_MODE;
 	}
 
@@ -114,15 +122,30 @@ static char InputThread_getchar(InputThread *thr, struct pollfd pollfds[3]) {
 static struct InputThread *rl_input_thread_ = NULL;
 
 // Enter a readline-powered shell, passing shell line events as needed.
-int InputThread_shell(InputThread *thr, struct pollfd pollfds[3]) {
+//
+// NOTE: assumes
+// 1. thr->input_fd is on pollfds[0]
+// 2. thr->evt_pipe[0] is on pollfds[1]
+int InputThread_shell(InputThread *thr, struct pollfd pollfds[2]) {
 	while (true) {
-		poll(pollfds, 3, -1);
+		poll(pollfds, 2, -1);
 		if (pollfds[1].revents & POLLIN) {
-			return EOF;
-		} else if (pollfds[2].revents & POLLIN) {
-			int tmp;
-			read(thr->change_mode_pipe[0], &tmp, sizeof(tmp));
-			return CHANGE_MODE;
+			TermIO_Event evt;
+			read(pollfds[1].fd, &evt, sizeof(TermIO_Event));
+
+			switch (evt.event_type) {
+				case TermIO_SHUTDOWN:
+					return EOF;
+				case TermIO_CHANGE_MODE:
+					return CHANGE_MODE;
+				case TermIO_TIMECODE:
+					// TODO: impl
+					break;
+				case TermIO_PLAYBACK_STATE:
+					// TODO impl
+					break;
+			}
+			continue;
 		}
 
 		char c = rl_getc(thr->input);
@@ -160,15 +183,11 @@ void *InputThread_loop(void *thr__) {
 	InputThread_set_mode(thr, InputMode_KEY);
 
 	// Set up FD polling to make our blocking reads soft-cancelable
-	struct pollfd pollfds[3];
+	struct pollfd pollfds[2];
 	pollfds[0].fd = thr->input_fd;
 	pollfds[0].events = POLLIN;
-	pollfds[1].fd = thr->shutdown_pipe[0];
+	pollfds[1].fd = thr->evt_pipe[0];
 	pollfds[1].events = POLLIN;
-	pollfds[2].fd = thr->change_mode_pipe[0];
-	pollfds[2].events = POLLIN;
-
-	atomic_store(&thr->is_polling, true);
 
 	while (true) {
 		// Get user input
@@ -205,7 +224,7 @@ void *InputThread_loop(void *thr__) {
 
 cancel:
 	LOG(Verbosity_VERBOSE, "Input thread received cancel signal\n");
-	close(thr->shutdown_pipe[0]);
+	close(thr->evt_pipe[0]);
 	tcsetattr(STDIN_FILENO, TCSANOW, &thr->orig_term_opts);
 
 	return NULL;
@@ -254,8 +273,6 @@ void InputThread_set_mode(InputThread *thr, enum InputMode mode) {
 	pthread_mutex_unlock(&thr->mode_lock);
 
 	// Cancel anything blocking us from implementing the mode change
-	if (atomic_load(&thr->is_polling)) {
-		int cancel = 1;
-		write(thr->change_mode_pipe[1], &cancel, sizeof(cancel));
-	}
+	const TermIO_Event evt = {.event_type = TermIO_CHANGE_MODE};
+	write(thr->evt_pipe[1], &evt, sizeof(TermIO_Event));
 }
