@@ -128,8 +128,8 @@ static char InputThread_getchar(TermIOThread *thr, struct pollfd pollfds[2]) {
 					// Render timecode and playback state
 #define WRITE_PLAYBACK_INFO() \
 					thr->playback_state == Queue_STOPPED \
-					? fprintf(thr->output, "%s", get_playback_icon(thr->playback_state)) \
-					: fprintf(thr->output, "%s/%s %s", thr->timecode_buf, thr->duration_buf, get_playback_icon(thr->playback_state))
+						? fprintf(thr->output, "%s", get_playback_icon(thr->playback_state)) \
+						: fprintf(thr->output, "%s/%s %s", thr->timecode_buf, thr->duration_buf, get_playback_icon(thr->playback_state))
 
 					fprintf(thr->output, CLEAR_LINE_VT100);
 					WRITE_PLAYBACK_INFO();
@@ -159,12 +159,34 @@ static char InputThread_getchar(TermIOThread *thr, struct pollfd pollfds[2]) {
 // we need a global pointer to the InputThread we notify when a line is ready
 static TermIOThread *rl_thr_ptr_ = NULL;
 
+static void write_playback_info(TermIOThread *thr) {
+	static const char PROMPT_FMT[] = "%s/%s [mpl %s]$ ";
+	static const char PROMPT_FMT_STOPPED[] = "[mpl %s]$ ";
+
+	static char prompt[255];
+	static size_t prompt_len = 0;
+	const size_t new_prompt_len = thr->playback_state == Queue_STOPPED
+		? snprintf(prompt, sizeof(prompt), PROMPT_FMT_STOPPED, get_playback_icon(thr->playback_state))
+		: snprintf(prompt, sizeof(prompt), PROMPT_FMT, thr->timecode_buf, thr->duration_buf, get_playback_icon(thr->playback_state));
+	if (new_prompt_len != prompt_len) {
+		// Make readline aware of the prompt's length for redisplay purposes
+		rl_set_prompt(prompt);
+		rl_already_prompted = true;
+	}
+
+	fprintf(thr->output, CLEAR_LINE_VT100);
+	fprintf(thr->output, "%s", prompt);
+	rl_on_new_line_with_prompt();
+	rl_redisplay();
+}
+
 // Enter a readline-powered shell, passing shell line events as needed.
 //
 // NOTE: assumes
 // 1. thr->input_fd is on pollfds[0]
 // 2. thr->evt_pipe[0] is on pollfds[1]
 int InputThread_shell(TermIOThread *thr, struct pollfd pollfds[2]) {
+
 	while (true) {
 		poll(pollfds, 2, -1);
 		if (pollfds[1].revents & POLLIN) {
@@ -177,10 +199,15 @@ int InputThread_shell(TermIOThread *thr, struct pollfd pollfds[2]) {
 				case TermIO_CHANGE_MODE:
 					return CONTINUE_IO_LOOP;
 				case TermIO_TIMECODE:
-					// TODO: impl
+					// Update timecode
+					strncpy(thr->timecode_buf, evt.body, sizeof(thr->timecode_buf)-1);
+					strncpy(thr->duration_buf, evt.body2, sizeof(thr->duration_buf)-1);
+					// Render timecode and playback state
+					write_playback_info(thr);
 					break;
 				case TermIO_PLAYBACK_STATE:
-					// TODO impl
+					thr->playback_state = evt.body_inline;
+					write_playback_info(thr);
 					break;
 			}
 			continue;
@@ -298,9 +325,12 @@ void TermIOThread_set_mode(TermIOThread *thr, enum InputMode mode) {
 			struct termios term_opts = thr->orig_term_opts;
 			term_opts.c_lflag |= (ECHO | ICANON);
 			tcsetattr(STDIN_FILENO, TCSANOW, &term_opts);
+			// Advance to a blank line
+			fprintf(thr->output, "\n");
 			// Setup readline input
 			rl_initialize();
 			rl_instream = thr->input;
+			rl_outstream = thr->output;
 			rl_thr_ptr_ = thr;
 			rl_callback_handler_install("[mpl]$ ", rl_line_ready_cb_);
 			thr->has_prompt = true;

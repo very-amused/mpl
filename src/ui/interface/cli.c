@@ -4,7 +4,6 @@
 #include "error.h"
 #include "interface.h"
 #include "track_queue/queue.h"
-#include "track_queue/state.h"
 #include "ui/event.h"
 #include "ui/event_queue.h"
 #include "cli/input_thread.h"
