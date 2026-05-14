@@ -4,6 +4,7 @@
 #include "error.h"
 #include "interface.h"
 #include "track_queue/queue.h"
+#include "track_queue/state.h"
 #include "ui/event.h"
 #include "ui/event_queue.h"
 #include "cli/input_thread.h"
@@ -13,7 +14,7 @@
 
 // CLI context
 typedef struct Ctx {
-	TermIOThread *input_thread;	
+	TermIOThread *io_thread;	
 } Ctx;
 
 // UserInterface methods
@@ -40,8 +41,8 @@ static enum UserInterface_ERR init(void *ud, EventQueue *evt_queue, Config *conf
 	Ctx *ctx = ud;
 	memset(ctx, 0, sizeof(Ctx));
 
-	ctx->input_thread = TermIOThread_new(evt_queue, config->keybinds);
-	if (!ctx->input_thread) {
+	ctx->io_thread = TermIOThread_new(evt_queue, config->keybinds);
+	if (!ctx->io_thread) {
 		return UserInterface_BAD_ALLOC;
 	}
 
@@ -50,15 +51,15 @@ static enum UserInterface_ERR init(void *ud, EventQueue *evt_queue, Config *conf
 
 static void deinit(void *ud) {
 	Ctx *ctx = ud;
-	if (ctx->input_thread) {
-		TermIOThread_free(ctx->input_thread);
-		ctx->input_thread = NULL;
+	if (ctx->io_thread) {
+		TermIOThread_free(ctx->io_thread);
+		ctx->io_thread = NULL;
 	}
 }
 
 /* Mainloop for CLI */
 
-// Print track timecode and duration
+// Update track timecode and duration
 static void refresh_timecode(EventBody_Timecode timecode, const AudioTrack *audio, const Settings *settings, TermIOThread *thr);
 // Print track metadata
 static void refresh_metadata(const TrackMeta *meta);
@@ -123,8 +124,12 @@ static enum UserInterface_ERR mainloop(void * ctx__,
 			}
 			break;
 
+		case mpl_PLAYBACK_STATE:
+			TermIOThread_update_playback_state(ctx->io_thread, evt.body_inline);
+			break;
+
 		case mpl_TIMECODE:
-			refresh_timecode(evt.body_inline, &TrackQueue_cur_track(track_queue)->audio, &config->settings, ctx->input_thread);
+			refresh_timecode(evt.body_inline, &TrackQueue_cur_track(track_queue)->audio, &config->settings, ctx->io_thread);
 			break;
 	
 		case mpl_TRACK_META:
@@ -145,13 +150,13 @@ static enum UserInterface_ERR mainloop(void * ctx__,
 
 		case mpl_SHELL_OPEN:
 			{
-				TermIOThread_set_mode(ctx->input_thread, InputMode_SHELL);
+				TermIOThread_set_mode(ctx->io_thread, InputMode_SHELL);
 			}
 			break;
 
 		case mpl_SHELL_CLOSE:
 			{
-				TermIOThread_set_mode(ctx->input_thread, InputMode_KEY);
+				TermIOThread_set_mode(ctx->io_thread, InputMode_KEY);
 			}
 			break;
 

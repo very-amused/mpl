@@ -1,6 +1,7 @@
 #pragma once
 #include "error.h"
 #include "track_meta.h"
+#include "track_queue/state.h"
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -10,6 +11,7 @@
 	VARIANT(mpl_KEYPRESS) \
 	VARIANT(mpl_INPUT_LINE) \
 	VARIANT(mpl_TIMECODE) \
+	VARIANT(mpl_PLAYBACK_STATE) \
 	VARIANT(mpl_TRACK_META) \
 	VARIANT(mpl_TRACK_END) \
 	VARIANT(mpl_SHELL_OPEN) \
@@ -46,3 +48,6 @@ typedef uint64_t EventBody_Timecode;
 
 // Track metadata to render
 typedef TrackMeta EventBody_TrackMeta;
+
+// Current playback state
+typedef enum Queue_PLAYBACK_STATE EventBody_PlaybackState;

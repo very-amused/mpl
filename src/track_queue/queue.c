@@ -23,6 +23,17 @@ struct TrackQueueNode {
 	TrackQueueNode *next;
 };
 
+// Change the playback state and notify interested parties of the change via the main EventQueue
+void change_playback_state(TrackQueue *q, enum Queue_PLAYBACK_STATE state) {
+	q->playback_state	= state;
+	const Event evt = {
+		.event_type = mpl_PLAYBACK_STATE,
+		.body_size = sizeof(enum Queue_PLAYBACK_STATE),
+		.body_inline = q->playback_state
+	};
+	EventSubQueue_send(q->evt_sq, &evt, false);
+}
+
 // Initialize an empty queue
 int TrackQueue_init(TrackQueue *q, const Settings *settings, EventQueue *eq) {
 	q->head = malloc(sizeof(TrackQueueNode));
@@ -251,17 +262,17 @@ int TrackQueue_play(TrackQueue *q, bool pause) {
 	}
 
 	if (pause && q->playback_state == Queue_PLAYING) {
-		q->playback_state = Queue_PAUSED;
+		change_playback_state(q, Queue_PAUSED);
 		BufferThread_lock(q->buffer_thread);
 		return 0;
 	} else if (!pause && q->playback_state == Queue_PAUSED) {
 		status = BufferThread_unlock(q->buffer_thread);
 		if (status == 0) {
-			q->playback_state = Queue_PLAYING;
+			change_playback_state(q, Queue_PLAYING);
 		}
 		return status;
 	}
-	q->playback_state = pause ? Queue_PAUSED : Queue_PLAYING;
+	change_playback_state(q, pause ? Queue_PAUSED : Queue_PLAYING);
 
 	// Start a nonblocking buffer loop
 	AudioTrack *cur_audio = q->cur != q->head ? &q->cur->track->audio : NULL;
