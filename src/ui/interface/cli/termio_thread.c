@@ -309,7 +309,7 @@ void TermIOThread_set_mode(TermIOThread *thr, enum InputMode mode) {
 				rl_callback_handler_remove();
 				rl_thr_ptr_ = NULL;
 				// Advance to a blank line
-				printf("\n");
+				fprintf(thr->output, "\n");
 			}
 			// Tell the terminal we want to receive input without line buffering
 			struct termios term_opts = thr->orig_term_opts;
