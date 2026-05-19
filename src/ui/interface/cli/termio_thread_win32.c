@@ -116,3 +116,7 @@ static char TermIOThread_getchar(TermIOThread *thr) {
 
 	return input_key;
 }
+
+// Enter a readline-powered shell, passing shell line events as they come
+static int TermIOThread_shell(TermIOThread *thr) {
+}

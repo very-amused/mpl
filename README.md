@@ -3,6 +3,11 @@ A WIP music player with a focus on build-time modularity, stability, and perform
 
 ## Compiling
 
+### Dependencies
+- ffmpeg
+- readline 
+- A Nerd Font (needed for icons, can be disabled with `-Dnerdfont_icons=false`)
+
 ### Configure
 ```sh
 meson setup build
