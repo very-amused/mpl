@@ -13,7 +13,7 @@
 
 // NOTE: We can't poll on win32, so we rely on pthread_cancel instead
 #include "error.h"
-#include "input_thread.h"
+#include "termio_thread.h"
 #include "ui/event_queue.h"
 #include "ui/event.h"
 #include "util/log.h"

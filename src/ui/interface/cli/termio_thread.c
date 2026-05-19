@@ -1,4 +1,4 @@
-#include "input_thread.h"
+#include "termio_thread.h"
 #include "config/keybind/keybind_map.h"
 #include "error.h"
 #include "track_queue/state.h"
