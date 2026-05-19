@@ -10,7 +10,7 @@ cd build
 meson configure -Dbuildtype=release # debug is the default build type
 
 ### Customization:
-meson configure -Dnerdfont_icons=false # Enable Nerdfont icons (default: true)
+meson configure -Dnerdfont_icons=false # Enable/disable Nerdfont icons (default: true)
 
 ### DEV OPTIONS:
 # Build with emulated audio output (no sound):
