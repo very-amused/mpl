@@ -23,6 +23,8 @@
 #include "ui/icons.h"
 #include "util/log.h"
 
+/* #region IO handling */
+
 struct TermIOThread {
 	// EventSubQueue for sending input events to the main thread
 	EventSubQueue *evt_sq;
@@ -43,7 +45,7 @@ struct TermIOThread {
 	char duration_buf[255];
 	enum Queue_PLAYBACK_STATE playback_state;
 
-	pthread_t thread;
+	pthread_t *thread;
 
 	enum InputMode mode; // How we're processing input
 	bool has_prompt;
@@ -181,3 +183,52 @@ static void rl_line_ready_cb_(char *line) {
 	Event evt = {.event_type = mpl_INPUT_LINE, .body_size = strlen(line), .body = line};
 	EventSubQueue_send(thr->evt_sq, &evt, false);
 }
+
+/* #endregion */
+
+/* #region TermIOThread implementation */
+
+
+TermIOThread *TermIOThread_new(EventQueue *eq, KeybindMap *keybinds) {
+	TermIOThread *thr = malloc(sizeof(TermIOThread));
+	CHECK_ALLOC(thr, NULL);
+	memset(thr, 0, sizeof(TermIOThread));
+
+	thr->evt_sq = EventQueue_connect(eq, 100);
+	if (!thr->evt_sq) {
+		TermIOThread_free(thr);
+		return NULL;
+	}
+	thr->keybinds = keybinds;
+
+	thr->input = GetStdHandle(STD_INPUT_HANDLE);
+	// Initialize event pipe and its associated semaphore
+	bool ok = CreatePipe(&thr->evt_pipe_rd, &thr->evt_pipe_wr, NULL, 0);
+	if (!ok) {
+		TermIOThread_free(thr);
+		return NULL;
+	}
+	thr->evt_pipe_sem = CreateSemaphoreA(NULL, 0, -1u, NULL);
+	if (!thr->evt_pipe_sem) {
+		TermIOThread_free(thr);
+		return NULL;
+	}
+
+	// TODO
+}
+
+void TermIOThread_free(TermIOThread *thr) {
+	// TODO: shutdown thread
+
+	// Close event pipe and its associated semaphore
+	if (thr->evt_pipe_sem)
+		CloseHandle(thr->evt_pipe_sem);
+	if (thr->evt_pipe_wr)
+		CloseHandle(thr->evt_pipe_wr);
+	if (thr->evt_pipe_rd)
+		CloseHandle(thr->evt_pipe_rd);
+
+	free(thr);
+}
+
+/* #endregion */
