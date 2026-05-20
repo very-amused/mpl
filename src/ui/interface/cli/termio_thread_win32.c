@@ -13,12 +13,14 @@
 #include <fileapi.h>
 #include <wchar.h>
 
+#include "config/keybind/keybind_map.h"
 #include "error.h"
 #include "termio_thread.h"
 #include "termio_events.h"
 #include "track_queue/state.h"
 #include "ui/event.h"
 #include "ui/event_queue.h"
+#include "ui/icons.h"
 #include "util/log.h"
 
 struct TermIOThread {
@@ -48,23 +50,55 @@ struct TermIOThread {
 	pthread_mutex_t mode_lock; // Lock over {mode} and {has_prompt}
 };
 
-static const char CONTINUE_IO_LOOP = -2;
 
 // Update timecode and playback state in terminal output
-static void write_playback_info(TermIOThread *thr, enum InputMode mode);
+static void write_playback_info(TermIOThread *thr, enum InputMode mode) {
+	// Used to clear current line when refreshing timecode or playback state
+	static const char CLEAR_LINE_VT100[] = "\033[2K\r";
 
-// Block until an input character is read
-static char TermIOThread_getchar(TermIOThread *thr) {
+	if (mode == InputMode_KEY) {
+		char buf[255];
+		const size_t buf_len = thr->playback_state == Queue_STOPPED
+			? snprintf(buf, sizeof(buf), "(%s)", get_playback_icon(thr->playback_state))
+			: snprintf(buf, sizeof(buf), "(%s) %s/%s", get_playback_icon(thr->playback_state), thr->timecode_buf, thr->duration_buf);
+		WriteConsoleA(thr->output, CLEAR_LINE_VT100, sizeof(CLEAR_LINE_VT100)-1, NULL, NULL);
+		WriteConsoleA(thr->output, buf, buf_len, NULL, NULL);
+	} else if (mode == InputMode_SHELL) {
+		static const char PROMPT_FMT[] = "(%s) %s/%s [mpl]$ ";
+		static const char PROMPT_FMT_STOPPED[] = "(%s) [mpl]$ ";
+
+		static char prompt[255];
+		static size_t prompt_len = 0;
+		const size_t new_prompt_len = thr->playback_state == Queue_STOPPED
+			? snprintf(prompt, sizeof(prompt), PROMPT_FMT_STOPPED, get_playback_icon(thr->playback_state))
+			: snprintf(prompt, sizeof(prompt), PROMPT_FMT, get_playback_icon(thr->playback_state), thr->timecode_buf, thr->duration_buf);
+		if (new_prompt_len != prompt_len) {
+			// Make readline aware of the prompt's length for redisplay purposes
+			rl_set_prompt(prompt);
+			rl_already_prompted = true;
+		}
+
+		WriteConsoleA(thr->output, CLEAR_LINE_VT100, sizeof(CLEAR_LINE_VT100)-1, NULL, NULL);
+		WriteConsoleA(thr->output, prompt, prompt_len, NULL, NULL);
+	}
+}
+
+static const char CONTINUE_IO_LOOP = -2;
+
+// If mode == InputMode_KEY: get a single keypress input and return it (RETURN VALUE: char)
+// If mode == InputMode_SHELL: handle shell input until mode change or shutdown (RETURN VALUE: int)
+static int TermIOThread_get_input(TermIOThread *thr, enum InputMode mode) {
 	// NOTE: WaitForMultipleObjects will return the lowest index corresponding to a signal object.
 	// We want to be responsive to a shutdown signal (among other events), so we place evt_pipe_sem first in the array
 	HANDLE object_handles[] = {thr->evt_pipe_sem, thr->input};
 	static const DWORD n_handles = sizeof(object_handles) / sizeof(object_handles[0]);
 
-	char input_key = '\0';
-	while (!input_key) {
+	while (true) {
+		// TODO: gate these logs behind a termio_debug flag
 		LOG(Verbosity_DEBUG, "Blocking input on WaitForMultipleObjects...\n");
 		DWORD status = WaitForMultipleObjects(n_handles, object_handles, false, INFINITE);
 		LOG(Verbosity_DEBUG, "Done with WaitForMultipleObjects\n");
+
 
 		// This is verbose but it's better to be API-compliant than rely on UB
 		if (!(status >= WAIT_OBJECT_0 && status <= WAIT_OBJECT_0+(n_handles-1))) {
@@ -73,6 +107,7 @@ static char TermIOThread_getchar(TermIOThread *thr) {
 		}
 
 		const DWORD signal_index = status - WAIT_OBJECT_0;
+
 		// NOTE: semaphores are automatically decremented by WaitForMultipleObjects
 		if (signal_index == 0) {
 			// Read event from pipe
@@ -94,7 +129,7 @@ static char TermIOThread_getchar(TermIOThread *thr) {
 						strncpy(thr->timecode_buf, evt.body, sizeof(thr->timecode_buf)-1);
 						strncpy(thr->duration_buf, evt.body2, sizeof(thr->duration_buf)-1);
 						// Render timecode and playback state
-						write_playback_info(thr, InputMode_KEY);
+						write_playback_info(thr, mode);
 					}
 					break;
 
@@ -103,84 +138,30 @@ static char TermIOThread_getchar(TermIOThread *thr) {
 						// Update playback state
 						thr->playback_state = evt.body_inline;
 						// Render timecode and playback state
-						write_playback_info(thr, InputMode_KEY);
+						write_playback_info(thr, mode);
 					}
 					break;
 			}
 			continue;
 		}
 
-		DWORD n_read;
-		LOG(Verbosity_DEBUG, "Blocking on ReadConsole...\n");
-		ReadConsoleA(thr->input, &input_key, 1, &n_read, NULL);
+		DWORD n_read; // unused
+		wchar_t c;
+		ReadConsoleW(thr->input, &c, 1, &n_read, NULL);
 		// We have to flush the input buffer to avoid the keypress event re-firing (yes, it is bad that we have to do this)
 		FlushConsoleInputBuffer(thr->input);
-		LOG(Verbosity_DEBUG, "Done with ReadConsole\n");
-	}
-
-	return input_key;
-}
-
-// Enter a readline-powered shell, passing shell line events as they come
-static int TermIOThread_shell(TermIOThread *thr) {
-	write_playback_info(thr, InputMode_SHELL);
-
-	HANDLE object_handles[] = {thr->evt_pipe_sem, thr->input};
-	static const DWORD n_handles = sizeof(object_handles) / sizeof(object_handles[0]);
-
-	while (true) {
-		DWORD status = WaitForMultipleObjects(n_handles, object_handles, false, INFINITE);
-		if (!(status >= WAIT_OBJECT_0 && status <= WAIT_OBJECT_0+(n_handles-1))) {
-			LOG(Verbosity_NORMAL, "WaitForMultipleObjects failed. This should never happen\n");
-			continue;
-		}
-
-		const DWORD signal_index = status - WAIT_OBJECT_0;
-
-		if (signal_index == 0) {
-			TermIO_Event evt;
-			bool ok = ReadFile(thr->evt_pipe_rd, &evt, sizeof(TermIO_Event), NULL, NULL);
-			if (!ok) {
-				LOG(Verbosity_VERBOSE, "Error: evt_pipe_sem desync'd from actual event pipe\n");
+		if (mode == InputMode_KEY) {
+			return c;
+		} else if (mode == InputMode_SHELL) {
+			// Call any shell-enabled keybind bound to {c}
+			if (KeybindMap_call_keybind(thr->keybinds, c, true) == Keybind_OK) {
 				continue;
 			}
-
-			switch (evt.event_type) {
-				case TermIO_SHUTDOWN:
-					return EOF;
-				case TermIO_CHANGE_MODE:
-					return CONTINUE_IO_LOOP;
-				case TermIO_TIMECODE:
-					{
-						strncpy(thr->timecode_buf, evt.body, sizeof(thr->timecode_buf)-1);
-						strncpy(thr->duration_buf, evt.body2, sizeof(thr->duration_buf)-1);
-						write_playback_info(thr, InputMode_SHELL);
-					}
-					break;
-				case TermIO_PLAYBACK_STATE:
-					{
-						thr->playback_state = evt.body_inline;
-						write_playback_info(thr, InputMode_SHELL);
-					}
-					break;
-			}
-
-			continue;
+			// If {c} is not bound to a shell keybind,
+			// return it to the input stream and have readline process it
+			rl_stuff_char(c);
+			rl_callback_read_char();
 		}
-
-		// Read the next character of input
-		wchar_t c;
-		DWORD n_read;
-		ReadConsoleW(thr->input, &c, 1, &n_read, NULL);
-		FlushConsoleInputBuffer(thr->input);
-		// Call any shell-enabled keybind bound to {c}
-		if (KeybindMap_call_keybind(thr->keybinds, c, true) == Keybind_OK) {
-			continue;
-		}
-		// If {c} is not bound to a shell keybind,
-		// return it to the input stream and have readline process it
-		rl_stuff_char(c);
-		rl_callback_read_char();
 	}
 }
 
