@@ -1,3 +1,4 @@
+#include <handleapi.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -45,7 +46,7 @@ struct TermIOThread {
 	char duration_buf[255];
 	enum Queue_PLAYBACK_STATE playback_state;
 
-	pthread_t *thread;
+	pthread_t thread;
 
 	enum InputMode mode; // How we're processing input
 	bool has_prompt;
@@ -184,10 +185,51 @@ static void rl_line_ready_cb_(char *line) {
 	EventSubQueue_send(thr->evt_sq, &evt, false);
 }
 
+static void *TermIOThread_loop(void *thr__) {
+	TermIOThread *thr = thr__;
+
+	// Start in key input mode
+	TermIOThread_set_mode(thr, InputMode_KEY);
+
+	while (true) {
+		pthread_mutex_lock(&thr->mode_lock);
+		const enum InputMode mode = thr->mode;
+		pthread_mutex_unlock(&thr->mode_lock);
+
+		int input = TermIOThread_get_input(thr, mode);
+		if (input == EOF) {
+			break;
+		} else if (input == CONTINUE_IO_LOOP) {
+			continue;
+		}
+
+		if (mode == InputMode_KEY) {
+			Event evt = {.event_type = mpl_KEYPRESS, .body_size = sizeof(EventBody_Keypress), .body_inline = (EventBody_Keypress)input};
+			EventSubQueue_send(thr->evt_sq, &evt, false);
+		}
+	}
+
+	LOG(Verbosity_VERBOSE, "Terminal IO thread received cancel signal\n");
+	CloseHandle(thr->evt_pipe_rd);
+	// TODO Reset terminal opts
+
+	return NULL;
+}
+
+/* #endregion */
+
+/* #region TermIO_Event send helper */
+
+static void send_termio_evt(TermIOThread *thr, const TermIO_Event *evt) {
+	WriteFile(thr->evt_pipe_wr, evt, sizeof(TermIO_Event), NULL, NULL);
+	// This posts (increases) the semaphore,
+	// ReleaseSemaphore is a poor choice of name
+	ReleaseSemaphore(thr->evt_pipe_sem, 1, NULL);
+}
+
 /* #endregion */
 
 /* #region TermIOThread implementation */
-
 
 TermIOThread *TermIOThread_new(EventQueue *eq, KeybindMap *keybinds) {
 	TermIOThread *thr = malloc(sizeof(TermIOThread));
@@ -196,7 +238,7 @@ TermIOThread *TermIOThread_new(EventQueue *eq, KeybindMap *keybinds) {
 
 	thr->evt_sq = EventQueue_connect(eq, 100);
 	if (!thr->evt_sq) {
-		TermIOThread_free(thr);
+		free(thr);
 		return NULL;
 	}
 	thr->keybinds = keybinds;
@@ -205,29 +247,40 @@ TermIOThread *TermIOThread_new(EventQueue *eq, KeybindMap *keybinds) {
 	// Initialize event pipe and its associated semaphore
 	bool ok = CreatePipe(&thr->evt_pipe_rd, &thr->evt_pipe_wr, NULL, 0);
 	if (!ok) {
-		TermIOThread_free(thr);
+		free(thr);
 		return NULL;
 	}
 	thr->evt_pipe_sem = CreateSemaphoreA(NULL, 0, -1u, NULL);
 	if (!thr->evt_pipe_sem) {
-		TermIOThread_free(thr);
+		CloseHandle(thr->evt_pipe_wr);
+		CloseHandle(thr->evt_pipe_rd);
+		free(thr);
 		return NULL;
 	}
 
-	// TODO
+	pthread_mutex_init(&thr->mode_lock, NULL);
+
+	// Start IO loop on thread
+	if (!thr->thread) {
+		CloseHandle(thr->evt_pipe_wr);
+		CloseHandle(thr->evt_pipe_rd);
+		free(thr);
+		return NULL;
+	}
+	pthread_create(&thr->thread, NULL, TermIOThread_loop, thr);
+
+	return thr;
 }
 
 void TermIOThread_free(TermIOThread *thr) {
-	// TODO: shutdown thread
+	// shutdown thread
+	const TermIO_Event shutdown_evt = {.event_type = TermIO_SHUTDOWN};
+	send_termio_evt(thr, &shutdown_evt);
+	pthread_join(thr->thread, NULL);
 
-	// Close event pipe and its associated semaphore
-	if (thr->evt_pipe_sem)
-		CloseHandle(thr->evt_pipe_sem);
-	if (thr->evt_pipe_wr)
-		CloseHandle(thr->evt_pipe_wr);
-	if (thr->evt_pipe_rd)
-		CloseHandle(thr->evt_pipe_rd);
-
+	// Free thread resources
+	CloseHandle(thr->evt_pipe_sem);
+	CloseHandle(thr->evt_pipe_wr); // evt_pipe_rd is closed in TermIOThread_loop
 	free(thr);
 }
 
