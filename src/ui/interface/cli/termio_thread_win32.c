@@ -1,4 +1,5 @@
 #include <handleapi.h>
+#include <io.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -13,6 +14,7 @@
 #include <consoleapi2.h>
 #include <fileapi.h>
 #include <wchar.h>
+#include <winnls.h>
 
 #include "config/keybind/keybind_map.h"
 #include "error.h"
@@ -51,6 +53,11 @@ struct TermIOThread {
 	enum InputMode mode; // How we're processing input
 	bool has_prompt;
 	pthread_mutex_t mode_lock; // Lock over {mode} and {has_prompt}
+
+	DWORD orig_console_input_mode;
+	DWORD orig_console_output_mode;
+	UINT orig_console_input_codepage;
+	UINT orig_console_output_codepage;
 };
 
 
@@ -188,6 +195,10 @@ static void rl_line_ready_cb_(char *line) {
 static void *TermIOThread_loop(void *thr__) {
 	TermIOThread *thr = thr__;
 
+	// Set codepage to UTF-8
+	SetConsoleCP(CP_UTF8);
+	SetConsoleOutputCP(CP_UTF8);
+
 	// Start in key input mode
 	TermIOThread_set_mode(thr, InputMode_KEY);
 
@@ -211,7 +222,11 @@ static void *TermIOThread_loop(void *thr__) {
 
 	LOG(Verbosity_VERBOSE, "Terminal IO thread received cancel signal\n");
 	CloseHandle(thr->evt_pipe_rd);
-	// TODO Reset terminal opts
+	// Reset terminal state
+	SetConsoleCP(thr->orig_console_input_codepage);
+	SetConsoleOutputCP(thr->orig_console_output_codepage);
+	SetConsoleMode(thr->input, thr->orig_console_input_mode);
+	SetConsoleMode(thr->output, thr->orig_console_output_mode);
 
 	return NULL;
 }
@@ -244,8 +259,23 @@ TermIOThread *TermIOThread_new(EventQueue *eq, KeybindMap *keybinds) {
 	thr->keybinds = keybinds;
 
 	thr->input = GetStdHandle(STD_INPUT_HANDLE);
+	thr->output = GetStdHandle(STD_ERROR_HANDLE);
+
+	pthread_mutex_init(&thr->mode_lock, NULL);
+
+	// Store original console mode (opts) and codepage (encoding)
+	bool ok = true;
+	ok &= GetConsoleMode(thr->input, &thr->orig_console_input_mode);
+	ok &= GetConsoleMode(thr->output, &thr->orig_console_output_mode);
+	if (!ok) {
+		free(thr);
+		return NULL;
+	}
+	thr->orig_console_input_codepage = GetConsoleCP();
+	thr->orig_console_output_codepage = GetConsoleOutputCP();
+
 	// Initialize event pipe and its associated semaphore
-	bool ok = CreatePipe(&thr->evt_pipe_rd, &thr->evt_pipe_wr, NULL, 0);
+	ok = CreatePipe(&thr->evt_pipe_rd, &thr->evt_pipe_wr, NULL, 0);
 	if (!ok) {
 		free(thr);
 		return NULL;
@@ -257,8 +287,6 @@ TermIOThread *TermIOThread_new(EventQueue *eq, KeybindMap *keybinds) {
 		free(thr);
 		return NULL;
 	}
-
-	pthread_mutex_init(&thr->mode_lock, NULL);
 
 	// Start IO loop on thread
 	if (!thr->thread) {
@@ -283,5 +311,65 @@ void TermIOThread_free(TermIOThread *thr) {
 	CloseHandle(thr->evt_pipe_wr); // evt_pipe_rd is closed in TermIOThread_loop
 	free(thr);
 }
+
+void TermIOThread_set_mode(TermIOThread *thr, enum InputMode mode) {
+	pthread_mutex_lock(&thr->mode_lock);
+
+	thr->mode = mode;
+
+	// Enable VT100 escape codes
+	DWORD console_output_mode = thr->orig_console_output_mode;
+	console_output_mode |= ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+	SetConsoleMode(thr->output, console_output_mode);
+
+	// Input options we always turn off
+	static const DWORD TERM_IN_OPTS_UNIVERSAL_MASK = ~(ENABLE_MOUSE_INPUT | ENABLE_WINDOW_INPUT);
+
+	switch (thr->mode) {
+		case InputMode_KEY:
+			{
+				if (thr->has_prompt) {
+					// Clean up readline input
+					rl_callback_handler_remove();
+					rl_callback_userdata_ = NULL;
+					// Advance to a blank line
+					DWORD n_written;
+					WriteConsoleA(thr->output, "\n", 1, &n_written, NULL);
+				}
+				// Tell the terminal we want to receive input without line buffering
+				DWORD term_in_opts = thr->orig_console_input_mode;
+				term_in_opts &= TERM_IN_OPTS_UNIVERSAL_MASK;
+				term_in_opts &= ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT);
+				SetConsoleMode(thr->input, term_in_opts);
+			}
+			break;
+
+		case InputMode_SHELL:
+			{
+				// Tell the terminal we want to receive line buffered input
+				DWORD term_in_opts = thr->orig_console_input_mode;
+				term_in_opts &= TERM_IN_OPTS_UNIVERSAL_MASK;
+				term_in_opts |= (ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT);
+				SetConsoleMode(thr->input, term_in_opts);
+				// Advance to a blank line
+				DWORD n_written;
+				WriteConsoleA(thr->output, "\n", 1, &n_written, NULL);
+				// Setup command history
+				static bool history_initialized = false;
+				if (!history_initialized) {
+					using_history();
+					history_initialized = true;
+				}
+				// Setup readline input
+				rl_initialize();
+				// FIXME: we need to use open_osfhandle and work with FILE * handles instead of HANDLE handles
+			}
+			break;
+	}
+}
+
+void TermIOThread_update_timecode(TermIOThread *thr, const char *timecode_buf, const char *duration_buf);
+
+void TermIOThread_update_playback_state(TermIOThread *thr, enum Queue_PLAYBACK_STATE playback_state);
 
 /* #endregion */
