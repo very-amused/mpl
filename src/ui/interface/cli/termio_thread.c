@@ -225,6 +225,8 @@ static int TermIOThread_shell(TermIOThread *thr, struct pollfd pollfds[2]) {
 		rl_stuff_char(c);
 		rl_callback_read_char();
 	}
+
+	return CONTINUE_IO_LOOP;
 }
 
 // Since readline's callback interface doesn't support passing userdata,
