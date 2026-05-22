@@ -5,7 +5,7 @@ A WIP music player with a focus on build-time modularity, stability, and perform
 
 ### Dependencies
 - ffmpeg
-- readline 
+- readline
 - A Nerd Font (needed for icons, can be disabled with `-Dnerdfont_icons=false`)
 
 ### Configure
