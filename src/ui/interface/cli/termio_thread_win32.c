@@ -64,40 +64,6 @@ struct TermIOThread {
 	UINT orig_term_codepage_output;
 };
 
-
-// Update timecode and playback state in terminal output
-static void write_playback_info(TermIOThread *thr, enum InputMode mode) {
-	// Used to clear current line when refreshing timecode or playback state
-	static const char CLEAR_LINE_VT100[] = "\033[2K\r";
-
-	if (mode == InputMode_KEY) {
-		// FIXME: we need wchar_t icons and fwprintf on win32
-		fprintf(thr->output, CLEAR_LINE_VT100);
-		thr->playback_state == Queue_STOPPED
-			? fprintf(thr->output, "%s", get_playback_icon(thr->playback_state))
-			: fprintf(thr->output, "%s %s/%s", get_playback_icon(thr->playback_state), thr->timecode_buf, thr->duration_buf);
-	} else if (mode == InputMode_SHELL) {
-		static const char PROMPT_FMT[] = "(%s) %s/%s [mpl]$ ";
-		static const char PROMPT_FMT_STOPPED[] = "(%s) [mpl]$ ";
-
-		static char prompt[255];
-		static size_t prompt_len = 0;
-		const size_t new_prompt_len = thr->playback_state == Queue_STOPPED
-			? snprintf(prompt, sizeof(prompt), PROMPT_FMT_STOPPED, get_playback_icon(thr->playback_state))
-			: snprintf(prompt, sizeof(prompt), PROMPT_FMT, get_playback_icon(thr->playback_state), thr->timecode_buf, thr->duration_buf);
-		if (new_prompt_len != prompt_len) {
-			// Make readline aware of the prompt's length for redisplay purposes
-			rl_set_prompt(prompt);
-			rl_already_prompted = true;
-		}
-
-		fprintf(thr->output, CLEAR_LINE_VT100);
-		fprintf(thr->output, "%s", prompt);
-		rl_on_new_line_with_prompt();
-		rl_redisplay();
-	}
-}
-
 static const char CONTINUE_IO_LOOP = -2;
 
 // Block until a character is read from *thr or a cancel signal is received, returning EOF in the latter case
@@ -127,19 +93,8 @@ static char TermIOThread_getchar(TermIOThread *thr) {
 				return EOF;
 			case TermIO_CHANGE_MODE:
 				return CONTINUE_IO_LOOP;
-			case TermIO_TIMECODE:
-				// Update timecode
-				strncpy(thr->timecode_buf, evt.body, sizeof(thr->timecode_buf)-1);
-				strncpy(thr->duration_buf, evt.body2, sizeof(thr->duration_buf)-1);
-				// Render timecode and playback state
-				write_playback_info(thr, InputMode_KEY);
-				break;
-			case TermIO_PLAYBACK_STATE:
-				// Update playback state
-				thr->playback_state = evt.body_inline;
-				// Render timecode and playback state
-				write_playback_info(thr, InputMode_KEY);
-				break;
+			default:
+				return CONTINUE_IO_LOOP;
 		}
 		return CONTINUE_IO_LOOP;
 	}
@@ -149,9 +104,6 @@ static char TermIOThread_getchar(TermIOThread *thr) {
 
 // Enter a readline-powered shell, passing shell line events as needed
 static int TermIOThread_shell(TermIOThread *thr) {
-	// Write initial playback info
-	write_playback_info(thr, InputMode_SHELL);
-
 	HANDLE object_handles[] = {thr->evt_pipe_sem, thr->input_handle};
 	static const DWORD n_handles = sizeof(object_handles) / sizeof(object_handles[0]);
 
@@ -176,19 +128,8 @@ static int TermIOThread_shell(TermIOThread *thr) {
 					return EOF;
 				case TermIO_CHANGE_MODE:
 					return CONTINUE_IO_LOOP;
-				case TermIO_TIMECODE:
-					// Update timecode
-					strncpy(thr->timecode_buf, evt.body, sizeof(thr->timecode_buf)-1);
-					strncpy(thr->duration_buf, evt.body2, sizeof(thr->duration_buf)-1);
-					// Render timecode and playback state
-					write_playback_info(thr, InputMode_KEY);
-					break;
-				case TermIO_PLAYBACK_STATE:
-					// Update playback state
-					thr->playback_state = evt.body_inline;
-					// Render timecode and playback state
-					write_playback_info(thr, InputMode_KEY);
-					break;
+				default:
+					continue;
 			}
 			continue; // continue loop
 		}
