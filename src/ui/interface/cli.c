@@ -148,15 +148,16 @@ static enum UserInterface_ERR mainloop(void * ctx__,
 			break;
 
 		case mpl_SHELL_OPEN:
-			{
-				TermIOThread_set_mode(ctx->io_thread, InputMode_SHELL);
-			}
+			TermIOThread_set_mode(ctx->io_thread, InputMode_SHELL);
 			break;
-
 		case mpl_SHELL_CLOSE:
-			{
-				TermIOThread_set_mode(ctx->io_thread, InputMode_KEY);
-			}
+			TermIOThread_set_mode(ctx->io_thread, InputMode_KEY);
+			break;
+		case mpl_SHELL_HISTORY_PREV:
+			TermIOThread_history_prev(ctx->io_thread);
+			break;
+		case mpl_SHELL_HISTORY_NEXT:
+			TermIOThread_history_next(ctx->io_thread);
 			break;
 
 		default:

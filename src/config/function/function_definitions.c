@@ -1,14 +1,10 @@
 #include "function_definitions.h"
 #include "audio/seek.h"
-#include "config/function/dictionary.h"
-#include "config/function/function.h"
-#include "error.h"
-#include "state.h"
 #include "ui/event.h"
 #include "ui/event_queue.h"
 #include "track_queue/queue.h"
 #include "track_queue/state.h"
-#include "util/strtokn.h"
+#include "state.h"
 
 /* #region Config function state */
 
@@ -34,7 +30,7 @@ void play_toggle(void * _) {
 }
 
 void quit(void * _) {
-	static const Event quit_evt = {
+	const Event quit_evt = {
 		.event_type = mpl_QUIT,
 		.body_size = 0
 	};
@@ -42,15 +38,29 @@ void quit(void * _) {
 }
 
 void shell_open(void * _) {
-	static const Event evt = {
+	const Event evt = {
 		.event_type = mpl_SHELL_OPEN,
 		.body_size = 0
 	};
 	EventSubQueue_send(state.evt_sq, &evt, false);
 }
 void shell_close(void * _) {
-	static const Event evt = {
+	const Event evt = {
 		.event_type = mpl_SHELL_CLOSE,
+		.body_size = 0
+	};
+	EventSubQueue_send(state.evt_sq, &evt, false);
+}
+void shell_history_prev() {
+	const Event evt = {
+		.event_type = mpl_SHELL_HISTORY_PREV,
+		.body_size = 0
+	};
+	EventSubQueue_send(state.evt_sq, &evt, false);
+}
+void shell_history_next() {
+	const Event evt = {
+		.event_type = mpl_SHELL_HISTORY_NEXT,
 		.body_size = 0
 	};
 	EventSubQueue_send(state.evt_sq, &evt, false);

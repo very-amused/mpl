@@ -11,7 +11,6 @@
 #include <synchapi.h>
 #include <consoleapi2.h>
 #include <fileapi.h>
-#include <wchar.h>
 #include <winnls.h>
 #include <handleapi.h>
 
@@ -22,7 +21,6 @@
 #include "track_queue/state.h"
 #include "ui/event.h"
 #include "ui/event_queue.h"
-#include "ui/icons.h"
 #include "util/log.h"
 
 /* #region IO handling */
@@ -356,6 +354,26 @@ void TermIOThread_set_mode(TermIOThread *thr, enum InputMode mode) {
 	// Cancel anything blocking us from implementing the mode change
 	const TermIO_Event evt = {.event_type = TermIO_CHANGE_MODE};
 	send_termio_evt(thr, &evt);
+}
+
+void TermIOThread_history_prev(TermIOThread *thr) {
+	pthread_mutex_lock(&thr->mode_lock);
+
+	if (thr->mode == InputMode_SHELL) {
+		previous_history();
+	}
+
+	pthread_mutex_unlock(&thr->mode_lock);
+}
+
+void TermIOThread_history_next(TermIOThread *thr) {
+	pthread_mutex_lock(&thr->mode_lock);
+
+	if (thr->mode == InputMode_SHELL) {
+		next_history();
+	}
+
+	pthread_mutex_unlock(&thr->mode_lock);
 }
 
 void TermIOThread_update_timecode(TermIOThread *thr, const char *timecode_buf, const char *duration_buf) {

@@ -1,17 +1,29 @@
 #include "keycode.h"
+#include "error.h"
+#include "util/log.h"
 #include <string.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <wchar.h>
 
 const wchar_t parse_keycode(const char *keyname) {
+	// TODO: use libxkbcommon to parse keynames on Linux,
+	// SDL to parse keynames on other platforms
 	switch (keyname[0]) {
+	case 'D':
+		if (strcmp(keyname, "Down") == 0) {
+			LOG(Verbosity_DEBUG, "Down yes yes\n");
+			return (wchar_t)0x54;
+		}
 	case 'E':
 		if (strcmp(keyname, "Escape") == 0) {
-			// FIXME: make this correct on win32 as well
 			return (wchar_t)0x1B;
 		}
 		break;
+	case 'U':
+		if (strcmp(keyname, "Up") == 0) {
+			return (wchar_t)0x52;
+		}
 	}
 
 	// Take the first widechar as the keycode

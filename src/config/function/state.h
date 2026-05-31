@@ -1,4 +1,3 @@
-
 #pragma once
 #include "config/config.h"
 #include "track_queue/queue.h"

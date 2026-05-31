@@ -359,6 +359,25 @@ void TermIOThread_set_mode(TermIOThread *thr, enum InputMode mode) {
 	const TermIO_Event evt = {.event_type = TermIO_CHANGE_MODE};
 	write(thr->evt_pipe[1], &evt, sizeof(TermIO_Event));
 }
+void TermIOThread_history_prev(TermIOThread *thr) {
+	pthread_mutex_lock(&thr->mode_lock);
+
+	if (thr->mode == InputMode_SHELL) {
+		previous_history();
+	}
+
+	pthread_mutex_unlock(&thr->mode_lock);
+}
+
+void TermIOThread_history_next(TermIOThread *thr) {
+	pthread_mutex_lock(&thr->mode_lock);
+
+	if (thr->mode == InputMode_SHELL) {
+		next_history();
+	}
+
+	pthread_mutex_unlock(&thr->mode_lock);
+}
 
 void TermIOThread_update_timecode(TermIOThread *thr, const char *timecode_buf, const char *duration_buf) {
 	const TermIO_Event evt = {
