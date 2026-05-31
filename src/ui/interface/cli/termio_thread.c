@@ -369,6 +369,7 @@ void TermIOThread_history_prev(TermIOThread *thr) {
 	LOG(Verbosity_DEBUG, "TermIOThread_history_prev called\n");
 	pthread_mutex_lock(&thr->mode_lock);
 
+	// FIXME: we should be doing this on the IO thread, not the main thread
 	if (thr->mode == InputMode_SHELL) {
 		HIST_ENTRY *entry = previous_history();
 		while (entry && entry->line) {
@@ -376,7 +377,6 @@ void TermIOThread_history_prev(TermIOThread *thr) {
 				entry = previous_history();
 				continue;
 			}
-			LOG(Verbosity_DEBUG, "landed on previous shell line: %s\n", entry->line);
 			rl_replace_line(entry->line, true);
 			write_playback_info(thr, InputMode_SHELL);
 			break;
@@ -389,8 +389,13 @@ void TermIOThread_history_prev(TermIOThread *thr) {
 void TermIOThread_history_next(TermIOThread *thr) {
 	pthread_mutex_lock(&thr->mode_lock);
 
+	// FIXME: we should be doing this on the IO thread
 	if (thr->mode == InputMode_SHELL) {
-		next_history();
+		HIST_ENTRY *entry = next_history();
+		if (entry && entry->line) {
+			rl_replace_line(entry->line, true);
+			write_playback_info(thr, InputMode_SHELL);
+		}
 	}
 
 	pthread_mutex_unlock(&thr->mode_lock);
