@@ -149,6 +149,10 @@ static char TermIOThread_getchar(TermIOThread *thr, struct pollfd pollfds[2]) {
 				return EOF;
 			case TermIO_CHANGE_MODE:
 				return CONTINUE_IO_LOOP;
+			case TermIO_REPROMPT:
+				fprintf(thr->output, CLEAR_LINE_VT100);
+				write_playback_info(thr, InputMode_KEY);
+				break;
 
 			case TermIO_TIMECODE:
 				{
@@ -168,8 +172,6 @@ static char TermIOThread_getchar(TermIOThread *thr, struct pollfd pollfds[2]) {
 					// Render timecode and playback state
 					fprintf(thr->output, CLEAR_LINE_VT100);
 					write_playback_info(thr, InputMode_KEY);
-
-#undef WRITE_PLAYBACK_INFO
 				}
 				break;
 		}
@@ -199,6 +201,10 @@ static int TermIOThread_shell(TermIOThread *thr, struct pollfd pollfds[2]) {
 					return EOF;
 				case TermIO_CHANGE_MODE:
 					return CONTINUE_IO_LOOP;
+				case TermIO_REPROMPT:
+					write_playback_info(thr, InputMode_SHELL);
+					break;
+
 				case TermIO_TIMECODE:
 					// Update timecode
 					strncpy(thr->timecode_buf, evt.body, sizeof(thr->timecode_buf)-1);
@@ -360,10 +366,21 @@ void TermIOThread_set_mode(TermIOThread *thr, enum InputMode mode) {
 	write(thr->evt_pipe[1], &evt, sizeof(TermIO_Event));
 }
 void TermIOThread_history_prev(TermIOThread *thr) {
+	LOG(Verbosity_DEBUG, "TermIOThread_history_prev called\n");
 	pthread_mutex_lock(&thr->mode_lock);
 
 	if (thr->mode == InputMode_SHELL) {
-		previous_history();
+		HIST_ENTRY *entry = previous_history();
+		while (entry && entry->line) {
+			if (strstr(entry->line, "shell_history_prev()")) {
+				entry = previous_history();
+				continue;
+			}
+			LOG(Verbosity_DEBUG, "landed on previous shell line: %s\n", entry->line);
+			rl_replace_line(entry->line, true);
+			write_playback_info(thr, InputMode_SHELL);
+			break;
+		}
 	}
 
 	pthread_mutex_unlock(&thr->mode_lock);
@@ -392,6 +409,13 @@ void TermIOThread_update_playback_state(TermIOThread *thr, enum Queue_PLAYBACK_S
 	const TermIO_Event evt = {
 		.event_type = TermIO_PLAYBACK_STATE,
 		.body_inline = playback_state
+	};
+	write(thr->evt_pipe[1], &evt, sizeof(TermIO_Event));
+}
+
+void TermIOThread_reprompt(TermIOThread *thr) {
+	const TermIO_Event evt = {
+		.event_type = TermIO_REPROMPT
 	};
 	write(thr->evt_pipe[1], &evt, sizeof(TermIO_Event));
 }

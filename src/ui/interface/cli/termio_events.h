@@ -10,7 +10,9 @@
 	VARIANT(TermIO_SHUTDOWN) /* Thread shutdown */ \
 	VARIANT(TermIO_CHANGE_MODE) /* Change IO mode (key / shell) */ \
 	VARIANT(TermIO_TIMECODE) /* Timecode update received */ \
-	VARIANT(TermIO_PLAYBACK_STATE) /* Play/pause/stop state change from TrackQueue */
+	VARIANT(TermIO_PLAYBACK_STATE) /* Play/pause/stop state change from TrackQueue */ \
+	VARIANT(TermIO_REPROMPT) /* Redraw cached prompt  */
+
 
 enum TermIO_Event_t {
 	TERMIO_EVENT_ENUM(ENUM_VAL)

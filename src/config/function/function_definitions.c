@@ -51,14 +51,14 @@ void shell_close(void * _) {
 	};
 	EventSubQueue_send(state.evt_sq, &evt, false);
 }
-void shell_history_prev() {
+void shell_history_prev(void * _) {
 	const Event evt = {
 		.event_type = mpl_SHELL_HISTORY_PREV,
 		.body_size = 0
 	};
 	EventSubQueue_send(state.evt_sq, &evt, false);
 }
-void shell_history_next() {
+void shell_history_next(void * _) {
 	const Event evt = {
 		.event_type = mpl_SHELL_HISTORY_NEXT,
 		.body_size = 0

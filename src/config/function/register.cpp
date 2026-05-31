@@ -30,6 +30,12 @@ void register_ConfigFn_functions(ConfigFnDict *dict) {
 	ConfigFnDict_define_fn(dict, "shell_close",
 			shell_close,
 			NULL);
+	ConfigFnDict_define_fn(dict, "shell_history_prev",
+		shell_history_prev,
+		NULL);
+	ConfigFnDict_define_fn(dict, "shell_history_next",
+		shell_history_next,
+		NULL);
 
 	static const std::vector<ConfigType> seekArgTypes = {Config_I32};
 	ConfigFnDict_define_fn(dict, "seek",

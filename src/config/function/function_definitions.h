@@ -27,8 +27,8 @@ void quit(void * _); // Exit MPL
 
 void shell_open(void * _); // Open MPL's shell
 void shell_close(void * _); // Close MPL's shell
-void shell_history_prev(); // Scroll one entry back in the shell's command history
-void shell_history_next(); // Scroll one entry forward in the shell's command history
+void shell_history_prev(void * _); // Scroll one entry back in the shell's command history
+void shell_history_next(void * _); // Scroll one entry forward in the shell's command history
 
 void seek(const struct seekArgs *args); // Seek += args.ms milliseconds
 void seek_snap(const struct seekArgs *args); // Seek that snaps to the next whole second

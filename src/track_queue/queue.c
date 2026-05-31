@@ -24,12 +24,19 @@ struct TrackQueueNode {
 };
 
 // Change the playback state and notify interested parties of the change via the main EventQueue
-void change_playback_state(TrackQueue *q, enum Queue_PLAYBACK_STATE state) {
+static void change_playback_state(TrackQueue *q, enum Queue_PLAYBACK_STATE state) {
 	q->playback_state	= state;
 	const Event evt = {
 		.event_type = mpl_PLAYBACK_STATE,
 		.body_size = sizeof(enum Queue_PLAYBACK_STATE),
 		.body_inline = q->playback_state
+	};
+	EventSubQueue_send(q->evt_sq, &evt, false);
+}
+// Cause shell to reprompt
+static void keep_playback_state(TrackQueue *q) {
+	const Event evt = {
+		.event_type = mpl_REPROMPT
 	};
 	EventSubQueue_send(q->evt_sq, &evt, false);
 }
@@ -253,35 +260,51 @@ int TrackQueue_preselect(TrackQueue *q, TrackQueueNode *node) {
 int TrackQueue_play(TrackQueue *q, bool pause) {
 	// Debounce
 	if ((pause && q->playback_state == Queue_PAUSED) || (!pause && q->playback_state == Queue_PLAYING)) {
+		keep_playback_state(q);
 		return 0;
 	}
 
+	// Play with AudioBackend
 	int status = AudioBackend_play(q->backend, pause);
 	if (status != 0) {
+		keep_playback_state(q);
 		return status;
 	}
 
-	if (pause && q->playback_state == Queue_PLAYING) {
-		change_playback_state(q, Queue_PAUSED);
-		BufferThread_lock(q->buffer_thread);
-		return 0;
-	} else if (!pause && q->playback_state == Queue_PAUSED) {
-		status = BufferThread_unlock(q->buffer_thread);
+	// Change queue + buffering from stopped
+	if (q->playback_state == Queue_STOPPED) {
+		// Start a nonblocking buffer loop
+		AudioTrack *cur_audio = q->cur != q->head ? &q->cur->track->audio : NULL;
+		if (!cur_audio) {
+			keep_playback_state(q);
+			// TODO: implement error code
+			// FIXME: holy hell we never got around to this. Queue_ERR needed!
+			return 1;
+		}
+		status = BufferThread_start(q->buffer_thread, cur_audio);
 		if (status == 0) {
-			change_playback_state(q, Queue_PLAYING);
+			change_playback_state(q, pause ? Queue_PAUSED : Queue_PLAYING);
+		} else {
+			keep_playback_state(q);
 		}
 		return status;
 	}
-	change_playback_state(q, pause ? Queue_PAUSED : Queue_PLAYING);
 
-	// Start a nonblocking buffer loop
-	AudioTrack *cur_audio = q->cur != q->head ? &q->cur->track->audio : NULL;
-	if (!cur_audio) {
-		// TODO: implement error code
-		// FIXME: holy hell we never got around to this. Queue_ERR needed!
-		return 1;
+	// Change queue + buffer from paused/playing
+	if (pause) {
+		BufferThread_lock(q->buffer_thread);
+		change_playback_state(q, Queue_PAUSED);
+		status = 0;
+	} else {
+		status = BufferThread_unlock(q->buffer_thread);
+		if (status == 0) {
+			change_playback_state(q, Queue_PLAYING);
+		} else {
+			keep_playback_state(q);
+		}
 	}
-	return BufferThread_start(q->buffer_thread, cur_audio);
+
+	return status;
 }
 
 // The inner logic of Queue_seek that holds a lock on an AudioBuffer (by pausing its BufferThread) and AudioBackend

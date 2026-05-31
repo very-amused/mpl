@@ -12,7 +12,6 @@ const wchar_t parse_keycode(const char *keyname) {
 	switch (keyname[0]) {
 	case 'D':
 		if (strcmp(keyname, "Down") == 0) {
-			LOG(Verbosity_DEBUG, "Down yes yes\n");
 			return (wchar_t)0x54;
 		}
 	case 'E':

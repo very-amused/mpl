@@ -21,9 +21,13 @@ void TermIOThread_free(TermIOThread *thr);
 void TermIOThread_set_mode(TermIOThread *thr, enum InputMode mode);
 // Update the timecode displayed
 void TermIOThread_update_timecode(TermIOThread *thr, const char *timecode_buf, const char *duration_buf);
+
 // Update the playback state displayed
 void TermIOThread_update_playback_state(TermIOThread *thr, enum Queue_PLAYBACK_STATE playback_state);
 // Select the previous shell history entry
 void TermIOThread_history_prev(TermIOThread *thr);
 // Select the next shell history entry
 void TermIOThread_history_next(TermIOThread *thr);
+
+// Redraw the cached prompt
+void TermIOThread_reprompt(TermIOThread *thr);

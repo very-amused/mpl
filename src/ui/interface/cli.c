@@ -96,10 +96,15 @@ static enum UserInterface_ERR mainloop(void * ctx__,
 		case mpl_INPUT_LINE:
 			{
 				EventBody_InputLine line = evt.body;
+				if (!strlen(line)) {
+					free(line);
+					break;
+				}
 				enum Parser_ERR err = Lexer_tokenize(config->lexer, line);
 				free(line);
 				if (err != Parser_OK) {
 					LOG(Verbosity_NORMAL, "Parse error: %s\n", Parser_ERR_name(err));
+					TermIOThread_reprompt(ctx->io_thread);
 					break;
 				}
 
@@ -113,14 +118,20 @@ static enum UserInterface_ERR mainloop(void * ctx__,
 					}
 					Parser_LineError_deinit(&parse_err);
 					ParseNode_rfree(stmt);
+					TermIOThread_reprompt(ctx->io_thread);
 					break;
 				}
 				err = Parser_walk(config->parser, config, Parser_WALK_KEYBINDS | Parser_WALK_FUNCTIONS | Parser_WALK_MACROS, stmt);
+				ParseNode_rfree(stmt);
 				if (err != Parser_OK) {
 					LOG(Verbosity_NORMAL, "Error: %s\n", Parser_ERR_name(err));
+					TermIOThread_reprompt(ctx->io_thread);
 				}
-				ParseNode_rfree(stmt);
 			}
+			break;
+		
+		case mpl_REPROMPT:
+			TermIOThread_reprompt(ctx->io_thread);
 			break;
 
 		case mpl_PLAYBACK_STATE:
