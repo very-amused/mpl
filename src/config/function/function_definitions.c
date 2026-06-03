@@ -88,4 +88,9 @@ void show_metadata(void * _) {
 	memcpy(meta_evt.body, &tr->meta, sizeof(EventBody_TrackMeta));
 	// Send it
 	EventSubQueue_send(state.evt_sq, &meta_evt, false);
+	// Reprompt (needed if paused)
+	const Event reprompt_evt = {
+		.event_type = mpl_REPROMPT,
+	};
+	EventSubQueue_send(state.evt_sq, &reprompt_evt, false);
 }
