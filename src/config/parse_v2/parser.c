@@ -311,7 +311,7 @@ static enum Parser_ERR ParseNode_FnCallExpr_encode_args(ParseNode_FnCallExpr *fn
 			return Parser_INVALID_NODE;
 		}
 		ParseNode_FnCallExpr *arg_fn = (ParseNode_FnCallExpr *)arg_node->child;
-		if (fn->ret_type != fn->arg_types[i]) {
+		if (arg_fn->fn->ret_type != fn->arg_types[i]) {
 			return Parser_TYPE_ERR;
 		}
 		void *result;
@@ -319,7 +319,7 @@ static enum Parser_ERR ParseNode_FnCallExpr_encode_args(ParseNode_FnCallExpr *fn
 		if (err != Parser_OK) {
 			return err;
 		}
-		memcpy(&(*args_buf)[offset], result, ConfigType_size(fn->ret_type));
+		memcpy(&(*args_buf)[offset], result, ConfigType_size(arg_fn->fn->ret_type));
 		offset += ConfigType_size(fn->ret_type);
 		free(result);
 	}
@@ -368,6 +368,7 @@ struct Parser {
 	enum ParseNodeID cur_node_type;
 
 	// Function eval return register
+	// TODO: implement
 	void *eval_ret;
 	enum ConfigType eval_ret_type;
 };
