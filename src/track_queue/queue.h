@@ -8,6 +8,7 @@
 #include "buffer_thread.h"
 #include "ui/event_queue.h"
 
+#include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -15,6 +16,8 @@ typedef struct TrackQueueNode TrackQueueNode;
 
 // A queue performing non-blocking track management
 typedef struct TrackQueue {
+	pthread_mutex_t lock;
+
 	TrackQueueNode *head; // Top of the queue (sentinel node). head->next is the first actual track (iff head->next != head)
 	TrackQueueNode *tail; // Bottom of the queue (last playable track). tail->next == head
 	TrackQueueNode *cur; // Currently playing track
@@ -45,9 +48,9 @@ enum AudioBackend_ERR TrackQueue_connect_audio(TrackQueue *q, const Settings *se
 void TrackQueue_disconnect_audio(TrackQueue *q);
 
 // Get the currently playing track in the queue
-const Track *TrackQueue_cur_track(const TrackQueue *q);
+const Track *TrackQueue_cur_track(TrackQueue *q);
 // Get the next track queued after the currently playing track
-const Track *TrackQueue_next_track(const TrackQueue *q);
+const Track *TrackQueue_next_track(TrackQueue *q);
 
 // Clear all tracks in a queue
 int TrackQueue_clear(TrackQueue *q);
@@ -86,5 +89,5 @@ int TrackQueue_seek_snap(TrackQueue *q, int32_t offset_ms);
 
 
 // Get playback state from the queue and its AudioBackend
-enum Queue_PLAYBACK_STATE Queue_get_playback_state(const TrackQueue *q);
+enum Queue_PLAYBACK_STATE Queue_get_playback_state(TrackQueue *q);
 

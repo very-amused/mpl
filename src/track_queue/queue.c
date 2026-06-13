@@ -16,6 +16,7 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <sys/param.h>
+#include <string.h>
 
 struct TrackQueueNode {
 	Track *track;
@@ -43,10 +44,18 @@ static void keep_playback_state(TrackQueue *q) {
 
 // Initialize an empty queue
 int TrackQueue_init(TrackQueue *q, const Settings *settings, EventQueue *eq) {
+	memset(q, 0, sizeof(TrackQueue));
 	q->head = malloc(sizeof(TrackQueueNode));
 	CHECK_ALLOC(q->head, 1);
 	q->head->prev = q->head->next = q->head;
 	q->cur = q->prebuf = q->tail = q->head;
+
+	// Initialize queue lock with support for recursive locking
+	// (this allows TrackQueue methods to call other TrackQueue methods w/o deadlock)
+	pthread_mutexattr_t lock_attrs;
+	pthread_mutexattr_init(&lock_attrs);
+	pthread_mutexattr_settype(&lock_attrs, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&q->lock, &lock_attrs);
 
 	// Don't automatically connect to any backend, in case the user wants to choose a specific backend
 	q->backend = NULL;
@@ -66,6 +75,8 @@ int TrackQueue_init(TrackQueue *q, const Settings *settings, EventQueue *eq) {
 }
 // Deinitialize a queue and disconnect audio output.
 void TrackQueue_deinit(TrackQueue *q) {
+	pthread_mutex_lock(&q->lock);
+
 	/* NOTE: We have to stop the buffer thread before disconnecting audio,
 	otherwise we have a deadlock b/c AudioTrack_buffer_packet() will hang forever
 	due to the AudioBuffer's read semaphore being dead after audio is disconnected */
@@ -75,26 +86,42 @@ void TrackQueue_deinit(TrackQueue *q) {
 		TrackQueue_disconnect_audio(q);
 	}
 	TrackQueue_clear(q);
+
+	pthread_mutex_unlock(&q->lock);
+	pthread_mutex_destroy(&q->lock);
 }
 
 enum AudioBackend_ERR TrackQueue_connect_audio(TrackQueue *q, const Settings *settings, EventQueue *eq) {
+	pthread_mutex_lock(&q->lock);
+
 	// Set q->backend to a defined AudioBackend
 	q->backend = AB_Configured(settings);
 
 	// Initialize the backend
-	return AudioBackend_init(q->backend, eq, q->settings);
+	enum AudioBackend_ERR ab_status = AudioBackend_init(q->backend, eq, q->settings);
+
+	pthread_mutex_unlock(&q->lock);
+	return ab_status;
 }
-// Disconnect the queue from the system's audio backend. Frees q->backend
+// Disconnect the queue from the system's audio backend. Deinitializes q->backend
 void TrackQueue_disconnect_audio(TrackQueue *q) {
+	pthread_mutex_lock(&q->lock);
 	AudioBackend_deinit(q->backend);
+	pthread_mutex_unlock(&q->lock);
 }
 
 
-const Track *TrackQueue_cur_track(const TrackQueue *q) {
-	return q->cur != q->head ? q->cur->track : NULL;
+const Track *TrackQueue_cur_track(TrackQueue *q) {
+	pthread_mutex_lock(&q->lock);
+	const Track *cur = q->cur != q->head ? q->cur->track : NULL;
+	pthread_mutex_unlock(&q->lock);
+	return cur;
 }
-const Track *TrackQueue_next_track(const TrackQueue *q) {
-	return q->cur->next != q->head ? q->cur->next->track : NULL;
+const Track *TrackQueue_next_track(TrackQueue *q) {
+	pthread_mutex_lock(&q->lock);
+	const Track *next = q->cur->next != q->head ? q->cur->next->track : NULL;
+	pthread_mutex_unlock(&q->lock);
+	return next;
 }
 
 int TrackQueue_append(TrackQueue *q, Track *t) {
@@ -102,6 +129,8 @@ int TrackQueue_append(TrackQueue *q, Track *t) {
 	TrackQueueNode *node = malloc(sizeof(TrackQueueNode));
 	CHECK_ALLOC(node, 1);
 	node->track = t; // This takes ownership of *t
+
+	pthread_mutex_lock(&q->lock);
 
 	// Position node between tail and head
 	node->prev = q->tail;
@@ -111,18 +140,20 @@ int TrackQueue_append(TrackQueue *q, Track *t) {
 	node->next->prev = node;
 	q->tail = node;
 
+	int status = 0;
 	if (q->cur == q->head) {
-		return TrackQueue_select(q, node);
+		status = TrackQueue_select(q, node);
 	}
-	return 0;
+
+	pthread_mutex_unlock(&q->lock);
+	return status;
 }
 int TrackQueue_prepend(TrackQueue *q, Track *t) {
-	if (!t) {
-		return 1;
-	}
 	TrackQueueNode *node = malloc(sizeof(TrackQueueNode));
 	CHECK_ALLOC(node, 1);
 	node->track = t;
+
+	pthread_mutex_lock(&q->lock);
 
 	// Position node between head and first track
 	node->prev = q->head;
@@ -132,15 +163,20 @@ int TrackQueue_prepend(TrackQueue *q, Track *t) {
 	node->next->prev = node;
 	q->head->next = node;
 
+	int status = 0;
 	if (q->cur == q->head) {
-		return TrackQueue_select(q, node);
+		status = TrackQueue_select(q, node);
 	}
-	return 0;
+
+	pthread_mutex_unlock(&q->lock);
+	return status;
 }
 int TrackQueue_insert(TrackQueue *q, Track *t, bool before) {
 	TrackQueueNode *node = malloc(sizeof(TrackQueueNode));
 	CHECK_ALLOC(node, 1);
 	node->track = t;
+
+	pthread_mutex_lock(&q->lock);
 
 	if (before) {
 		// Position node between cur->prev and cur
@@ -158,13 +194,18 @@ int TrackQueue_insert(TrackQueue *q, Track *t, bool before) {
 		node->next->prev = node;
 	}
 
+	int status = 0;
 	if (q->cur == q->head) {
-		return TrackQueue_select(q, node);
+		status = TrackQueue_select(q, node);
 	}
-	return 0;
+
+	pthread_mutex_unlock(&q->lock);
+	return status;
 }
 
 int TrackQueue_clear(TrackQueue *q) {
+	pthread_mutex_lock(&q->lock);
+
 	TrackQueueNode *node = q->head->next;
 	while (node != q->head) {
 		LOG(Verbosity_VERBOSE, "Freeing track %s\n", node->track->url);
@@ -176,10 +217,13 @@ int TrackQueue_clear(TrackQueue *q) {
 	}
 	free(q->head);
 
+	pthread_mutex_unlock(&q->lock);
 	return 0;
 }
 
 int TrackQueue_select(TrackQueue *q, TrackQueueNode *node) {
+	pthread_mutex_lock(&q->lock);
+
 	// Set the current track in the queue
 	TrackQueueNode *old = q->cur;
 	q->cur = node;
@@ -193,6 +237,7 @@ int TrackQueue_select(TrackQueue *q, TrackQueueNode *node) {
 		enum AudioTrack_ERR err = AudioTrack_init_buffers(&node->track->audio, q->settings);
 		if (err != AudioTrack_OK) {
 			LOG(Verbosity_NORMAL, "Failed to initialize AudioTrack buffers for track %s: %s\n", node->track->url, AudioTrack_ERR_name(err));
+			pthread_mutex_unlock(&q->lock);
 			return 1;
 		}
 	}
@@ -205,17 +250,18 @@ int TrackQueue_select(TrackQueue *q, TrackQueueNode *node) {
 
 	// Prepare track to start playback on a new audio stream
 	int status = AudioBackend_prepare(q->backend, &node->track->audio);
-	if (status != 0) {
-		return status;
-	}
 
-	return 0;
+	pthread_mutex_unlock(&q->lock);
+	return status;
 }
 
 int TrackQueue_preselect(TrackQueue *q, TrackQueueNode *node) {
+	pthread_mutex_lock(&q->lock);
+	
 	TrackQueueNode *old = q->prebuf;
 	if (old == node) {
 		// we're already prebuffering this track
+		pthread_mutex_unlock(&q->lock);
 		return 0;
 	}
 	q->prebuf = node;
@@ -236,6 +282,7 @@ int TrackQueue_preselect(TrackQueue *q, TrackQueueNode *node) {
 		enum AudioTrack_ERR err = AudioTrack_init_buffers(&tr->audio, q->settings);
 		if (err != AudioTrack_OK) {
 			LOG(Verbosity_NORMAL, "Failed to initialize AudioTrack buffers for track %s: %s\n", node->track->url, AudioTrack_ERR_name(err));
+			pthread_mutex_unlock(&q->lock);
 			return 1;
 		}
 	}
@@ -246,21 +293,25 @@ int TrackQueue_preselect(TrackQueue *q, TrackQueueNode *node) {
 	int status = BufferThread_start_prebuf(prebuf_thread, &tr->audio, prebuf_ms);
 	if (status != 0) {
 		LOG(Verbosity_VERBOSE, "Failed to start prebuffering for track %s\n", node->track->url);
+		pthread_mutex_unlock(&q->lock);
 		return status;
 	}
 
 
 	// TODO: Handle prebuffering on the AudioBackend's end (create a stream)
 
+	pthread_mutex_unlock(&q->lock);
 	return 1;
 }
 
-// FIXME: we can do a much better job of synchonizing state between the AudioBackend and BufferThread
-// I'm almost convinced the Queue struct needs a ground-up rewrite, but we'll see
+// Play/pause the currently selected track
 int TrackQueue_play(TrackQueue *q, bool pause) {
+	pthread_mutex_lock(&q->lock);
+
 	// Debounce
 	if ((pause && q->playback_state == Queue_PAUSED) || (!pause && q->playback_state == Queue_PLAYING)) {
 		keep_playback_state(q);
+		pthread_mutex_unlock(&q->lock);
 		return 0;
 	}
 
@@ -268,6 +319,7 @@ int TrackQueue_play(TrackQueue *q, bool pause) {
 	int status = AudioBackend_play(q->backend, pause);
 	if (status != 0) {
 		keep_playback_state(q);
+		pthread_mutex_unlock(&q->lock);
 		return status;
 	}
 
@@ -278,7 +330,7 @@ int TrackQueue_play(TrackQueue *q, bool pause) {
 		if (!cur_audio) {
 			keep_playback_state(q);
 			// TODO: implement error code
-			// FIXME: holy hell we never got around to this. Queue_ERR needed!
+			pthread_mutex_unlock(&q->lock);
 			return 1;
 		}
 		status = BufferThread_start(q->buffer_thread, cur_audio);
@@ -287,6 +339,8 @@ int TrackQueue_play(TrackQueue *q, bool pause) {
 		} else {
 			keep_playback_state(q);
 		}
+
+		pthread_mutex_unlock(&q->lock);
 		return status;
 	}
 
@@ -304,6 +358,7 @@ int TrackQueue_play(TrackQueue *q, bool pause) {
 		}
 	}
 
+	pthread_mutex_unlock(&q->lock);
 	return status;
 }
 
@@ -341,9 +396,12 @@ static int Queue_seek_inner(TrackQueue *q, int32_t offset, enum AudioSeek from, 
 }
 
 int TrackQueue_seek(TrackQueue *q, int32_t offset_ms, enum AudioSeek from) {
+	pthread_mutex_lock(&q->lock);
+
 	AudioTrack *cur_audio = q->cur != q->head ? &q->cur->track->audio : NULL;
 	if (!cur_audio) {
 		// TODO: err code
+		pthread_mutex_unlock(&q->lock);
 		return 1;
 	}
 
@@ -362,14 +420,17 @@ int TrackQueue_seek(TrackQueue *q, int32_t offset_ms, enum AudioSeek from) {
 	AudioBackend_unlock(q->backend);
 	BufferThread_unlock(q->buffer_thread);
 
+	pthread_mutex_unlock(&q->lock);
 	return status;
 }
 
 // WIP
 int TrackQueue_seek_snap(TrackQueue *q, int32_t offset_ms) {
+	pthread_mutex_lock(&q->lock);
 	
 	AudioTrack *cur_audio = q->cur != q->head ? &q->cur->track->audio : NULL;
 	if (!cur_audio) {
+		pthread_mutex_unlock(&q->lock);
 		return 1;
 	}
 
@@ -408,10 +469,14 @@ int TrackQueue_seek_snap(TrackQueue *q, int32_t offset_ms) {
 	AudioBackend_unlock(q->backend);
 	BufferThread_unlock(q->buffer_thread);
 
+	pthread_mutex_unlock(&q->lock);
 	return status;
 }
 
 // Get playback state from the queue and its AudioBackend
-enum Queue_PLAYBACK_STATE Queue_get_playback_state(const TrackQueue *q) {
-	return q->playback_state;
+enum Queue_PLAYBACK_STATE Queue_get_playback_state(TrackQueue *q) {
+	pthread_mutex_lock(&q->lock);
+	enum Queue_PLAYBACK_STATE playback_state = q->playback_state;
+	pthread_mutex_unlock(&q->lock);
+	return playback_state;
 }

@@ -218,3 +218,4 @@ static inline const char *Parser_ERR_name(enum Parser_ERR err) {
 #undef PARSER_ERR
 
 #define CHECK_ALLOC(var, err) if (!var) return err
+#define CHECK_ALLOC_LOCKED(var, err, mutex) if (!var) pthread_mutex_unlock(mutex); return err
