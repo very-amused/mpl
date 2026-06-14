@@ -1,4 +1,10 @@
 #include "termio.h"
+#include "config/keybind/keybind_map.h"
+#include "error.h"
+#include "track_queue/state.h"
+#include "ui/event.h"
+#include "ui/event_queue.h"
+#include "ui/icons.h"
 #include "ui/interface/cli/termio_thread.h"
 
 #include <string.h>
@@ -7,6 +13,7 @@
 #include <termios.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 static TermIO *shell_cb_userdata; // userdata for readline shell callback
 
@@ -28,9 +35,78 @@ struct TermIO {
 	struct termios orig_term_opts; // Original terminal state we reset to when done
 };
 
+TermIO *TermIO_new(EventQueue *eq, KeybindMap *keybinds) {
+	TermIO *io = malloc(sizeof(TermIO));
+	CHECK_ALLOC(io, NULL);
+	memset(io, 0, sizeof(TermIO));
+
+	io->evt_sq = EventQueue_connect(eq, 100);
+	if (!io->evt_sq) {
+		free(io);
+		return NULL;
+	}
+	io->keybinds = keybinds;
+
+	// Store original terminal state so we can reset to it during freeing
+	tcgetattr(STDIN_FILENO, &io->orig_term_opts);
+
+	return io;
+}
+
+void TermIO_reset_and_free(TermIO *io) {
+	// Reset terminal state
+	tcsetattr(STDIN_FILENO, TCSANOW, &io->orig_term_opts);
+	// Free TermIO struct
+	free(io);
+}
+
+// Write playback info taking input mode into account
+// (i.e in shell mode this updates the prompt, in key mode this redraws the status line)
 static void write_playback_info(TermIO *io);
 // Process a line of shell input
 static void shell_line_ready_cb(char *line);
+
+void TermIO_handle_keypress(TermIO *io) {
+	typedef int (*getc_fn)(FILE *);
+	getc_fn get_char;
+	switch (io->mode) {
+		case InputMode_KEY:
+			get_char = fgetc;
+			break;
+		case InputMode_SHELL:
+			get_char = rl_getc;
+	}
+
+	// Read keypress from stdin
+	// TODO: parse escape sequences
+	// TODO: support mod keys
+	char c = get_char(STDIN_FILENO);
+
+	// Handle keypress
+	switch (io->mode) {
+		case InputMode_KEY:
+			{
+				// Send mpl_KEYPRESS event to main thread
+				Event evt = {.event_type = mpl_KEYPRESS, .body_size = sizeof(EventBody_Keypress), .body_inline = c};
+				EventSubQueue_send(io->evt_sq, &evt, false);
+			}
+			break;
+
+		case InputMode_SHELL:
+			{
+				// Call any shell-enabled keybind bound to {c}
+				if (KeybindMap_call_keybind(io->keybinds, c, true) == Keybind_OK) {
+					return;
+				}
+				// If {c} is not bound to a shell-enabled keybind,
+				// return it to the input stream and have readline process it
+				rl_stuff_char(c);
+				// Trigger callback if we just terminated a line of input
+				rl_callback_read_char();
+			}
+			break;
+	}
+}
 
 void TermIO_set_input_mode(TermIO *io, enum InputMode mode) {
 	if (mode == io->mode) {
@@ -116,4 +192,56 @@ void TermIO_shell_history_next(TermIO *io) {
 
 void TermIO_reprompt(TermIO *io) {
 	write_playback_info(io);
+}
+
+static void write_playback_info(TermIO *io) {
+	static const char CLEAR_LINE_VT100[] = "\033[2K\r";
+
+	switch (io->mode) {
+		case InputMode_KEY:
+			printf(CLEAR_LINE_VT100);
+			io->playback_state == Queue_STOPPED
+				? printf("(%s)", get_playback_icon(io->playback_state))
+				: printf("(%s) %s/%s", get_playback_icon(io->playback_state), io->timecode_buf, io->duration_buf);
+			break;
+
+		case InputMode_SHELL:
+			{
+				static const char PROMPT_FMT[] = "(%s) %s/%s [mpl]$ ";
+				static const char PROMPT_FMT_STOPPED[] = "(%s) [mpl]$ ";
+
+				static char prompt[255];
+				static size_t prompt_len = 0;
+				const size_t new_prompt_len = io->playback_state == Queue_STOPPED
+					? snprintf(prompt, sizeof(prompt), PROMPT_FMT_STOPPED, get_playback_icon(io->playback_state))
+					: snprintf(prompt, sizeof(prompt), PROMPT_FMT, get_playback_icon(io->playback_state), io->timecode_buf, io->duration_buf);
+				if (new_prompt_len != prompt_len) {
+					// Make readline aware of the prompt's length for redisplay purposes
+					rl_set_prompt(prompt);
+					rl_already_prompted = true;
+				}
+
+				printf(CLEAR_LINE_VT100);
+				printf("%s", prompt);
+				rl_on_new_line_with_prompt();
+				rl_redisplay();
+			}
+			break;
+	}
+}
+
+static void shell_line_ready_cb(char *line) {
+	TermIO *io = shell_cb_userdata;
+
+	// Send SHELL_CLOSE on EOF
+	if (!line) {
+		static const Event evt = {.event_type = mpl_SHELL_CLOSE, .body_size = 0};
+		EventSubQueue_send(io->evt_sq, &evt, false);
+		return;
+	}
+
+	// Add line to history and send mpl_INPUT_LINE
+	add_history(line);
+	Event evt = {.event_type = mpl_INPUT_LINE, .body_size = strlen(line), .body = line};
+	EventSubQueue_send(io->evt_sq, &evt, false);
 }
