@@ -3,7 +3,7 @@ src_ui_cli = []
 if build_machine.system() == 'windows'
 	src_ui_cli += files('termio_thread_win32.c')
 else
-	src_ui_cli += files('termio_thread.c')
+	src_ui_cli += files('termio.c', 'termio_thread.c')
 endif
 
 src += src_ui_cli

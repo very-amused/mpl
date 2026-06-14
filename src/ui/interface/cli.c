@@ -7,13 +7,15 @@
 #include "ui/event.h"
 #include "ui/event_queue.h"
 #include "cli/termio_thread.h"
+#include "cli/termio_events.h"
+#include "cli/termio.h"
 #include "ui/timecode.h"
 #include "util/log.h"
 #include <string.h>
 
 // CLI context
 typedef struct Ctx {
-	TermIOThread *io_thread;	
+	TermIOThread *io_thread;
 } Ctx;
 
 // UserInterface methods
@@ -104,7 +106,7 @@ static enum UserInterface_ERR mainloop(void * ctx__,
 				free(line);
 				if (err != Parser_OK) {
 					LOG(Verbosity_NORMAL, "Parse error: %s\n", Parser_ERR_name(err));
-					TermIOThread_reprompt(ctx->io_thread);
+					TermIOThread_post_event(ctx->io_thread, TermIO_REPROMPT, 0);
 					break;
 				}
 
@@ -118,24 +120,25 @@ static enum UserInterface_ERR mainloop(void * ctx__,
 					}
 					Parser_LineError_deinit(&parse_err);
 					ParseNode_rfree(stmt);
-					TermIOThread_reprompt(ctx->io_thread);
+					TermIOThread_post_event(ctx->io_thread, TermIO_REPROMPT, 0);
 					break;
 				}
 				err = Parser_walk(config->parser, config, Parser_WALK_KEYBINDS | Parser_WALK_FUNCTIONS | Parser_WALK_MACROS, stmt);
 				ParseNode_rfree(stmt);
 				if (err != Parser_OK) {
 					LOG(Verbosity_NORMAL, "Error: %s\n", Parser_ERR_name(err));
-					TermIOThread_reprompt(ctx->io_thread);
+					TermIOThread_post_event(ctx->io_thread, TermIO_REPROMPT, 0);
 				}
 			}
 			break;
 		
 		case mpl_REPROMPT:
-			TermIOThread_reprompt(ctx->io_thread);
+			TermIOThread_post_event(ctx->io_thread, TermIO_REPROMPT, 0);
 			break;
 
 		case mpl_PLAYBACK_STATE:
-			TermIOThread_update_playback_state(ctx->io_thread, evt.body_inline);
+			LOG(Verbosity_DEBUG, "Received mpl_PLAYBACK_STATE on main thread\n");
+			TermIOThread_post_event(ctx->io_thread, TermIO_PLAYBACK_STATE, evt.body_inline);
 			break;
 
 		case mpl_TIMECODE:
@@ -159,16 +162,16 @@ static enum UserInterface_ERR mainloop(void * ctx__,
 			break;
 
 		case mpl_SHELL_OPEN:
-			TermIOThread_set_mode(ctx->io_thread, InputMode_SHELL);
+			TermIOThread_post_event(ctx->io_thread, TermIO_CHANGE_MODE, InputMode_SHELL);
 			break;
 		case mpl_SHELL_CLOSE:
-			TermIOThread_set_mode(ctx->io_thread, InputMode_KEY);
+			TermIOThread_post_event(ctx->io_thread, TermIO_CHANGE_MODE, InputMode_KEY);
 			break;
 		case mpl_SHELL_HISTORY_PREV:
-			TermIOThread_history_prev(ctx->io_thread);
+			TermIOThread_post_event(ctx->io_thread, TermIO_HISTORY_PREV, 0);
 			break;
 		case mpl_SHELL_HISTORY_NEXT:
-			TermIOThread_history_next(ctx->io_thread);
+			TermIOThread_post_event(ctx->io_thread, TermIO_HISTORY_NEXT, 0);
 			break;
 
 		default:
@@ -190,7 +193,7 @@ static void refresh_timecode(EventBody_Timecode timecode,
 	fmt_timecode(timecode_buf, sizeof(timecode_buf), timecode, &pcm, show_ms);
 	fmt_timecode(duration_buf, sizeof(duration_buf), audio->duration_timecode, &pcm, show_ms);
 
-	TermIOThread_update_timecode(thr, timecode_buf, duration_buf);
+	TermIOThread_post_event2(thr, TermIO_TIMECODE, timecode_buf, duration_buf);
 }
 
 static void refresh_metadata(const TrackMeta *meta) {

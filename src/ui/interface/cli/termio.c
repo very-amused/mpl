@@ -5,7 +5,7 @@
 #include "ui/event.h"
 #include "ui/event_queue.h"
 #include "ui/icons.h"
-#include "ui/interface/cli/termio_thread.h"
+#include "util/log.h"
 
 #include <string.h>
 #include <readline/history.h>
@@ -80,7 +80,7 @@ void TermIO_handle_keypress(TermIO *io) {
 	// Read keypress from stdin
 	// TODO: parse escape sequences
 	// TODO: support mod keys
-	char c = get_char(STDIN_FILENO);
+	char c = get_char(stdin);
 
 	// Handle keypress
 	switch (io->mode) {
@@ -88,6 +88,7 @@ void TermIO_handle_keypress(TermIO *io) {
 			{
 				// Send mpl_KEYPRESS event to main thread
 				Event evt = {.event_type = mpl_KEYPRESS, .body_size = sizeof(EventBody_Keypress), .body_inline = c};
+				LOG(Verbosity_DEBUG, "Sending mpl_KEYPRESS event\n");
 				EventSubQueue_send(io->evt_sq, &evt, false);
 			}
 			break;
@@ -124,7 +125,7 @@ void TermIO_set_input_mode(TermIO *io, enum InputMode mode) {
 					rl_callback_handler_remove();
 					shell_cb_userdata = NULL;
 					// Advance to a blank line
-					printf("\n");
+					fprintf(stderr, "\n");
 				}
 				// Tell the terminal we want to receive input without line buffering
 				struct termios term_opts = io->orig_term_opts;
@@ -140,7 +141,7 @@ void TermIO_set_input_mode(TermIO *io, enum InputMode mode) {
 				term_opts.c_lflag |= (ECHO | ICANON);
 				tcsetattr(STDIN_FILENO, TCSANOW, &term_opts);
 				// Advance to a blank line
-				printf("\n");
+				fprintf(stderr, "\n");
 				// Setup command history
 				static bool history_initialized = false;
 				if (!history_initialized) {
@@ -165,6 +166,7 @@ void TermIO_update_timecode(TermIO *io, const char *timecode_buf, const char *du
 
 
 void TermIO_update_playback_state(TermIO *io, enum Queue_PLAYBACK_STATE playback_state) {
+	LOG(Verbosity_DEBUG, "TermIO_update_playback_state called\n");
 	io->playback_state = playback_state;	
 	write_playback_info(io);
 }
@@ -199,10 +201,10 @@ static void write_playback_info(TermIO *io) {
 
 	switch (io->mode) {
 		case InputMode_KEY:
-			printf(CLEAR_LINE_VT100);
+			fprintf(stderr, CLEAR_LINE_VT100);
 			io->playback_state == Queue_STOPPED
-				? printf("(%s)", get_playback_icon(io->playback_state))
-				: printf("(%s) %s/%s", get_playback_icon(io->playback_state), io->timecode_buf, io->duration_buf);
+				? fprintf(stderr, "(%s)", get_playback_icon(io->playback_state))
+				: fprintf(stderr, "(%s) %s/%s", get_playback_icon(io->playback_state), io->timecode_buf, io->duration_buf);
 			break;
 
 		case InputMode_SHELL:
@@ -221,8 +223,8 @@ static void write_playback_info(TermIO *io) {
 					rl_already_prompted = true;
 				}
 
-				printf(CLEAR_LINE_VT100);
-				printf("%s", prompt);
+				fprintf(stderr, CLEAR_LINE_VT100);
+				fprintf(stderr, "%s", prompt);
 				rl_on_new_line_with_prompt();
 				rl_redisplay();
 			}

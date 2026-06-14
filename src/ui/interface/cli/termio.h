@@ -1,7 +1,14 @@
 #pragma once
-#include "ui/interface/cli/termio_thread.h"
+#include "ui/event_queue.h"
+#include "config/keybind/keybind_map.h"
 
 typedef struct TermIO TermIO;
+
+// InputMode tells the UI how to collect input data
+enum InputMode {
+	InputMode_KEY, // Get one key of input at a time without buffering
+	InputMode_SHELL // Get shell input lines
+};
 
 // Create a new TermIO struct
 TermIO *TermIO_new(EventQueue *eq, KeybindMap *keybinds);

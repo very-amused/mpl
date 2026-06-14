@@ -12,6 +12,8 @@
 	VARIANT(TermIO_CHANGE_MODE) /* Change IO mode (key / shell) */ \
 	VARIANT(TermIO_TIMECODE) /* Timecode update received */ \
 	VARIANT(TermIO_PLAYBACK_STATE) /* Play/pause/stop state change from TrackQueue */ \
+	VARIANT(TermIO_HISTORY_PREV) /* Go back one shell history entry */ \
+	VARIANT(TermIO_HISTORY_NEXT) /* Advance one shell history entry */ \
 	VARIANT(TermIO_REPROMPT) /* Redraw cached prompt  */
 
 
@@ -36,6 +38,10 @@ typedef struct TermIO_Event {
 	const void *body2;
 	uint64_t body_inline;
 } TermIO_Event;
+
+// Input mode sent with TermIO_CHANGE_MODE event:
+// (enum InputMode)body_inline is the new input mode
+typedef enum InputMode TermIO_EventBody_InputMode;
 
 // Timecodes sent with TermIO_TIMECODE events:
 // (char *)body is the position timecode string
