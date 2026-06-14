@@ -110,10 +110,6 @@ void TermIO_handle_keypress(TermIO *io) {
 }
 
 void TermIO_set_input_mode(TermIO *io, enum InputMode mode) {
-	if (mode == io->mode) {
-		return;
-	}
-
 	static bool has_prompt = false;
 	
 	io->mode = mode;
@@ -133,6 +129,7 @@ void TermIO_set_input_mode(TermIO *io, enum InputMode mode) {
 				tcsetattr(STDIN_FILENO, TCSANOW, &term_opts);
 				has_prompt = false;
 			}
+			break;
 
 		case InputMode_SHELL:
 			{
@@ -154,6 +151,7 @@ void TermIO_set_input_mode(TermIO *io, enum InputMode mode) {
 				rl_callback_handler_install("[mpl]$ ", shell_line_ready_cb);
 				has_prompt = true;
 			}
+			break;
 	}
 }
 
