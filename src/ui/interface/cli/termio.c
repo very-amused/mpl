@@ -11,10 +11,20 @@
 #include <string.h>
 #include <readline/history.h>
 #include <readline/readline.h>
-#include <termios.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+
+#ifdef __unix__
+#include <termios.h>
+#elif defined(__WIN32)
+#include <consoleapi.h>
+#include <processenv.h>
+#include <Windows.h>
+
+#define stdin_handle GetStdHandle(STD_INPUT_HANDLE)
+#define stderr_handle GetStdHandle(STD_ERROR_HANDLE)
+#endif
 
 static TermIO *shell_cb_userdata; // userdata for readline shell callback
 
@@ -38,7 +48,13 @@ struct TermIO {
 	unsigned int shell_active_line_buf_max;
 	bool shell_active_line_buf_valid; // used to invalite the active line buffer when a shell session closes
 
+#ifdef __unix__
 	struct termios orig_term_opts; // Original terminal state we reset to when done
+#elif defined(__WIN32)
+	// Original terminal modes (opts)
+	DWORD orig_term_mode_input;
+	DWORD orig_term_mode_output;
+#endif
 };
 
 TermIO *TermIO_new(EventQueue *eq, KeybindMap *keybinds) {
@@ -54,7 +70,12 @@ TermIO *TermIO_new(EventQueue *eq, KeybindMap *keybinds) {
 	io->keybinds = keybinds;
 
 	// Store original terminal state so we can reset to it during freeing
+#ifdef __unix__
 	tcgetattr(STDIN_FILENO, &io->orig_term_opts);
+#elif defined(__WIN32)
+	GetConsoleMode(stdin_handle, &io->orig_term_mode_input);
+	GetConsoleMode(stderr_handle, &io->orig_term_mode_output);
+#endif
 
 	return io;
 }
@@ -63,7 +84,12 @@ void TermIO_reset_and_free(TermIO *io) {
 	// Free active line buffer
 	free(io->shell_active_line_buf);
 	// Reset terminal state
+#ifdef __unix__
 	tcsetattr(STDIN_FILENO, TCSANOW, &io->orig_term_opts);
+#elif defined(__WIN32)
+	SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), io->orig_term_mode_input);
+	SetConsoleMode(GetStdHandle(STD_ERROR_HANDLE), io->orig_term_mode_output);
+#endif
 	// Free TermIO struct
 	free(io);
 }
@@ -119,6 +145,16 @@ void TermIO_handle_keypress(TermIO *io) {
 
 void TermIO_set_input_mode(TermIO *io, enum InputMode mode) {
 	static bool has_prompt = false;
+
+#ifdef __WIN32
+	// Input options we always turn off
+	static const DWORD CONSOLE_INPUT_MODE_MASK = ~(ENABLE_MOUSE_INPUT | ENABLE_WINDOW_INPUT);
+
+	// Enable VT100 escape codes
+	DWORD console_output_mode = io->orig_term_mode_output;
+	console_output_mode |= ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+	SetConsoleMode(stderr_handle, console_output_mode);
+#endif
 	
 	io->mode = mode;
 	switch (io->mode) {
@@ -132,9 +168,15 @@ void TermIO_set_input_mode(TermIO *io, enum InputMode mode) {
 					fprintf(stderr, "\n");
 				}
 				// Tell the terminal we want to receive input without line buffering
+#ifdef __unix__
 				struct termios term_opts = io->orig_term_opts;
 				term_opts.c_lflag &= ~(ECHO | ICANON);
 				tcsetattr(STDIN_FILENO, TCSANOW, &term_opts);
+#elif defined(__WIN32)
+				DWORD console_input_mode = io->orig_term_mode_input & CONSOLE_INPUT_MODE_MASK;
+				console_input_mode &= ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT);
+				SetConsoleMode(stdin_handle, console_input_mode);
+#endif
 				has_prompt = false;
 			}
 			break;
@@ -142,9 +184,15 @@ void TermIO_set_input_mode(TermIO *io, enum InputMode mode) {
 		case InputMode_SHELL:
 			{
 				// Tell the terminal we want to receive line buffered input
+#ifdef __unix__
 				struct termios term_opts = io->orig_term_opts;
 				term_opts.c_lflag |= (ECHO | ICANON);
 				tcsetattr(STDIN_FILENO, TCSANOW, &term_opts);
+#elif defined(__WIN32)
+				DWORD console_input_mode = io->orig_term_mode_input & CONSOLE_INPUT_MODE_MASK;
+				console_input_mode |= (ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT);
+				SetConsoleMode(stdin_handle, console_input_mode);
+#endif
 				// Advance to a blank line
 				fprintf(stderr, "\n");
 				// Setup command history
@@ -284,3 +332,8 @@ static void shell_line_ready_cb(char *line) {
 	Event evt = {.event_type = mpl_INPUT_LINE, .body_size = strlen(line), .body = line};
 	EventSubQueue_send(io->evt_sq, &evt, false);
 }
+
+#ifdef __WIN32
+#undef stdin_handle
+#undef stderr_handle
+#endif
