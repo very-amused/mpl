@@ -137,7 +137,6 @@ static enum UserInterface_ERR mainloop(void * ctx__,
 			break;
 
 		case mpl_PLAYBACK_STATE:
-			LOG(Verbosity_DEBUG, "Received mpl_PLAYBACK_STATE on main thread\n");
 			TermIOThread_post_event(ctx->io_thread, TermIO_PLAYBACK_STATE, evt.body_inline);
 			break;
 

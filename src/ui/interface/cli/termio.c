@@ -164,7 +164,6 @@ void TermIO_update_timecode(TermIO *io, const char *timecode_buf, const char *du
 
 
 void TermIO_update_playback_state(TermIO *io, enum Queue_PLAYBACK_STATE playback_state) {
-	LOG(Verbosity_DEBUG, "TermIO_update_playback_state called\n");
 	io->playback_state = playback_state;	
 	write_playback_info(io);
 }
@@ -186,8 +185,10 @@ void TermIO_shell_history_next(TermIO *io) {
 	HIST_ENTRY *hist_next = next_history();
 	if (hist_next && hist_next->line) {
 		rl_replace_line(hist_next->line, true);
-		write_playback_info(io);
+	} else {
+		rl_replace_line("", true);
 	}
+	write_playback_info(io);
 }
 
 void TermIO_reprompt(TermIO *io) {

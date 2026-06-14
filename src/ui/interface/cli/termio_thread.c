@@ -133,7 +133,6 @@ static void *TermIOThread_loop(void *thr__) {
 					TermIO_update_timecode(thr->io, evt.body, evt.body2);
 					break;
 				case TermIO_PLAYBACK_STATE:
-					LOG(Verbosity_DEBUG, "Received TermIO_PLAYBACK_STATE event\n");
 					TermIO_update_playback_state(thr->io, evt.body_inline);
 					break;
 				case TermIO_HISTORY_PREV:
