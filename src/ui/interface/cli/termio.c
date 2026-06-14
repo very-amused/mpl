@@ -1,6 +1,7 @@
 #include "termio.h"
 #include "ui/interface/cli/termio_thread.h"
 
+#include <string.h>
 #include <readline/history.h>
 #include <readline/readline.h>
 #include <termios.h>
@@ -27,6 +28,7 @@ struct TermIO {
 	struct termios orig_term_opts; // Original terminal state we reset to when done
 };
 
+static void write_playback_info(TermIO *io);
 // Process a line of shell input
 static void shell_line_ready_cb(char *line);
 
@@ -76,4 +78,42 @@ void TermIO_set_input_mode(TermIO *io, enum InputMode mode) {
 				has_prompt = true;
 			}
 	}
+}
+
+void TermIO_update_timecode(TermIO *io, const char *timecode_buf, const char *duration_buf) {
+	strncpy(io->timecode_buf, timecode_buf, sizeof(io->timecode_buf)-1);
+	strncpy(io->duration_buf, duration_buf, sizeof(io->duration_buf)-1);
+	// Render playback info
+	write_playback_info(io);
+}
+
+
+void TermIO_update_playback_state(TermIO *io, enum Queue_PLAYBACK_STATE playback_state) {
+	io->playback_state = playback_state;	
+	write_playback_info(io);
+}
+
+void TermIO_shell_history_prev(TermIO *io) {
+	if (io->mode != InputMode_SHELL) {
+		return;
+	}
+	HIST_ENTRY *hist_prev = previous_history();
+	if (hist_prev && hist_prev->line) {
+		rl_replace_line(hist_prev->line, true);
+		write_playback_info(io);
+	}
+}
+void TermIO_shell_history_next(TermIO *io) {
+	if (io->mode != InputMode_SHELL) {
+		return;
+	}
+	HIST_ENTRY *hist_next = next_history();
+	if (hist_next && hist_next->line) {
+		rl_replace_line(hist_next->line, true);
+		write_playback_info(io);
+	}
+}
+
+void TermIO_reprompt(TermIO *io) {
+	write_playback_info(io);
 }
