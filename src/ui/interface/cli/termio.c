@@ -7,6 +7,7 @@
 #include "ui/icons.h"
 #include "util/log.h"
 
+#include <libavutil/mem.h>
 #include <string.h>
 #include <readline/history.h>
 #include <readline/readline.h>
@@ -32,6 +33,11 @@ struct TermIO {
 	char duration_buf[255];
 	enum Queue_PLAYBACK_STATE playback_state;
 
+	// Active line buffer for saving the line being typed when navigating history
+	char *shell_active_line_buf;
+	unsigned int shell_active_line_buf_max;
+	bool shell_active_line_buf_valid; // used to invalite the active line buffer when a shell session closes
+
 	struct termios orig_term_opts; // Original terminal state we reset to when done
 };
 
@@ -54,6 +60,8 @@ TermIO *TermIO_new(EventQueue *eq, KeybindMap *keybinds) {
 }
 
 void TermIO_reset_and_free(TermIO *io) {
+	// Free active line buffer
+	free(io->shell_active_line_buf);
 	// Reset terminal state
 	tcsetattr(STDIN_FILENO, TCSANOW, &io->orig_term_opts);
 	// Free TermIO struct
@@ -145,6 +153,8 @@ void TermIO_set_input_mode(TermIO *io, enum InputMode mode) {
 					using_history();
 					history_initialized = true;
 				}
+				// Invalidate active line buffer
+				io->shell_active_line_buf_valid = false;
 				// Setup readline input
 				rl_initialize();
 				shell_cb_userdata = io;
@@ -153,6 +163,9 @@ void TermIO_set_input_mode(TermIO *io, enum InputMode mode) {
 			}
 			break;
 	}
+
+	// Reprompt
+	write_playback_info(io);
 }
 
 void TermIO_update_timecode(TermIO *io, const char *timecode_buf, const char *duration_buf) {
@@ -172,9 +185,21 @@ void TermIO_shell_history_prev(TermIO *io) {
 	if (io->mode != InputMode_SHELL) {
 		return;
 	}
+	// Remember the line buffer's contents so we can go back to it
+	// in shell_history_next once we hit the end of the history list
+	if (!current_history()) {
+		size_t rl_line_buf_len = strlen(rl_line_buffer);
+		av_fast_malloc(&io->shell_active_line_buf, &io->shell_active_line_buf_max, rl_line_buf_len+1);
+		strncpy(io->shell_active_line_buf, rl_line_buffer, io->shell_active_line_buf_max);
+		io->shell_active_line_buf_valid = true;
+		LOG(Verbosity_DEBUG, "Saving active line buffer @ %p\n", io->shell_active_line_buf);
+	}
+
+	// Move to prev history entry and replace line buffer
 	HIST_ENTRY *hist_prev = previous_history();
 	if (hist_prev && hist_prev->line) {
 		rl_replace_line(hist_prev->line, true);
+		rl_point = strlen(hist_prev->line); // move cursor to end of line
 		write_playback_info(io);
 	}
 }
@@ -182,13 +207,21 @@ void TermIO_shell_history_next(TermIO *io) {
 	if (io->mode != InputMode_SHELL) {
 		return;
 	}
+
 	HIST_ENTRY *hist_next = next_history();
 	if (hist_next && hist_next->line) {
+		// Replace line with next history entry
 		rl_replace_line(hist_next->line, true);
-	} else {
-		rl_replace_line("", true);
+		rl_point = strlen(hist_next->line); // move cursor to end of line
+		write_playback_info(io);
+	} else if (io->shell_active_line_buf && io->shell_active_line_buf_valid) {
+		LOG(Verbosity_DEBUG, "Restoring active line buffer\n");
+		// We've hit the end of the history list, restore the line being typed before we started looking around in history
+		rl_replace_line(io->shell_active_line_buf, true);
+		rl_point = strlen(io->shell_active_line_buf);
+		io->shell_active_line_buf_valid = false;
+		write_playback_info(io);
 	}
-	write_playback_info(io);
 }
 
 void TermIO_reprompt(TermIO *io) {
@@ -233,6 +266,11 @@ static void write_playback_info(TermIO *io) {
 
 static void shell_line_ready_cb(char *line) {
 	TermIO *io = shell_cb_userdata;
+
+	// Invalidate active line buffer
+	if (io->shell_active_line_buf && io->shell_active_line_buf_valid) {
+		io->shell_active_line_buf_valid = false;
+	}
 
 	// Send SHELL_CLOSE on EOF
 	if (!line) {
