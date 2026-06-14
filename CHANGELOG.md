@@ -4,8 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-### v0.5.0
-The next major release will be v0.5.0. This release will add a shell and the ability to manage multiple tracks.
+## [0.5.0]
+### Added
+- MPL now has a built-in shell which supports all config functions! `shell_open()` is bound to `:` by default.
+
+### Internal
+- Reworked all of the terminal I/O handling to support the new shell.
 
 ## [0.4.10]
 ### Added
