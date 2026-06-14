@@ -7,6 +7,7 @@
 
 // Events the TermIOThread must wake and respond to
 #define TERMIO_EVENT_ENUM(VARIANT) \
+	VARIANT(TermIO_THREADRC_WAKE) /* Wakeup from ThreadRC, goto preloop */ \
 	VARIANT(TermIO_SHUTDOWN) /* Thread shutdown */ \
 	VARIANT(TermIO_CHANGE_MODE) /* Change IO mode (key / shell) */ \
 	VARIANT(TermIO_TIMECODE) /* Timecode update received */ \

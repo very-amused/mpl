@@ -1,4 +1,5 @@
 #include "termio_thread.h"
+#include "termio.h"
 #include "config/keybind/keybind_map.h"
 #include "error.h"
 #include "track_queue/state.h"
@@ -7,6 +8,7 @@
 #include "ui/icons.h"
 #include "util/log.h"
 #include "termio_events.h"
+#include "util/thread_rc.h"
 
 #include <pthread.h>
 #include <readline/keymaps.h>
@@ -18,15 +20,18 @@
 #include <unistd.h>
 #include <poll.h>
 #include <sys/poll.h>
+#include <sys/stat.h>
 #include <string.h>
 #include <stddef.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 
 struct TermIOThread {
+	ThreadRC *rc;
+
 	// EventSubQueue for sending input events
 	EventSubQueue *evt_sq;
-	// KeybindMap to implement shell_close keybind
+	// KeybindMap to implement shell keybinds
 	KeybindMap *keybinds;
 
 	int input_fd; // FD to receive input on, usually stdin
@@ -54,12 +59,29 @@ struct TermIOThread {
 };
 
 // pthread routine for the TermIOThread
-void *TermIOThread_loop(void *thr__);
+static void *TermIOThread_loop(void *thr__);
+
+static void TermIOThread_wake(void *ud) {
+	TermIOThread *thr = ud;
+	struct stat info;
+	if (fstat(thr->evt_pipe[1], &info) != 0 || !S_ISFIFO(info.st_mode)) {
+		return;
+	}
+	static const TermIO_Event wake_evt = {
+		.event_type = TermIO_THREADRC_WAKE,
+	};
+	write(thr->evt_pipe[1], &wake_evt, sizeof(TermIO_Event));
+}
 
 TermIOThread *TermIOThread_new(EventQueue *eq, KeybindMap *keybinds) {
 	TermIOThread *thr = malloc(sizeof(TermIOThread));
 	CHECK_ALLOC(thr, NULL);
 	memset(thr, 0, sizeof(TermIOThread));
+
+	ThreadRC_AntiDeadlock anti_deadlock = {
+		.wake_aux_thread = TermIOThread_wake
+	};
+	thr->rc = ThreadRC_new(anti_deadlock, thr);
 
 	thr->evt_sq = EventQueue_connect(eq, 100);
 	if (!thr->evt_sq) {
@@ -97,6 +119,7 @@ void TermIOThread_free(TermIOThread *thr) {
 
 	// Free thread resources
 	close(thr->evt_pipe[1]);
+	ThreadRC_free(thr->rc);
 	free(thr);
 }
 
@@ -256,7 +279,7 @@ static void rl_line_ready_cb_(char *line) {
 	EventSubQueue_send(thr->evt_sq, &evt, false);
 }
 
-void *TermIOThread_loop(void *thr__) {
+static void *TermIOThread_loop(void *thr__) {
 	TermIOThread *thr = thr__;
 
 	// Start in key input mode
