@@ -7,7 +7,7 @@ option('wasapi', type : 'feature', value : 'auto')
 option('cli', type : 'feature', value : 'auto')
 
 # Enable nerdfont icons
-option('nerdfont_icons', type : 'boolean', value : true)
+option('nerdfont_icons', type : 'feature', value : 'auto')
 
 # Options for MPL development - don't enable these unless you know what you're doing:
 option('test_config', type : 'boolean', value : false) # Read ../test/mpl.conf instead of the usual config locations

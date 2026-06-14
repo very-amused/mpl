@@ -15,6 +15,8 @@ enable_resampling = enable_wasapi or get_option('test_resampling')
 # Rely on sysv struct padding convention when the compiler implements it
 struct_padding_testresult = cc.run(files('feature-tests/struct_padding.c')[0])
 enable_known_struct_padding = struct_padding_testresult.compiled() and struct_padding_testresult.returncode() == 0
+# We disable nerdfont icons on win32 because windows terminals can't properly print them
+enable_nerdfont = (not is_win32) and get_option('nerdfont_icons').allowed()
 
 # Preprocessor defines and compiler overrides
 cflags = []
@@ -34,7 +36,7 @@ if get_option('cli').allowed()
 	cflags += '-DUI_CLI'
 endif
 # Nerdfont icon support
-if get_option('nerdfont_icons')
+if enable_nerdfont
 	cflags += '-DNERDFONT'
 endif
 
