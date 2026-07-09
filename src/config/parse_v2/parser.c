@@ -97,6 +97,7 @@ typedef struct ParseNode ParseNode_ArgList;
 // TODO: we can use this to implement pipes
 typedef struct ParseNode ParseNode_ArgExpr;
 
+// FIXME: use new ConfigVal type here
 struct ParseNode_ValueLit {
 	ParseNode node;
 	enum ConfigType type;

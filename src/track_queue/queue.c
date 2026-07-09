@@ -9,12 +9,15 @@
 #include "state.h"
 #include "track.h"
 #include "error.h"
+#include "track_meta.h"
 #include "ui/event.h"
 #include "ui/event_queue.h"
+#include "ui/fmt.h"
 #include "util/log.h"
 
 #include <pthread.h>
 #include <semaphore.h>
+#include <stddef.h>
 #include <sys/param.h>
 #include <string.h>
 
@@ -479,4 +482,34 @@ enum Queue_PLAYBACK_STATE Queue_get_playback_state(TrackQueue *q) {
 	enum Queue_PLAYBACK_STATE playback_state = q->playback_state;
 	pthread_mutex_unlock(&q->lock);
 	return playback_state;
+}
+
+// Display a TrackQueue to a Formatter
+int TrackQueue_fmt(TrackQueue *q, Formatter *fmt) {
+	int n = 0; // bytes written
+
+	size_t index = 0;
+
+	pthread_mutex_lock(&q->lock);
+	TrackQueueNode *node = q->head->next;
+	while (node != q->head) {
+		n += fmt_printf(fmt, "- [%zu]", index);
+		const TrackMeta *meta = &node->track->meta;
+
+		// TODO: add album year to metadata so we can include it here
+		// TODO: denote source type with icon
+		if (meta->artist && meta->name) {
+			n += fmt_printf(fmt, " %s - %s\n", meta->artist, meta->name);
+		} else if (meta->name) {
+			n += fmt_printf(fmt, " %s\n", meta->name);
+		} else {
+			n += fmt_printf(fmt, " %s\n", node->track->url);
+		}
+
+		node = node->next;
+		index++;
+	}
+	pthread_mutex_unlock(&q->lock);
+
+	return n;
 }

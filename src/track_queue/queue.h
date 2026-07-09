@@ -7,6 +7,7 @@
 #include "track.h"
 #include "buffer_thread.h"
 #include "ui/event_queue.h"
+#include "ui/fmt.h"
 
 #include <pthread.h>
 #include <stdbool.h>
@@ -91,3 +92,6 @@ int TrackQueue_seek_snap(TrackQueue *q, int32_t offset_ms);
 // Get playback state from the queue and its AudioBackend
 enum Queue_PLAYBACK_STATE Queue_get_playback_state(TrackQueue *q);
 
+// Display the TrackQueue to a Formatter
+// Returns the # of bytes written
+int TrackQueue_fmt(TrackQueue *q, Formatter *fmt);
