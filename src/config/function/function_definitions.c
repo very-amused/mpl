@@ -95,7 +95,6 @@ void shell_history_next(void * _) {
 }
 
 TrackQueue *queue(void * _) {
-	fprintf(stderr, "queue() ConfigFn called!\n");
 	return state.queue;
 }
 

@@ -8,7 +8,7 @@
 /* Struct formatting for debug/eval output purposes */
 
 typedef struct Formatter {
-	int (*write)(void *ctx, const char *format, ...); // Write formatted output
+	int (*vwrite)(void *ctx, const char *format, va_list args); // Write formatted output
 
 	void *ctx; // non-owned
 } Formatter;

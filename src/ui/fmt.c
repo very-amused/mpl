@@ -9,7 +9,7 @@
 int fmt_printf(Formatter *fmt, const char *format, ...) {
 	va_list args;
 	va_start(args, format);
-	int n = fmt->write(fmt->ctx, format, args);
+	int n = fmt->vwrite(fmt->ctx, format, args);
 	va_end(args);
 
 	return n;
@@ -37,15 +37,10 @@ int fmt_data(Formatter *fmt, const ConfigVal *val) {
 
 /* CLI formatting */
 
-static int fmt_cli_write(void *ctx, const char *format, ...) {
-	va_list args;
-	va_start(args, format);
-	int n = vfprintf(stderr, format, args);
-	va_end(args);
-
-	return n;
+static int fmt_cli_vwrite(void *ctx, const char *format, va_list args) {
+	return vfprintf(stderr, format, args);
 }
 
 Formatter FMT_CLI = {
-	.write = fmt_cli_write
+	.vwrite = fmt_cli_vwrite
 };

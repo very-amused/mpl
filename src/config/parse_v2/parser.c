@@ -8,6 +8,7 @@
 #include "config/setting/dictionary.h"
 #include "error.h"
 #include "track_queue/queue.h"
+#include "ui/fmt.h"
 #include "util/log.h"
 #include <assert.h>
 #include <stdlib.h>
@@ -889,7 +890,24 @@ enum Parser_ERR Parser_walk(Parser *p, Config *config, ParserWalkFlags flags, Pa
 		break;
 	case ParseNodeID_ShellStmt:
 		{
-			return Parser_walk(p, config, flags, tree->child);
+			enum Parser_ERR err = Parser_walk(p, config, flags, tree->child);
+			if (err != Parser_OK) {
+				return err;
+			}
+
+			// If we have an eval result, format and clear it
+			if (p->eval_ret) {
+				const ConfigVal eval_ret2 = {
+					.type = p->eval_ret_type,
+					.val_ptr = p->eval_ret
+				};
+				fmt_data(&FMT_CLI, &eval_ret2);
+
+				if (p->free_eval_ret) {
+					free(p->eval_ret);
+				}
+				p->eval_ret = NULL;
+			}
 		}
 		break;
 	case ParseNodeID_KeybindStmt:
@@ -918,6 +936,7 @@ enum Parser_ERR Parser_walk(Parser *p, Config *config, ParserWalkFlags flags, Pa
 					return err;
 				}
 			}
+
 		}
 		break;
 	case ParseNodeID_FnCallExpr:
@@ -931,14 +950,6 @@ enum Parser_ERR Parser_walk(Parser *p, Config *config, ParserWalkFlags flags, Pa
 
 			void *result;
 			enum Parser_ERR err = ParseNode_FnCallExpr_eval(tree, &result);
-			// clear eval_ret register
-			if (p->eval_ret) {
-				if (p->free_eval_ret) {
-					free(p->eval_ret);
-				}
-				p->eval_ret = NULL;
-				p->free_eval_ret = false;
-			}
 			p->eval_ret_type = fn->ret_type;
 			p->eval_ret = result;
 			p->free_eval_ret = false; // for now, we don't have any functions that heap allocate their ret val
