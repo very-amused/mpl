@@ -21,54 +21,20 @@ void ConfigFn_fnState_init(TrackQueue *track_queue, EventQueue *eq) {
 void play(void * _) {
 	TrackQueue_play(state.queue, false);
 }
+
 void pause(void * _) {
 	TrackQueue_play(state.queue, true);
 }
+
 void play_toggle(void * _) {
 	const bool pause = state.queue->playback_state == Queue_PLAYING;
 	TrackQueue_play(state.queue, pause);
 }
 
-void quit(void * _) {
-	const Event quit_evt = {
-		.event_type = mpl_QUIT,
-		.body_size = 0
-	};
-	EventSubQueue_send(state.evt_sq, &quit_evt, false);
-}
-
-void shell_open(void * _) {
-	const Event evt = {
-		.event_type = mpl_SHELL_OPEN,
-		.body_size = 0
-	};
-	EventSubQueue_send(state.evt_sq, &evt, false);
-}
-void shell_close(void * _) {
-	const Event evt = {
-		.event_type = mpl_SHELL_CLOSE,
-		.body_size = 0
-	};
-	EventSubQueue_send(state.evt_sq, &evt, false);
-}
-void shell_history_prev(void * _) {
-	const Event evt = {
-		.event_type = mpl_SHELL_HISTORY_PREV,
-		.body_size = 0
-	};
-	EventSubQueue_send(state.evt_sq, &evt, false);
-}
-void shell_history_next(void * _) {
-	const Event evt = {
-		.event_type = mpl_SHELL_HISTORY_NEXT,
-		.body_size = 0
-	};
-	EventSubQueue_send(state.evt_sq, &evt, false);
-}
-
 void seek(const struct seekArgs *args) {
 	TrackQueue_seek(state.queue, args->ms, AudioSeek_Relative);
 }
+
 void seek_snap(const struct seekArgs *args) {
 	TrackQueue_seek_snap(state.queue, args->ms);
 }
@@ -93,4 +59,50 @@ void show_metadata(void * _) {
 		.event_type = mpl_REPROMPT,
 	};
 	EventSubQueue_send(state.evt_sq, &reprompt_evt, false);
+}
+
+
+void shell_open(void * _) {
+	const Event evt = {
+		.event_type = mpl_SHELL_OPEN,
+		.body_size = 0
+	};
+	EventSubQueue_send(state.evt_sq, &evt, false);
+}
+
+void shell_close(void * _) {
+	const Event evt = {
+		.event_type = mpl_SHELL_CLOSE,
+		.body_size = 0
+	};
+	EventSubQueue_send(state.evt_sq, &evt, false);
+}
+
+void shell_history_prev(void * _) {
+	const Event evt = {
+		.event_type = mpl_SHELL_HISTORY_PREV,
+		.body_size = 0
+	};
+	EventSubQueue_send(state.evt_sq, &evt, false);
+}
+
+void shell_history_next(void * _) {
+	const Event evt = {
+		.event_type = mpl_SHELL_HISTORY_NEXT,
+		.body_size = 0
+	};
+	EventSubQueue_send(state.evt_sq, &evt, false);
+}
+
+TrackQueue *queue(void * _) {
+	fprintf(stderr, "queue() ConfigFn called!\n");
+	return state.queue;
+}
+
+void quit(void * _) {
+	const Event quit_evt = {
+		.event_type = mpl_QUIT,
+		.body_size = 0
+	};
+	EventSubQueue_send(state.evt_sq, &quit_evt, false);
 }

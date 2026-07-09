@@ -21,9 +21,17 @@ void register_ConfigFn_functions(ConfigFnDict *dict) {
 	ConfigFnDict_define_fn(dict, "play_toggle",
 			play_toggle,
 			NULL);
-	ConfigFnDict_define_fn(dict, "quit",
-			quit,
+	static const std::vector<ConfigType> seekArgTypes = {Config_I32};
+	ConfigFnDict_define_fn(dict, "seek",
+			seek,
+			&seekArgTypes);
+	ConfigFnDict_define_fn(dict, "seek_snap",
+			seek_snap,
+			&seekArgTypes);
+	ConfigFnDict_define_fn(dict, "show_metadata",
+			show_metadata,
 			NULL);
+
 	ConfigFnDict_define_fn(dict, "shell_open",
 			shell_open,
 			NULL);
@@ -36,17 +44,14 @@ void register_ConfigFn_functions(ConfigFnDict *dict) {
 	ConfigFnDict_define_fn(dict, "shell_history_next",
 		shell_history_next,
 		NULL);
+	
+	ConfigFnDict_define_fn(dict, "queue",
+			queue,
+			Config_TRACK_QUEUE,
+			NULL);
 
-	static const std::vector<ConfigType> seekArgTypes = {Config_I32};
-	ConfigFnDict_define_fn(dict, "seek",
-			seek,
-			&seekArgTypes);
-	ConfigFnDict_define_fn(dict, "seek_snap",
-			seek_snap,
-			&seekArgTypes);
-
-	ConfigFnDict_define_fn(dict, "show_metadata",
-			show_metadata,
+	ConfigFnDict_define_fn(dict, "quit",
+			quit,
 			NULL);
 }
 

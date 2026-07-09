@@ -37,7 +37,16 @@ void ConfigFnDict_define_fn(ConfigFnDict *dict, const char *ident,
 		LOG(Verbosity_NORMAL, "Invalid return type passed to ConfigFnDict_define_fn!\n");
 		return;
 	}
+	// FIXME: autodetect TrackQueue * ret_type (needs TrackQueue to become opaque)
 
+	ConfigFnDict_define_fn(dict, ident, (ConfigFn_routine)routine, ret_type, arg_types);
+}
+
+template <typename T, typename R>
+void ConfigFnDict_define_fn(ConfigFnDict *dict, const char *ident,
+		R *(*routine)(T *args),
+		const enum ConfigType ret_type,
+		const std::vector<enum ConfigType> *arg_types) {
 	ConfigFnDict_define_fn(dict, ident, (ConfigFn_routine)routine, ret_type, arg_types);
 }
 

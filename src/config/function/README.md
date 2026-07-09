@@ -16,9 +16,7 @@ Right now, there's only one config macro defined and used, which is `include_def
 
 1. Define the function / macro in `function_definitions.h` or `macro_definitions.h` respectively.
 2. Implement the function / macro in `function_definitions.c` or `macro_definitions.c` respectively. You will find a static `state` variable in both of these that these functions can use to interface with MPL.
-3. Register the function / macro in `register.cpp`. This will require the function's name, routine, an argument parser, and an argument deleter. Functions provide their own argument types (and arg parsing) so their definitions and code are clearer to read than if we handled args through some generic facility.
-
-Your config function or config macro should now work with MPL! Try binding it to a key to test it out.
+3. Register the function / macro in `register.cpp`. This will require the function's name, routine, and types for its argument(s) and return value. Your config function or config macro should now work with MPL! Try binding it to a key or calling it in the shell to test it out.
 
 
 ## Where Can I Find Existing Config Functions and Config Macros

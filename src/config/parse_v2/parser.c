@@ -7,6 +7,7 @@
 #include "config/parse_v2/types.h"
 #include "config/setting/dictionary.h"
 #include "error.h"
+#include "track_queue/queue.h"
 #include "util/log.h"
 #include <assert.h>
 #include <stdlib.h>
@@ -368,9 +369,9 @@ struct Parser {
 	enum ParseNodeID cur_node_type;
 
 	// Function eval return register
-	// TODO: implement
 	void *eval_ret;
 	enum ConfigType eval_ret_type;
+	bool free_eval_ret; // set if eval_ret points to something the shell allocated
 };
 
 
@@ -386,7 +387,9 @@ Parser *Parser_new(Lexer *l, ConfigFnDict *fn_dict, ConfigSettingDict *setting_d
 }
 // Deinitialize and free a config parser
 void Parser_free(Parser *p) {
-	free(p->eval_ret);
+	if (p->free_eval_ret) {
+		free(p->eval_ret);
+	}
 	free(p);
 }
 
@@ -876,6 +879,10 @@ enum Parser_ERR Parser_walk(Parser *p, Config *config, ParserWalkFlags flags, Pa
 			case Config_BOOL:
 				*(bool *)dst = val->val_bool;
 				break;
+
+			// We cannot have literals of other types
+			case Config_TRACK_QUEUE:
+				return Parser_TYPE_ERR;
 			}
 		}
 		break;
@@ -923,12 +930,17 @@ enum Parser_ERR Parser_walk(Parser *p, Config *config, ParserWalkFlags flags, Pa
 
 			void *result;
 			enum Parser_ERR err = ParseNode_FnCallExpr_eval(tree, &result);
+			// clear eval_ret register
 			if (p->eval_ret) {
-				free(p->eval_ret);
+				if (p->free_eval_ret) {
+					free(p->eval_ret);
+				}
 				p->eval_ret = NULL;
+				p->free_eval_ret = false;
 			}
 			p->eval_ret_type = fn->ret_type;
 			p->eval_ret = result;
+			p->free_eval_ret = false; // for now, we don't have any functions that heap allocate their ret val
 
 			return err;
 		}

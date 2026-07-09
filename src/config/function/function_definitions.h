@@ -19,18 +19,23 @@ struct seekArgs { int32_t ms; }; // Args passed to a seek function
 /* These functions can be bound to keys and called in mpl.conf.
  * They control MPL's behavior. */
 
+/* Track management */
 void play(void * _); // Play
 void pause(void * _); // Pause
 void play_toggle(void * _); // Play/pause (toggle)
+void seek(const struct seekArgs *args); // Seek += args.ms milliseconds
+void seek_snap(const struct seekArgs *args); // Seek that snaps to the next whole second
+void show_metadata(void *); // Show metadata for the current track
 
-void quit(void * _); // Exit MPL
 
+/* Shell management */
 void shell_open(void * _); // Open MPL's shell
 void shell_close(void * _); // Close MPL's shell
 void shell_history_prev(void * _); // Scroll one entry back in the shell's command history
 void shell_history_next(void * _); // Scroll one entry forward in the shell's command history
 
-void seek(const struct seekArgs *args); // Seek += args.ms milliseconds
-void seek_snap(const struct seekArgs *args); // Seek that snaps to the next whole second
+/* Queue management */
+typedef struct TrackQueue TrackQueue;
+TrackQueue *queue(void * _); // Get the active TrackQueue
 
-void show_metadata(void *); // Show metadata for the current track
+void quit(void * _); // Exit MPL
