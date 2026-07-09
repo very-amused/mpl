@@ -897,6 +897,7 @@ enum Parser_ERR Parser_walk(Parser *p, Config *config, ParserWalkFlags flags, Pa
 
 			// If we have an eval result, format and clear it
 			if (p->eval_ret) {
+				// FIXME: eval ret register should just be a ConfigVal
 				const ConfigVal eval_ret2 = {
 					.type = p->eval_ret_type,
 					.val_ptr = p->eval_ret
