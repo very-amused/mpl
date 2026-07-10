@@ -75,9 +75,9 @@ void ParseNode_rfree(ParseNode *node);
 // Create a deep copy of the parse tree starting at *node
 ParseNode *ParseNode_rcopy(const ParseNode *node);
 
-// Evaluate a function call
+// Evaluate a function call and store the result in *ret
 // fn_expr must be a ParseNode_FnCallExpr
-enum Parser_ERR ParseNode_FnCallExpr_eval(ParseNode *fn_expr, void **ret);
+enum Parser_ERR ParseNode_FnCallExpr_eval(ParseNode *fn_expr, ConfigRegister *ret);
 // Get the function being called in a FnCallExpr
 const ConfigFn *ParseNode_FnCallExpr_get_fn(ParseNode *fn_expr);
 

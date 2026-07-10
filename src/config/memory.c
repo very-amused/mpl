@@ -18,12 +18,12 @@ void ConfigRegister_store(ConfigRegister *r, ConfigVal val, bool is_owned) {
 	r->is_owned = is_owned;
 }
 
-void ConfigMemory_init(ConfigMemory *mem) {
+void Memory_init(Memory *mem) {
 	// Initialize registers
 	ConfigRegister_init(&mem->ret);
 }
 
-void ConfigMemory_deinit(ConfigMemory *mem) {
+void Memory_deinit(Memory *mem) {
 	// Clear registers
 	ConfigRegister_clear(&mem->ret);
 }

@@ -220,29 +220,32 @@ ParseNode *ParseNode_rcopy(const ParseNode *node) {
 }
 
 // Encode arguments for a callable parse tree
-static enum Parser_ERR ParseNode_FnCallExpr_encode_args(ParseNode_FnCallExpr *node, unsigned char **args_buf);
+static enum Parser_ERR ParseNode_FnCallExpr_encode_args(ParseNode_FnCallExpr *node, unsigned char **args_buf, ConfigRegister *ret);
 
-enum Parser_ERR ParseNode_FnCallExpr_eval(ParseNode *node, void **ret) {
+enum Parser_ERR ParseNode_FnCallExpr_eval(ParseNode *node, ConfigRegister *ret) {
 	if (node->type != ParseNodeID_FnCallExpr) {
 		return Parser_INVALID_NODE;
 	}
 	ParseNode_FnCallExpr *fn_expr = (ParseNode_FnCallExpr *)node;
-	if (ret) {
-		*ret = NULL;
-	}
 
 	// Encode argument struct for the function
 	void *args = NULL;
 	if (fn_expr->fn->argc > 0) {
-		enum Parser_ERR err = ParseNode_FnCallExpr_encode_args(fn_expr, (unsigned char **)&args);
+		enum Parser_ERR err = ParseNode_FnCallExpr_encode_args(fn_expr, (unsigned char **)&args, ret);
 		if (err != Parser_OK) {
 			return err;
 		}
 	}
 
+	// Clear return register
+	ConfigRegister_clear(ret);
+
 	// Get the function pointer and call it
-	if (fn_expr->fn->ret_type != Config_VOID) {
-		*ret = fn_expr->fn->routine(args);
+	const enum ConfigType ret_type = fn_expr->fn->ret_type;
+	if (ret_type != Config_VOID) {
+		ret->val.type = ret_type;
+		void *ret_val = fn_expr->fn->routine(args);
+		memcpy(&ret->val.val_i32, &ret_val, ConfigType_size(ret->val.type));
 	} else {
 		fn_expr->fn->routine(args);
 	}
@@ -253,7 +256,7 @@ enum Parser_ERR ParseNode_FnCallExpr_eval(ParseNode *node, void **ret) {
 	return Parser_OK;
 }
 
-static enum Parser_ERR ParseNode_FnCallExpr_encode_args(ParseNode_FnCallExpr *fn_expr, unsigned char **args_buf) {
+static enum Parser_ERR ParseNode_FnCallExpr_encode_args(ParseNode_FnCallExpr *fn_expr, unsigned char **args_buf, ConfigRegister *ret) {
 	const ConfigFn *fn = fn_expr->fn;
 	if (fn->argc == 0) {
 		return Parser_OK;
@@ -318,14 +321,12 @@ static enum Parser_ERR ParseNode_FnCallExpr_encode_args(ParseNode_FnCallExpr *fn
 		if (arg_fn->fn->ret_type != fn->arg_types[i]) {
 			return Parser_TYPE_ERR;
 		}
-		void *result;
-		enum Parser_ERR err = ParseNode_FnCallExpr_eval(&arg_fn->node, &result);
+		enum Parser_ERR err = ParseNode_FnCallExpr_eval(&arg_fn->node, ret);
 		if (err != Parser_OK) {
 			return err;
 		}
-		memcpy(&(*args_buf)[offset], result, ConfigType_size(arg_fn->fn->ret_type));
-		offset += ConfigType_size(fn->ret_type);
-		free(result);
+		memcpy(&(*args_buf)[offset], &ret->val.val_i32, ConfigType_size(arg_fn->fn->ret_type));
+		offset += ConfigType_size(arg_fn->fn->ret_type);
 	}
 
 	return Parser_OK;
@@ -362,6 +363,7 @@ Parser *Parser_new(Lexer *l, ConfigFnDict *fn_dict, ConfigSettingDict *setting_d
 	p->lex = l;
 	p->fn_dict = fn_dict;
 	p->setting_dict = setting_dict;
+	p->mem = mem;
 
 	return p;
 }
@@ -871,6 +873,11 @@ enum Parser_ERR Parser_walk(Parser *p, Config *config, ParserWalkFlags flags, Pa
 			}
 
 			// If we have an eval result, print it using fmt_data
+			const ConfigRegister *ret = &p->mem->ret;
+			if (ret->val.type != Config_VOID)  {
+				// TODO remove hardcoded formatter
+				fmt_data(&FMT_CLI, &ret->val);
+			}
 		}
 		break;
 	case ParseNodeID_KeybindStmt:
@@ -911,9 +918,7 @@ enum Parser_ERR Parser_walk(Parser *p, Config *config, ParserWalkFlags flags, Pa
 				return Parser_OK;
 			}
 
-			// FIXME: use ret register in FnCallExpr_eval
-			void *result;
-			enum Parser_ERR err = ParseNode_FnCallExpr_eval(tree, &result);
+			enum Parser_ERR err = ParseNode_FnCallExpr_eval(tree, &p->mem->ret);
 
 			return err;
 		}

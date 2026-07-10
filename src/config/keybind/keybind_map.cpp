@@ -82,7 +82,7 @@ enum Keybind_ERR KeybindMap_call_keybind(KeybindMap *keybinds, wchar_t keycode, 
 	KeybindRoutine *routine = map[keycode].get();
 	ParseNode *fn_list = routine->fn_list;
 	for (ParseNode *fn_expr = fn_list->child; fn_expr != NULL; fn_expr = fn_expr->sibling) {
-		enum Parser_ERR err = ParseNode_FnCallExpr_eval(fn_expr, NULL);
+		enum Parser_ERR err = ParseNode_FnCallExpr_eval(fn_expr, keybinds->ret);
 		if (err != Parser_OK) {
 			LOG(Verbosity_NORMAL, "Failed to call keybind for key %c: %s returned %s",
 					keycode, ParseNode_FnCallExpr_get_fn(fn_expr)->ident, Parser_ERR_name(err));
