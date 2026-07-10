@@ -2,13 +2,11 @@
 #include "config/config.h"
 #include "config/function/function.h"
 #include "config/function/dictionary.h"
-#include "config/function/function_definitions.h"
 #include "config/memory.h"
 #include "config/parse_v2/lexer.h"
 #include "config/parse_v2/types.h"
 #include "config/setting/dictionary.h"
 #include "error.h"
-#include "track_queue/queue.h"
 #include "ui/fmt.h"
 #include "util/log.h"
 #include <assert.h>
@@ -99,15 +97,9 @@ typedef struct ParseNode ParseNode_ArgList;
 // TODO: we can use this to implement pipes
 typedef struct ParseNode ParseNode_ArgExpr;
 
-// FIXME: use new ConfigVal type here
 struct ParseNode_ValueLit {
 	ParseNode node;
-	enum ConfigType type;
-	union {
-		int32_t val_i32;
-		bool val_bool;
-		char *val_str;
-	};
+	ConfigVal val;
 };
 
 struct ParseNode_SettingStmt {
@@ -187,8 +179,8 @@ void ParseNode_rfree(ParseNode *node) {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Warray-bounds"
 			ParseNode_ValueLit *value_node = (ParseNode_ValueLit *)node;
-			if (value_node->type == Config_STR) {
-				free(value_node->val_str);
+			if (value_node->val.type == Config_STR) {
+				free(value_node->val.val_str);
 			}
 #pragma GCC diagnostic pop
 		}
@@ -295,7 +287,7 @@ static enum Parser_ERR ParseNode_FnCallExpr_encode_args(ParseNode_FnCallExpr *fn
 
 		// Handle value literal arguments
 		if (arg_node->child->type == ParseNodeID_ValueLit) {
-			ParseNode_ValueLit *arg_val = (ParseNode_ValueLit *)arg_node->child;
+			ConfigVal *arg_val = &((ParseNode_ValueLit *)arg_node->child)->val;
 			if (arg_val->type != fn->arg_types[i]) {
 				return Parser_TYPE_ERR;
 			}
@@ -325,8 +317,8 @@ static enum Parser_ERR ParseNode_FnCallExpr_encode_args(ParseNode_FnCallExpr *fn
 		if (err != Parser_OK) {
 			return err;
 		}
-		memcpy(&(*args_buf)[offset], &ret->val.val_i32, ConfigType_size(arg_fn->fn->ret_type));
-		offset += ConfigType_size(arg_fn->fn->ret_type);
+		memcpy(&(*args_buf)[offset], &ret->val.val_i32, ConfigType_size(ret->val.type));
+		offset += ConfigType_size(ret->val.type);
 	}
 
 	return Parser_OK;
@@ -532,20 +524,20 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 
 	case ParseNodeID_ValueLit:
 		{
-			ParseNode_ValueLit *lit = (ParseNode_ValueLit *)node;
+			ConfigVal *val = &((ParseNode_ValueLit *)node)->val;
 			switch (tok->type) {
 				case Tok_I32Lit:
-					lit->type = Config_I32;
-					lit->val_i32 = tok->i32_lit;
+					val->type = Config_I32;
+					val->val_i32 = tok->i32_lit;
 					break;
 				case Tok_StrLit:
-					lit->type = Config_STR;
-					lit->val_str = tok->str_lit;
+					val->type = Config_STR;
+					val->val_str = tok->str_lit;
 					tok->str_lit = NULL;
 					break;
 				case Tok_BoolLit:
-					lit->type = Config_BOOL;
-					lit->val_bool = tok->bool_lit;
+					val->type = Config_BOOL;
+					val->val_bool = tok->bool_lit;
 					break;
 				default:
 					return Parser_SYNTAX_ERR;
@@ -578,10 +570,10 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 			}
 
 			// Check setting type
-			ParseNode_ValueLit *value_node = (ParseNode_ValueLit *)node->child;
-			if (value_node->type != stmt->setting->type) {
+			ConfigVal *val = &((ParseNode_ValueLit *)node->child)->val;
+			if (val->type != stmt->setting->type) {
 				snprintf(p->strerr, strerr_len, "Setting %s has type %s but %s was passed",
-						stmt->setting->ident, ConfigType_name(stmt->setting->type), ConfigType_name(value_node->type));
+						stmt->setting->ident, ConfigType_name(stmt->setting->type), ConfigType_name(val->type));
 				return Parser_TYPE_ERR;
 			}
 		}
@@ -726,7 +718,7 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 					enum ConfigType arg_type;
 					switch (arg->child->type) {
 					case ParseNodeID_ValueLit:
-						arg_type = ((ParseNode_ValueLit *)arg->child)->type;
+						arg_type = ((ParseNode_ValueLit *)arg->child)->val.type;
 						break;
 					case ParseNodeID_FnCallExpr:
 						arg_type = ((ParseNode_FnCallExpr *)arg->child)->fn->ret_type;
@@ -835,11 +827,13 @@ enum Parser_ERR Parser_walk(Parser *p, Config *config, ParserWalkFlags flags, Pa
 			}
 
 			ParseNode_SettingStmt *stmt = (ParseNode_SettingStmt *)tree;
-			ParseNode_ValueLit *val = (ParseNode_ValueLit *)stmt->node.child;
-			// Validate we have a value for the setting and its type is correct
-			if (!val || val->node.type != ParseNodeID_ValueLit) {
+			// Validate we have a value for the setting
+			ParseNode_ValueLit *val_node = (ParseNode_ValueLit *)stmt->node.child;
+			if (!val_node || val_node->node.type != ParseNodeID_ValueLit) {
 				return Parser_SYNTAX_ERR;
 			}
+			// Validate the value matches the setting's type
+			ConfigVal *val = &val_node->val;
 			if (val->type != stmt->setting->type) {
 				// type mismatch
 				return Parser_TYPE_ERR;
@@ -860,7 +854,7 @@ enum Parser_ERR Parser_walk(Parser *p, Config *config, ParserWalkFlags flags, Pa
 				break;
 
 			// We cannot have literals of other types
-			case Config_TRACK_QUEUE:
+			default:
 				return Parser_TYPE_ERR;
 			}
 		}

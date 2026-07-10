@@ -1,5 +1,8 @@
 #pragma once
 #include "track_queue/state.h"
+#include "util/log.h"
+
+#include <stdlib.h>
 
 // TODO: add nerdfont icons behind a feature flag
 

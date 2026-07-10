@@ -77,6 +77,8 @@ TermIO *TermIO_new(EventQueue *eq, KeybindMap *keybinds) {
 	GetConsoleMode(stderr_handle, &io->orig_term_mode_output);
 #endif
 
+	io->playback_state = -1;
+
 	return io;
 }
 
@@ -278,6 +280,11 @@ void TermIO_reprompt(TermIO *io) {
 
 static void write_playback_info(TermIO *io) {
 	static const char CLEAR_LINE_VT100[] = "\033[2K\r";
+
+	// Don't prompt before playback state is initialized
+	if (io->playback_state == -1)  {
+		return;
+	}
 
 	switch (io->mode) {
 		case InputMode_KEY:
