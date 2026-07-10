@@ -1,6 +1,7 @@
 #include "config.h"
 #include "config/function/dictionary.h"
 #include "config/function/state.h"
+#include "config/memory.h"
 #include "config/settings.h"
 #include "config/setting/register.h"
 #include "error.h"
@@ -24,7 +25,8 @@
 void Config_init(Config *conf) {
 	// Load default settings
 	Settings_init(&conf->settings);
-
+	// Initialize memory (registers + variables)
+	Memory_init(&conf->memory);
 
 	// Load registered config functions and macros
 	conf->fn_dict = ConfigFnDict_new();
@@ -38,7 +40,7 @@ void Config_init(Config *conf) {
 
 	// Set up config/shell parsing
 	conf->lexer = Lexer_new();
-	conf->parser = Parser_new(conf->lexer, conf->fn_dict, conf->setting_dict);
+	conf->parser = Parser_new(conf->lexer, conf->fn_dict, conf->setting_dict, &conf->memory);
 	// Parse default config
 	// We save this tree so macros can walk it later if they want to apply various defaults
 	enum Parser_ERR err = Lexer_tokenize(conf->lexer, mpl_default_config);
@@ -60,7 +62,7 @@ void Config_init(Config *conf) {
 	free(errors);
 
 	// Empty keybind map
-	conf->keybinds = KeybindMap_new();
+	conf->keybinds = KeybindMap_new(&conf->memory.ret);
 }
 void Config_deinit(Config *conf) {
 	KeybindMap_free(conf->keybinds);

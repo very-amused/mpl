@@ -9,7 +9,7 @@
 typedef struct KeybindMap KeybindMap;
 
 // Allocate and initialize a new, empty KeybindMap
-KeybindMap *KeybindMap_new();
+KeybindMap *KeybindMap_new(ConfigRegister *ret);
 // Deinitialize and free a KeybindMap
 void KeybindMap_free(KeybindMap *keybinds);
 

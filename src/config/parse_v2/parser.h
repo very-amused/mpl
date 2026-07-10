@@ -1,5 +1,6 @@
 #pragma once
 #include "config/function/dictionary.h"
+#include "config/memory.h"
 #include "config/setting/dictionary.h"
 #include "error.h"
 #include "config/parse_v2/lexer.h"
@@ -79,14 +80,12 @@ ParseNode *ParseNode_rcopy(const ParseNode *node);
 enum Parser_ERR ParseNode_FnCallExpr_eval(ParseNode *fn_expr, void **ret);
 // Get the function being called in a FnCallExpr
 const ConfigFn *ParseNode_FnCallExpr_get_fn(ParseNode *fn_expr);
-// Compute whether a keybind to a FnCallList should be enabled in MPL's shell.
-bool ParseNode_FnCallList_is_shell_enabled(const ParseNode *fn_list);
 
 // A MPL config/shell parser
 typedef struct Parser Parser;
 
 // Create a new config parser that parses from lexer *l
-Parser *Parser_new(Lexer *l, ConfigFnDict *fn_dict, ConfigSettingDict *setting_dict);
+Parser *Parser_new(Lexer *l, ConfigFnDict *fn_dict, ConfigSettingDict *setting_dict, Memory *mem);
 // Deinitialize and free a config parser
 void Parser_free(Parser *p);
 

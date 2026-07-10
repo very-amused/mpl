@@ -1,4 +1,4 @@
-src_config = files('config.c', 'settings.c')
+src_config = files('config.c', 'settings.c', 'memory.c')
 
 if build_machine.system() == 'linux'
     # WARNING: due to meson not understanding .incbin and

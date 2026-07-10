@@ -3,6 +3,7 @@
 #include "config/function/function.h"
 #include "config/function/dictionary.h"
 #include "config/function/function_definitions.h"
+#include "config/memory.h"
 #include "config/parse_v2/lexer.h"
 #include "config/parse_v2/types.h"
 #include "config/setting/dictionary.h"
@@ -337,25 +338,6 @@ const ConfigFn *ParseNode_FnCallExpr_get_fn(ParseNode *fn_expr) {
 	return ((ParseNode_FnCallExpr *)fn_expr)->fn;
 }
 
-bool ParseNode_FnCallList_is_shell_enabled(const ParseNode *node) {
-	if (node->type != ParseNodeID_FnCallList) {
-		LOG(Verbosity_NORMAL, "Error: ParseNode_FnCallList_is_shell_enabled called with invalid node type\n");
-		return false;
-	}
-
-	bool shell_enabled = false;
-	for (ParseNode *child = node->child; child != NULL; child = child->sibling) {
-		ParseNode_FnCallExpr *fn_expr = (ParseNode_FnCallExpr *)child;
-
-		if (fn_expr->fn->routine == (ConfigFn_routine)shell_close) {
-			shell_enabled = true;
-			break;
-		}
-	}
-
-	return shell_enabled;
-}
-
 /* #endregion */
 
 /* #region Parsing */
@@ -364,20 +346,16 @@ struct Parser {
 	Lexer *lex;
 	ConfigFnDict *fn_dict;
 	ConfigSettingDict *setting_dict;
+	Memory *mem; // Contains ConfigFn ret register
 
 	// Used to pass rich error messages from Parser_parse_node
 	char strerr[255];
 	// Used to pass the type of node where an error occured from Parser_parse_node
 	enum ParseNodeID cur_node_type;
-
-	// Function eval return register
-	void *eval_ret;
-	enum ConfigType eval_ret_type;
-	bool free_eval_ret; // set if eval_ret points to something the shell allocated
 };
 
 
-Parser *Parser_new(Lexer *l, ConfigFnDict *fn_dict, ConfigSettingDict *setting_dict) {
+Parser *Parser_new(Lexer *l, ConfigFnDict *fn_dict, ConfigSettingDict *setting_dict, Memory *mem) {
 	Parser *p = malloc(sizeof(Parser));
 	CHECK_ALLOC(p, NULL);
 	memset(p, 0, sizeof(Parser));
@@ -389,9 +367,6 @@ Parser *Parser_new(Lexer *l, ConfigFnDict *fn_dict, ConfigSettingDict *setting_d
 }
 // Deinitialize and free a config parser
 void Parser_free(Parser *p) {
-	if (p->free_eval_ret) {
-		free(p->eval_ret);
-	}
 	free(p);
 }
 
@@ -895,20 +870,7 @@ enum Parser_ERR Parser_walk(Parser *p, Config *config, ParserWalkFlags flags, Pa
 				return err;
 			}
 
-			// If we have an eval result, format and clear it
-			if (p->eval_ret) {
-				// FIXME: eval ret register should just be a ConfigVal
-				const ConfigVal eval_ret2 = {
-					.type = p->eval_ret_type,
-					.val_ptr = p->eval_ret
-				};
-				fmt_data(&FMT_CLI, &eval_ret2);
-
-				if (p->free_eval_ret) {
-					free(p->eval_ret);
-				}
-				p->eval_ret = NULL;
-			}
+			// If we have an eval result, print it using fmt_data
 		}
 		break;
 	case ParseNodeID_KeybindStmt:
@@ -949,11 +911,9 @@ enum Parser_ERR Parser_walk(Parser *p, Config *config, ParserWalkFlags flags, Pa
 				return Parser_OK;
 			}
 
+			// FIXME: use ret register in FnCallExpr_eval
 			void *result;
 			enum Parser_ERR err = ParseNode_FnCallExpr_eval(tree, &result);
-			p->eval_ret_type = fn->ret_type;
-			p->eval_ret = result;
-			p->free_eval_ret = false; // for now, we don't have any functions that heap allocate their ret val
 
 			return err;
 		}

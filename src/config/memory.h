@@ -27,16 +27,16 @@ void ConfigRegister_store(ConfigRegister *r, ConfigVal val, bool is_owned);
 /* #region Main memory struct */
 
 // State for variables and registers in MPL's config/shell
-typedef struct ConfigMemory {
+typedef struct Memory {
 	ConfigRegister ret; // ConfigFn return value
-} ConfigMemory;
+} Memory;
 
 // Initialize memory used for config values/registers
-void ConfigMemory_init(ConfigMemory *mem);
+void Memory_init(Memory *mem);
 
 // Deinitialize all config memory.
 // 1. Clear all registers
 // 2. Delete all user variables
-void ConfigMemory_deinit(ConfigMemory *mem);
+void Memory_deinit(Memory *mem);
 
 /* #endregion */
