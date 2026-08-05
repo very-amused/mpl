@@ -4,10 +4,14 @@
 #include <stdbool.h>
 
 #define CONFIG_TYPE(VARIANT) \
+	/* Primitives (if a new primitive is added you must update ConfigType_size) */ \
 	VARIANT(Config_I32) \
 	VARIANT(Config_BOOL) \
 	VARIANT(Config_STR) \
-	VARIANT(Config_TRACK_QUEUE)
+	/* Pointer types */ \
+	VARIANT(Config_TRACK_QUEUE) \
+	VARIANT(Config_TRACK) \
+	VARIANT(Config_TRACK_META)
 
 enum ConfigType {
 	CONFIG_TYPE(ENUM_VAL)
@@ -40,7 +44,7 @@ static const inline size_t ConfigType_size(enum ConfigType t) {
 			return sizeof(bool);
 		case Config_STR:
 			return sizeof(char *);
-		case Config_TRACK_QUEUE:
+		default:
 			return sizeof(void *);
 	}
 	return 0;

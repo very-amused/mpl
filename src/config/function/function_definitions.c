@@ -4,6 +4,7 @@
 #include "ui/event_queue.h"
 #include "track_queue/queue.h"
 #include "track_queue/state.h"
+#include "track.h"
 #include "state.h"
 
 /* #region Config function state */
@@ -17,6 +18,9 @@ void ConfigFn_fnState_init(TrackQueue *track_queue, EventQueue *eq) {
 
 /* #endregion */
 
+const Track *cur_track(void * _) {
+	return TrackQueue_cur_track(state.queue);
+}
 
 void play(void * _) {
 	TrackQueue_play(state.queue, false);
