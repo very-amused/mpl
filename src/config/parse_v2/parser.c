@@ -482,7 +482,10 @@ ParseNode *Parser_parse_ShellStmt(Parser *p, Parser_LineError *err) {
 					p->strerr[0] = '\0';
 					err->type = Parser_INVALID_NODE;
 				} else {
-					err->type = Parser_SYNTAX_ERR;
+					// Check if the next token is an lparen, in which case we assume this is an invalid *function* ident
+					Lexer_consume(p->lex);
+					tok = Lexer_peek(p->lex);
+					err->type = (tok && tok->type == Tok_Lparen) ? Parser_INVALID_FUNCTION : Parser_INVALID_IDENT;
 				}
 				break;
 
@@ -685,7 +688,7 @@ static enum Parser_ERR Parser_parse_node(Parser *p, ParseNode *node) {
 
 			// (
 			tok = Lexer_peek(p->lex);
-			if (tok->type != Tok_Lparen) {
+			if (!tok || tok->type != Tok_Lparen) {
 				return Parser_SYNTAX_ERR;
 			}
 			Lexer_consume(p->lex);
