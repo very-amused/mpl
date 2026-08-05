@@ -1,4 +1,6 @@
+#include "error.h"
 #include "ui/fmt.h"
+#include "util/log.h"
 #include "track_meta.h"
 #include <string.h>
 #include <stdlib.h>

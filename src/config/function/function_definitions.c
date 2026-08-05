@@ -22,6 +22,10 @@ const Track *cur_track(void * _) {
 	return TrackQueue_cur_track(state.queue);
 }
 
+const TrackMeta *metadata(const Track *tr) {
+	return &tr->meta;
+}
+
 void play(void * _) {
 	TrackQueue_play(state.queue, false);
 }

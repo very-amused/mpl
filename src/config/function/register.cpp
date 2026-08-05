@@ -15,6 +15,10 @@ void register_ConfigFn_functions(ConfigFnDict *dict) {
 	ConfigFnDict_define_fn(dict, "cur_track",
 			cur_track, Config_TRACK,
 			NULL);
+	static const std::vector<ConfigType> metadataArgTypes = {Config_TRACK};
+	ConfigFnDict_define_fn(dict, "metadata",
+			metadata, Config_TRACK_META,
+			&metadataArgTypes);
 	ConfigFnDict_define_fn(dict, "play",
 			play, Config_VOID,
 			NULL);

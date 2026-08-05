@@ -22,16 +22,14 @@ struct seekArgs { int32_t ms; }; // Args passed to a seek function
 /* Track management */
 typedef struct Track Track;
 const Track *cur_track(void * _); // Return the currently loaded track
+typedef struct TrackMeta TrackMeta;
+const TrackMeta *metadata(const Track *tr);
 void play(void * _); // Play
 void pause(void * _); // Pause
 void play_toggle(void * _); // Play/pause (toggle)
 void seek(const struct seekArgs *args); // Seek += args.ms milliseconds
 void seek_snap(const struct seekArgs *args); // Seek that snaps to the next whole second
 void show_metadata(void *); // Show metadata for the current track
-// TODO after cur_track()
-//typedef struct TrackMeta TrackMeta;
-//TrackMeta *metadata();
-
 
 /* Shell management */
 void shell_open(void * _); // Open MPL's shell
