@@ -23,4 +23,4 @@ void TrackMeta_init(TrackMeta *meta);
 void TrackMeta_deinit(TrackMeta *meta);
 
 // Display TrackMeta to a Formatter (return # of bytes written)
-int TrackMeta_fmt(TrackMeta *meta, Formatter *fmt);
+int TrackMeta_fmt(const TrackMeta *meta, Formatter *fmt);

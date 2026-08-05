@@ -3,12 +3,14 @@
 #include "config/parse_v2/parser.h"
 #include "error.h"
 #include "interface.h"
+#include "track_meta.h"
 #include "track_queue/queue.h"
 #include "ui/event.h"
 #include "ui/event_queue.h"
 #include "cli/termio_thread.h"
 #include "cli/termio_events.h"
 #include "cli/termio.h"
+#include "ui/fmt.h"
 #include "ui/timecode.h"
 #include "util/log.h"
 #include <string.h>
@@ -72,7 +74,7 @@ static enum UserInterface_ERR mainloop(void * ctx__,
 	// Handle if there's a track loaded in the queue
 	const Track *track = TrackQueue_cur_track(track_queue);
 	if (track) {
-		refresh_metadata(&track->meta);
+		TrackMeta_fmt(&track->meta, &FMT_CLI);
 		TrackQueue_play(track_queue, 0);
 	}
 
@@ -145,8 +147,11 @@ static enum UserInterface_ERR mainloop(void * ctx__,
 			break;
 	
 		case mpl_TRACK_META:
-			refresh_metadata(evt.body);
-			free(evt.body);
+			{
+				const TrackMeta *meta = evt.body;
+				TrackMeta_fmt(meta, &FMT_CLI);
+				free(evt.body);
+			}
 			break;
 
 		case mpl_TRACK_END:
@@ -193,23 +198,4 @@ static void refresh_timecode(EventBody_Timecode timecode,
 	fmt_timecode(duration_buf, sizeof(duration_buf), audio->duration_timecode, &pcm, show_ms);
 
 	TermIOThread_post_event2(thr, TermIO_TIMECODE, timecode_buf, duration_buf);
-}
-
-static void refresh_metadata(const TrackMeta *meta) {
-	// Display track metadata
-	static const char TERM_BOLD[] = "\x1b[1m";
-	static const char TERM_ITAL[] = "\x1b[3m";
-	static const char TERM_RESET[] = "\x1b[0m";
-	if (meta->artist) {
-		fprintf(stderr, "%sArtist:%s %s%s%s\n", TERM_BOLD, TERM_RESET,
-				TERM_ITAL, meta->artist, TERM_RESET);
-	}
-	if (meta->name) {
-		fprintf(stderr, "%sTitle:%s %s%s%s\n", TERM_BOLD, TERM_RESET,
-				TERM_ITAL, meta->name, TERM_RESET);
-	}
-	if (meta->album) {
-		fprintf(stderr, "%sAlbum:%s %s%s%s\n", TERM_BOLD, TERM_RESET,
-				TERM_ITAL, meta->album, TERM_RESET);
-	}
 }

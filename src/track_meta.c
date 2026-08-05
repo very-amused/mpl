@@ -13,7 +13,7 @@ void TrackMeta_deinit(TrackMeta *meta) {
 	free(meta->album);
 }
 
-int TrackMeta_fmt(TrackMeta *meta, Formatter *fmt) {
+int TrackMeta_fmt(const TrackMeta *meta, Formatter *fmt) {
 	int n = 0; // bytes written
 
 	// Display track metadata
