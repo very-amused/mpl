@@ -1,5 +1,7 @@
 #include "fmt.h"
 #include "config/parse_v2/types.h"
+#include "track.h"
+#include "track_meta.h"
 #include "track_queue/queue.h"
 
 #include <stdarg.h>
@@ -28,6 +30,13 @@ int fmt_data(Formatter *fmt, const ConfigVal *val) {
 	case Config_STR:
 		return fmt_printf(fmt, "%s\n", val->val_str);
 
+	case Config_TRACK:
+	{
+		Track *tr = (Track *)val->val_ptr;
+		return TrackMeta_fmt(&tr->meta, fmt);
+	}
+	case Config_TRACK_META:
+		return TrackMeta_fmt(val->val_ptr, fmt);
 	case Config_TRACK_QUEUE:
 		return TrackQueue_fmt(val->val_ptr, fmt);
 	}
