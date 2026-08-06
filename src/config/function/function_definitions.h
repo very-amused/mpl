@@ -9,7 +9,10 @@
 #pragma pack(1)
 #endif
 
+// Argument types
+typedef struct Track Track;
 struct seekArgs { int32_t ms; }; // Args passed to a seek function
+struct trackArgs { const Track *tr; };
 
 // Turn struct packing off
 #ifndef KNOWN_STRUCT_PADDING
@@ -20,10 +23,9 @@ struct seekArgs { int32_t ms; }; // Args passed to a seek function
  * They control MPL's behavior. */
 
 /* Track management */
-typedef struct Track Track;
 const Track *cur_track(void * _); // Return the currently loaded track
 typedef struct TrackMeta TrackMeta;
-const TrackMeta *metadata(const Track *tr);
+const TrackMeta *metadata(const struct trackArgs *args); // Return metadata for a Track
 void play(void * _); // Play
 void pause(void * _); // Pause
 void play_toggle(void * _); // Play/pause (toggle)

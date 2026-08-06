@@ -1,11 +1,13 @@
 #include "function_definitions.h"
 #include "audio/seek.h"
+#include "error.h"
 #include "ui/event.h"
 #include "ui/event_queue.h"
 #include "track_queue/queue.h"
 #include "track_queue/state.h"
 #include "track.h"
 #include "state.h"
+#include "util/log.h"
 
 /* #region Config function state */
 
@@ -22,7 +24,8 @@ const Track *cur_track(void * _) {
 	return TrackQueue_cur_track(state.queue);
 }
 
-const TrackMeta *metadata(const Track *tr) {
+const TrackMeta *metadata(const struct trackArgs *args) {
+	const Track *tr = args->tr;
 	return &tr->meta;
 }
 

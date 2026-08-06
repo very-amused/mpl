@@ -42,10 +42,10 @@ KeybindRoutine::~KeybindRoutine() {
 struct KeybindMap {
 	std::unordered_map<wchar_t, std::unique_ptr<KeybindRoutine>> map;
 	std::unordered_map<wchar_t, std::unique_ptr<KeybindRoutine>> shell_map; // Keybinds used in MPL's shell
-	ConfigRegister *ret; // eval return register
+	MemRegister *ret; // eval return register
 };
 
-KeybindMap *KeybindMap_new(ConfigRegister *ret) {
+KeybindMap *KeybindMap_new(MemRegister *ret) {
 	KeybindMap *map = new KeybindMap;
 	map->ret = ret;
 	return map;

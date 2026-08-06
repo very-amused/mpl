@@ -95,6 +95,9 @@ endif
 if get_option('parsing_debug')
 	cflags += '-DMPL_PARSING_DEBUG'
 endif
+if get_option('memory_debug')
+	cflags += '-DMPL_MEM_DEBUG'
+endif
 
 # Source and header files
 src = []

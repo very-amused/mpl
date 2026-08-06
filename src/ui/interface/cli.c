@@ -64,8 +64,6 @@ static void deinit(void *ud) {
 
 // Update track timecode and duration
 static void refresh_timecode(EventBody_Timecode timecode, const AudioTrack *audio, const Settings *settings, TermIOThread *thr);
-// Print track metadata
-static void refresh_metadata(const TrackMeta *meta);
 
 static enum UserInterface_ERR mainloop(void * ctx__,
 		EventQueue *evt_queue, TrackQueue *track_queue, Config *config) {
