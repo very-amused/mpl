@@ -31,10 +31,7 @@ int fmt_data(Formatter *fmt, const ConfigVal *val) {
 		return fmt_printf(fmt, "%s\n", val->val_str);
 
 	case Config_TRACK:
-	{
-		Track *tr = (Track *)val->val_ptr;
-		return TrackMeta_fmt(&tr->meta, fmt);
-	}
+		return Track_fmt(val->val_ptr, fmt);
 	case Config_TRACK_META:
 		return TrackMeta_fmt(val->val_ptr, fmt);
 	case Config_TRACK_QUEUE:

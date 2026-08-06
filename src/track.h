@@ -3,6 +3,7 @@
 
 #include "track_meta.h"
 #include "audio/track.h"
+#include "ui/fmt.h"
 
 
 typedef struct Track {
@@ -22,3 +23,5 @@ typedef struct Track {
 Track *Track_new(const char *url, const size_t url_len, AudioBackend *ab);
 
 void Track_free(Track *t);
+
+int Track_fmt(const Track *t, Formatter *fmt);

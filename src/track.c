@@ -2,6 +2,7 @@
 #include "audio/track.h"
 #include "error.h"
 #include "track_meta.h"
+#include "ui/fmt.h"
 #include "util/compat/string_win32.h"
 #include "util/log.h"
 
@@ -38,4 +39,12 @@ void Track_free(Track *t) {
 	AudioTrack_deinit(&t->audio);
 	TrackMeta_deinit(&t->meta);
 	free(t);
+}
+
+int Track_fmt(const Track *t, Formatter *fmt) {
+	int n = 0; // # of bytes written
+
+	n += TrackMeta_fmt_short(&t->meta, fmt);
+
+	return n;
 }
