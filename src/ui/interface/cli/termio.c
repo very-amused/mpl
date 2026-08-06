@@ -104,14 +104,7 @@ static void shell_line_ready_cb(char *line);
 
 void TermIO_handle_keypress(TermIO *io) {
 	typedef int (*getc_fn)(FILE *);
-	getc_fn get_char;
-	switch (io->mode) {
-		case InputMode_KEY:
-			get_char = fgetc;
-			break;
-		case InputMode_SHELL:
-			get_char = rl_getc;
-	}
+	getc_fn get_char = io->mode == InputMode_SHELL ? rl_getc : fgetc;
 
 	// Read keypress from stdin
 	// TODO: parse escape sequences
